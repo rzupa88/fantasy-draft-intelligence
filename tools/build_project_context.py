@@ -138,9 +138,7 @@ def main() -> None:
     if metadata_blocks:
         parts.append(section("Build and Dependency Files", "\n\n".join(metadata_blocks)))
     else:
-        parts.append(
-            section("Build and Dependency Files", "No build/dependency files found.")
-        )
+        parts.append(section("Build and Dependency Files", "No build/dependency files found."))
 
     code_files = collect_code()[:20]
     if code_files:
