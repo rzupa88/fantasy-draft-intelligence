@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def fetch_weekly_player_data(years: list[int]) -> pd.DataFrame:
     """
     Placeholder ingestion function.

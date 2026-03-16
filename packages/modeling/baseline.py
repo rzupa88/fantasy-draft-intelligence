@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def adp_baseline_rank(df: pd.DataFrame) -> pd.DataFrame:
     """
     Minimal baseline that treats ADP as the model prediction.

@@ -4,7 +4,6 @@ import pytest
 from packages.data.validation import ValidationError, assert_unique_key, require_columns
 
 
-
 def test_require_columns_passes_when_columns_exist() -> None:
     df = pd.DataFrame({"a": [1], "b": [2]})
     require_columns(df, ["a", "b"])

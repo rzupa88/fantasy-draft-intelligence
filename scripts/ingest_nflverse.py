@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 
-from packages.data.io import write_parquet
 from packages.data.ingest.nflverse import fetch_weekly_player_data
+from packages.data.io import write_parquet
 from packages.shared.logging import get_logger
 
 logger = get_logger(__name__)

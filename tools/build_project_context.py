@@ -20,6 +20,9 @@ EXCLUDED_DIRS = {
 DOC_EXTENSIONS = {".md", ".txt"}
 CODE_EXTENSIONS = {".py", ".ts", ".tsx", ".js", ".jsx"}
 
+DOC_FOLDERS = ["docs"]
+CODE_FOLDERS = ["src", "app", "packages", "api", "server", "client"]
+
 
 def safe_read(path: Path) -> str:
     try:
@@ -45,7 +48,8 @@ def repo_tree(base: Path, max_depth: int = 3) -> str:
 
         children = sorted(
             [
-                p for p in current.iterdir()
+                p
+                for p in current.iterdir()
                 if not p.name.startswith(".") and p.name not in EXCLUDED_DIRS
             ],
             key=lambda p: (p.is_file(), p.name.lower()),
@@ -64,22 +68,30 @@ def repo_tree(base: Path, max_depth: int = 3) -> str:
 
 def collect_docs() -> list[Path]:
     docs: list[Path] = []
-    for folder_name in ["docs"]:
+    for folder_name in DOC_FOLDERS:
         folder = ROOT / folder_name
         if folder.exists():
             for path in folder.rglob("*"):
-                if path.is_file() and not is_excluded(path) and path.suffix.lower() in DOC_EXTENSIONS:
+                if (
+                    path.is_file()
+                    and not is_excluded(path)
+                    and path.suffix.lower() in DOC_EXTENSIONS
+                ):
                     docs.append(path)
     return sorted(docs)
 
 
 def collect_code() -> list[Path]:
     code: list[Path] = []
-    for folder_name in ["src", "app", "packages", "api", "server", "client"]:
+    for folder_name in CODE_FOLDERS:
         folder = ROOT / folder_name
         if folder.exists():
             for path in folder.rglob("*"):
-                if path.is_file() and not is_excluded(path) and path.suffix.lower() in CODE_EXTENSIONS:
+                if (
+                    path.is_file()
+                    and not is_excluded(path)
+                    and path.suffix.lower() in CODE_EXTENSIONS
+                ):
                     code.append(path)
     return sorted(code)
 
@@ -93,7 +105,8 @@ def main() -> None:
 
     parts.append("# Fantasy Draft Intelligence — Project Context\n")
     parts.append(
-        "This file is auto-generated from the repository to give ChatGPT Projects a compact view of the repo.\n"
+        "This file is auto-generated from the repository "
+        "to give ChatGPT Projects a compact view of the repo.\n"
     )
 
     readme = ROOT / "README.md"
@@ -125,7 +138,9 @@ def main() -> None:
     if metadata_blocks:
         parts.append(section("Build and Dependency Files", "\n\n".join(metadata_blocks)))
     else:
-        parts.append(section("Build and Dependency Files", "No build/dependency files found."))
+        parts.append(
+            section("Build and Dependency Files", "No build/dependency files found.")
+        )
 
     code_files = collect_code()[:20]
     if code_files:
