@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def fetch_coaching_history() -> pd.DataFrame:
     """
     Placeholder coaching history extractor.

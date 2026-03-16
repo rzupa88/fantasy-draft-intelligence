@@ -3,7 +3,6 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def fetch_historical_adp() -> pd.DataFrame:
     """
     Placeholder ADP ingestion function.
