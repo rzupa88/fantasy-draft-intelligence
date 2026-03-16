@@ -125,6 +125,7 @@ pip install -e .[dev]
 ├── tools
 │   └── build_project_context.py
 ├── Makefile
+├── PROJECT_CONTEXT.md
 ├── pyproject.toml
 └── README.md
 ```
@@ -386,7 +387,6 @@ PROCESSED_DATA_DIR = "data/processed"
 
 DEFAULT_PILOT_YEARS = [2023, 2024]
 VALID_POSITIONS = {"QB", "RB", "WR", "TE"}
-
 ```
 
 ### `packages/data/ingest/__init__.py`
@@ -401,7 +401,6 @@ VALID_POSITIONS = {"QB", "RB", "WR", "TE"}
 from __future__ import annotations
 
 import pandas as pd
-
 
 
 def fetch_historical_adp() -> pd.DataFrame:
@@ -431,7 +430,6 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def fetch_coaching_history() -> pd.DataFrame:
     """
     Placeholder coaching history extractor.
@@ -456,7 +454,6 @@ def fetch_coaching_history() -> pd.DataFrame:
 from __future__ import annotations
 
 import pandas as pd
-
 
 
 def fetch_weekly_player_data(years: list[int]) -> pd.DataFrame:
@@ -516,12 +513,10 @@ class ValidationError(Exception):
     """Raised when a data validation check fails."""
 
 
-
 def require_columns(df: pd.DataFrame, required_columns: Sequence[str]) -> None:
     missing = [col for col in required_columns if col not in df.columns]
     if missing:
         raise ValidationError(f"Missing required columns: {missing}")
-
 
 
 def assert_unique_key(df: pd.DataFrame, key_columns: Sequence[str]) -> None:
@@ -547,7 +542,6 @@ from __future__ import annotations
 import pandas as pd
 
 
-
 def adp_baseline_rank(df: pd.DataFrame) -> pd.DataFrame:
     """
     Minimal baseline that treats ADP as the model prediction.
@@ -568,6 +562,7 @@ def adp_baseline_rank(df: pd.DataFrame) -> pd.DataFrame:
 
 ```text
 import logging
+
 
 def get_logger(name: str) -> logging.Logger:
     logging.basicConfig(
