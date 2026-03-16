@@ -1,0 +1,80 @@
+Metadata-Version: 2.4
+Name: fantasy-draft-intelligence
+Version: 0.1.0
+Summary: Git-first fantasy football draft intelligence platform
+Author: Ryan Zupa
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pandas>=2.2.0
+Requires-Dist: pyarrow>=16.0.0
+Requires-Dist: duckdb>=1.0.0
+Requires-Dist: requests>=2.32.0
+Requires-Dist: beautifulsoup4>=4.12.0
+Requires-Dist: lxml>=5.2.0
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: scikit-learn>=1.5.0
+Requires-Dist: pyyaml>=6.0.1
+Requires-Dist: typer>=0.12.3
+Requires-Dist: rich>=13.7.1
+Provides-Extra: dev
+Requires-Dist: pytest>=8.2.0; extra == "dev"
+Requires-Dist: ruff>=0.5.0; extra == "dev"
+Requires-Dist: black>=24.4.2; extra == "dev"
+Requires-Dist: jupyter>=1.0.0; extra == "dev"
+Requires-Dist: ipykernel>=6.29.4; extra == "dev"
+
+# Fantasy Draft Intelligence
+
+A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
+
+## Purpose
+This project aims to identify when the fantasy football market is mispricing players relative to expected outcomes.
+
+The product is built around four layers:
+1. Data collection and normalization
+2. Feature engineering and research
+3. Predictive modeling and value scoring
+4. Draft decision support
+
+## Core Question
+At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
+
+## Principles
+- ADP is the baseline, not the answer
+- Narratives must become variables
+- Opportunity matters more than story
+- Everything should be reproducible
+- Git is the operating system for the project
+
+## Tech Stack
+- Python
+- GitHub Codespaces
+- Pandas / Polars
+- DuckDB / Parquet
+- scikit-learn
+- pytest
+- ruff
+- black
+
+## Initial Milestone
+**M1: Core Historical Warehouse for Pilot Seasons**
+
+This milestone includes:
+- repo setup
+- Codespaces environment
+- source inventory
+- nflverse ingestion
+- ADP ingestion prototype
+- canonical IDs
+- initial validation
+
+## Quick Start
+
+### 1. Open in Codespaces
+Open the repository in GitHub Codespaces.
+
+### 2. Install dependencies
+This should happen automatically in the devcontainer. If needed:
+
+```bash
+pip install -e .[dev]

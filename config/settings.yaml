@@ -1,0 +1,17 @@
+project:
+  name: fantasy-draft-intelligence
+  default_scoring_format: half_ppr
+  pilot_years:
+    - 2023
+    - 2024
+
+paths:
+  raw_data: data/raw
+  intermediate_data: data/intermediate
+  processed_data: data/processed
+  artifacts: artifacts
+
+validation:
+  fail_on_duplicate_keys: true
+  fail_on_missing_required_columns: true
+

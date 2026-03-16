@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.venv/
+.venv*/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Env
+.env
+
+# Data
+/data/raw/*
+!/data/raw/.gitkeep
+/data/intermediate/*
+!/data/intermediate/.gitkeep
+/data/processed/*
+!/data/processed/.gitkeep
+
+# Artifacts
+/artifacts/figures/*
+!/artifacts/figures/.gitkeep
+/artifacts/reports/*
+!/artifacts/reports/.gitkeep
+/artifacts/model_cards/*
+!/artifacts/model_cards/.gitkeep
+
+# OS / Editor
+.DS_Store
+.vscode/
+
+# Coverage / cache
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
