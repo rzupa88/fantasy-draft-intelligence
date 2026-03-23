@@ -124,16 +124,13 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
     normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
     normalized["position"] = normalized["position"].astype("string").str.strip()
 
-    normalized = normalized.dropna(
-    subset=["season", "player_name", "position", "adp_overall"]
-)
+    normalized = normalized.dropna(subset=["season", "player_name", "position", "adp_overall"])
 
     normalized["player_name"] = normalized["player_name"].str.strip()
 
     normalized = normalized.loc[
-    (normalized["player_name"] != "") &
-    (normalized["player_name"].notna())
-].copy()
+        (normalized["player_name"] != "") & (normalized["player_name"].notna())
+    ].copy()
 
     normalized["season"] = normalized["season"].astype(int)
     normalized["adp_overall"] = normalized["adp_overall"].astype(float)
@@ -141,9 +138,7 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
     require_columns(normalized, REQUIRED_OUTPUT_COLUMNS)
     assert_unique_key(normalized, UNIQUE_KEY_COLUMNS)
 
-    return normalized.sort_values(
-        ["season", "adp_overall", "player_name"]
-    ).reset_index(drop=True)
+    return normalized.sort_values(["season", "adp_overall", "player_name"]).reset_index(drop=True)
 
 
 def _raw_snapshot_path(raw_dir: Path, season: int) -> Path:
@@ -159,9 +154,7 @@ def _normalized_output_path(intermediate_dir: Path, years: list[int]) -> Path:
 def ingest_historical_adp(config: AdpIngestConfig) -> pd.DataFrame:
     missing_years = [year for year in config.years if year not in config.source_urls]
     if missing_years:
-        raise ValueError(
-            f"No ADP source URL configured for seasons {missing_years}"
-        )
+        raise ValueError(f"No ADP source URL configured for seasons {missing_years}")
 
     raw_frames: list[pd.DataFrame] = []
 
