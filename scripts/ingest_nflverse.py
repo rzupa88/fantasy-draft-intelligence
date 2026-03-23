@@ -1,24 +1,54 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
-from packages.data.ingest.nflverse import fetch_weekly_player_data
-from packages.data.io import write_parquet
-from packages.shared.logging import get_logger
+from packages.data.ingest.nflverse import NflverseIngestConfig, ingest_nflverse_weekly_players
 
-logger = get_logger(__name__)
+DEFAULT_YEARS = [2023, 2024]
+DEFAULT_RAW_DIR = Path("data/raw")
+DEFAULT_INTERMEDIATE_DIR = Path("data/intermediate")
 
 
-def main(years: list[int]) -> None:
-    logger.info("Fetching nflverse weekly player data for years=%s", years)
-    df = fetch_weekly_player_data(years)
-    output_path = "data/raw/nflverse_weekly_sample.parquet"
-    write_parquet(df, output_path)
-    logger.info("Wrote %s rows to %s", len(df), output_path)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest weekly NFL player data from nflverse")
+    parser.add_argument(
+        "--years",
+        nargs="+",
+        type=int,
+        default=DEFAULT_YEARS,
+        help="Season years to ingest, e.g. --years 2023 2024",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=DEFAULT_RAW_DIR,
+        help="Directory for raw parquet snapshots",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=DEFAULT_INTERMEDIATE_DIR,
+        help="Directory for normalized parquet outputs",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    config = NflverseIngestConfig(
+        years=args.years,
+        raw_dir=args.raw_dir,
+        intermediate_dir=args.intermediate_dir,
+    )
+
+    df = ingest_nflverse_weekly_players(config)
+    print(
+        f"Ingest complete: rows={df.height}, cols={df.width}, "
+        f"years={min(args.years)}-{max(args.years)}"
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--years", nargs="+", type=int, required=True)
-    args = parser.parse_args()
-    main(args.years)
+    main()
