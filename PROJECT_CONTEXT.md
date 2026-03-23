@@ -140,11 +140,13 @@ pytest
 ├── tests
 │   ├── data
 │   │   └── ingest
+│   │       ├── test_adp.py
 │   │       └── test_nflverse.py
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
 │   └── build_project_context.py
+├── debug_adp.csv
 ├── Makefile
 ├── PROJECT_CONTEXT.md
 ├── pyproject.toml
@@ -448,10 +450,29 @@ This document tracks every external data source used by the project.
 ### 2. FantasyPros
 **Use for:**
 - historical ADP
-- overall and positional draft cost
+- overall draft cost baseline for MVP pilot seasons
 
 **Access method:**
-- careful scrape / controlled extract
+- controlled extract from season-specific historical overall ADP pages
+- explicit URL manifest by season
+- raw HTML snapshots saved to `data/raw/`
+- normalized parquet saved to `data/intermediate/`
+
+**Current provenance:**
+- FantasyPros NFL historical overall ADP page for 2023
+- FantasyPros NFL historical overall ADP page for 2024
+
+**Normalization fields:**
+- season
+- player_name
+- position
+- adp_overall
+- source_name
+
+**Reproducibility policy:**
+- snapshot raw source HTML during ingestion
+- avoid broad, dynamic scraping
+- extend coverage by adding explicit season URLs to the ingestion manifest
 
 **Priority:** Primary for ADP
 
@@ -488,26 +509,131 @@ This document tracks every external data source used by the project.
 ```text
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from io import StringIO
+from pathlib import Path
+from typing import Final
+from urllib.request import Request, urlopen
+
 import pandas as pd
 
+from packages.data.constants import (
+    DEFAULT_PILOT_YEARS,
+    INTERMEDIATE_DATA_DIR,
+    RAW_DATA_DIR,
+)
+from packages.data.io import write_parquet
+from packages.data.validation import assert_unique_key, require_columns
 
-def fetch_historical_adp() -> pd.DataFrame:
-    """
-    Placeholder ADP ingestion function.
+REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
+    "season",
+    "player_name",
+    "position",
+    "adp_overall",
+    "source_name",
+]
 
-    Replace with careful historical ADP extraction logic.
-    """
-    return pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "player_name": "example_player",
-                "position": "RB",
-                "adp_overall": 42.5,
-                "source_name": "example_source",
-            }
-        ]
+UNIQUE_KEY_COLUMNS: Final[list[str]] = [
+    "season",
+    "player_name",
+    "position",
+    "source_name",
+]
+
+SOURCE_NAME: Final[str] = "fantasypros"
+
+DEFAULT_SOURCE_URLS: Final[dict[int, str]] = {
+    2023: "https://www.fantasypros.com/nfl/adp/overall.php?year=2023",
+    2024: "https://www.fantasypros.com/nfl/adp/overall.php?year=2024",
+}
+
+REQUEST_HEADERS: Final[dict[str, str]] = {
+    "User-Agent": "fantasy-draft-intelligence/0.1 (+historical-adp-ingestion)"
+}
+
+
+@dataclass(frozen=True)
+class AdpIngestConfig:
+    years: list[int]
+    raw_dir: Path
+    intermediate_dir: Path
+    source_urls: dict[int, str]
+
+
+def default_config() -> AdpIngestConfig:
+    return AdpIngestConfig(
+        years=list(DEFAULT_PILOT_YEARS),
+        raw_dir=Path(RAW_DATA_DIR),
+        intermediate_dir=Path(INTERMEDIATE_DATA_DIR),
+        source_urls=dict(DEFAULT_SOURCE_URLS),
     )
+
+
+def _fetch_html(url: str) -> str:
+    request = Request(url, headers=REQUEST_HEADERS)
+    with urlopen(request) as response:  # noqa: S310
+        return response.read().decode("utf-8")
+
+
+def _extract_raw_table_from_html(html: str, season: int) -> pd.DataFrame:
+    tables = pd.read_html(StringIO(html))
+    if not tables:
+        raise ValueError(f"No HTML tables found for season {season}")
+
+    raw = tables[0].copy()
+    raw.columns = [str(col).strip() for col in raw.columns]
+
+    expected_columns = {"Player Team (Bye)", "POS", "AVG"}
+    missing_columns = expected_columns.difference(raw.columns)
+    if missing_columns:
+        raise ValueError(
+            f"Missing expected FantasyPros columns for season {season}: "
+            f"{sorted(missing_columns)}"
+        )
+
+    raw["season"] = season
+    raw["source_name"] = SOURCE_NAME
+    return raw
+
+
+def _split_player_name(value: object) -> str:
+    text = str(value).strip()
+    if not text:
+        return text
+
+    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
+    text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
+    return text.strip()
+
+
+def _extract_position(value: object) -> str:
+    text = str(value).strip().upper()
+    if not text:
+        return text
+
+    for valid_position in ("QB", "RB", "WR", "TE", "DST", "K"):
+        if text.startswith(valid_position):
+            return valid_position
+
+    return text
+
+
+def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
+    normalized = pd.DataFrame(
+        {
+            "season": pd.to_numeric(raw_df["season"], errors="coerce").astype("Int64"),
+            "player_name": raw_df["Player Team (Bye)"].map(_split_player_name),
+            "position": raw_df["POS"].map(_extract_position),
+            "adp_overall": pd.to_numeric(raw_df["AVG"], errors="coerce"),
+            "source_name": raw_df["source_name"].astype("string").str.strip(),
+        }
+    )
+
+    normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
+    normalized["position"] =
+
+[TRUNCATED]
 ```
 
 ### `packages/data/ingest/coaching.py`
@@ -716,19 +842,74 @@ def adp_baseline_rank(df: pd.DataFrame) -> pd.DataFrame:
 ### `scripts/ingest_adp.py`
 
 ```text
-from packages.data.ingest.adp import fetch_historical_adp
-from packages.data.io import write_parquet
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from packages.data.constants import (
+    DEFAULT_PILOT_YEARS,
+    INTERMEDIATE_DATA_DIR,
+    RAW_DATA_DIR,
+)
+from packages.data.ingest.adp import (
+    DEFAULT_SOURCE_URLS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+)
 from packages.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
+DEFAULT_RAW_DIR = Path(RAW_DATA_DIR)
+DEFAULT_INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest historical fantasy football ADP data")
+    parser.add_argument(
+        "--years",
+        nargs="+",
+        type=int,
+        default=DEFAULT_PILOT_YEARS,
+        help="Season years to ingest, e.g. --years 2023 2024",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=DEFAULT_RAW_DIR,
+        help="Directory for raw HTML snapshots",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=DEFAULT_INTERMEDIATE_DIR,
+        help="Directory for normalized parquet outputs",
+    )
+    return parser.parse_args()
+
 
 def main() -> None:
-    logger.info("Fetching historical ADP data")
-    df = fetch_historical_adp()
-    output_path = "data/raw/adp_sample.parquet"
-    write_parquet(df, output_path)
-    logger.info("Wrote %s rows to %s", len(df), output_path)
+    args = parse_args()
+
+    source_urls = {year: DEFAULT_SOURCE_URLS[year] for year in args.years}
+
+    config = AdpIngestConfig(
+        years=args.years,
+        raw_dir=args.raw_dir,
+        intermediate_dir=args.intermediate_dir,
+        source_urls=source_urls,
+    )
+
+    logger.info("Ingesting historical ADP for seasons=%s", args.years)
+    df = ingest_historical_adp(config)
+    logger.info(
+        "ADP ingest complete: rows=%s cols=%s years=%s-%s",
+        len(df),
+        len(df.columns),
+        min(args.years),
+        max(args.years),
+    )
 
 
 if __name__ == "__main__":
@@ -936,6 +1117,144 @@ for directory in DIRECTORIES:
 print("Bootstrap complete.")
 ```
 
+### `tests/data/ingest/test_adp.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from packages.data.ingest.adp import (
+    REQUIRED_OUTPUT_COLUMNS,
+    UNIQUE_KEY_COLUMNS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+    normalize_historical_adp,
+)
+from packages.data.validation import ValidationError
+
+
+@pytest.fixture
+def fantasypros_html_2023() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
+            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+@pytest.fixture
+def fantasypros_html_2024() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
+            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+def test_normalize_historical_adp_requires_expected_columns() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
+            "POS": ["WR1"],
+            "AVG": [2.1],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    normalized = normalize_historical_adp(raw)
+
+    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
+    assert normalized.iloc[0]["position"] == "WR"
+
+
+def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024, 2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
+            "POS": ["WR1", "WR1"],
+            "AVG": [2.1, 2.1],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    with pytest.raises(ValidationError, match="duplicate rows"):
+        normalize_historical_adp(raw)
+
+
+def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
+    monkeypatch,
+    tmp_path: Path,
+    fantasypros_html_2023: str,
+    fantasypros_html_2024: str,
+) -> None:
+    from packages.data.ingest import adp as adp_module
+
+    html_by_url = {
+        "https://example.test/2023": fantasypros_html_2023,
+        "https://example.test/2024": fantasypros_html_2024,
+    }
+
+    def fake_fetch_html(url: str) -> str:
+        return html_by_url[url]
+
+    monkeypatch.setattr(adp_module, "_fetch_html", fake_fetch_html)
+
+    config = AdpIngestConfig(
+        years=[2023, 2024],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+        source_urls={
+            2023: "https://example.test/2023",
+            2024: "https://example.test/2024",
+        },
+    )
+
+    df = ingest_historical_adp(config)
+
+    assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert sorted(df["season"].unique().tolist()) == [2023, 2024]
+    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_nam
+
+[TRUNCATED]
+```
+
 ### `tests/data/ingest/test_nflverse.py`
 
 ```text
@@ -1047,48 +1366,346 @@ def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
 ```text
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from io import StringIO
+from pathlib import Path
+from typing import Final
+from urllib.request import Request, urlopen
+
 import pandas as pd
 
+from packages.data.constants import (
+    DEFAULT_PILOT_YEARS,
+    INTERMEDIATE_DATA_DIR,
+    RAW_DATA_DIR,
+)
+from packages.data.io import write_parquet
+from packages.data.validation import assert_unique_key, require_columns
 
-def fetch_historical_adp() -> pd.DataFrame:
-    """
-    Placeholder ADP ingestion function.
+REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
+    "season",
+    "player_name",
+    "position",
+    "adp_overall",
+    "source_name",
+]
 
-    Replace with careful historical ADP extraction logic.
-    """
-    return pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "player_name": "example_player",
-                "position": "RB",
-                "adp_overall": 42.5,
-                "source_name": "example_source",
-            }
-        ]
+UNIQUE_KEY_COLUMNS: Final[list[str]] = [
+    "season",
+    "player_name",
+    "position",
+    "source_name",
+]
+
+SOURCE_NAME: Final[str] = "fantasypros"
+
+DEFAULT_SOURCE_URLS: Final[dict[int, str]] = {
+    2023: "https://www.fantasypros.com/nfl/adp/overall.php?year=2023",
+    2024: "https://www.fantasypros.com/nfl/adp/overall.php?year=2024",
+}
+
+REQUEST_HEADERS: Final[dict[str, str]] = {
+    "User-Agent": "fantasy-draft-intelligence/0.1 (+historical-adp-ingestion)"
+}
+
+
+@dataclass(frozen=True)
+class AdpIngestConfig:
+    years: list[int]
+    raw_dir: Path
+    intermediate_dir: Path
+    source_urls: dict[int, str]
+
+
+def default_config() -> AdpIngestConfig:
+    return AdpIngestConfig(
+        years=list(DEFAULT_PILOT_YEARS),
+        raw_dir=Path(RAW_DATA_DIR),
+        intermediate_dir=Path(INTERMEDIATE_DATA_DIR),
+        source_urls=dict(DEFAULT_SOURCE_URLS),
     )
+
+
+def _fetch_html(url: str) -> str:
+    request = Request(url, headers=REQUEST_HEADERS)
+    with urlopen(request) as response:  # noqa: S310
+        return response.read().decode("utf-8")
+
+
+def _extract_raw_table_from_html(html: str, season: int) -> pd.DataFrame:
+    tables = pd.read_html(StringIO(html))
+    if not tables:
+        raise ValueError(f"No HTML tables found for season {season}")
+
+    raw = tables[0].copy()
+    raw.columns = [str(col).strip() for col in raw.columns]
+
+    expected_columns = {"Player Team (Bye)", "POS", "AVG"}
+    missing_columns = expected_columns.difference(raw.columns)
+    if missing_columns:
+        raise ValueError(
+            f"Missing expected FantasyPros columns for season {season}: "
+            f"{sorted(missing_columns)}"
+        )
+
+    raw["season"] = season
+    raw["source_name"] = SOURCE_NAME
+    return raw
+
+
+def _split_player_name(value: object) -> str:
+    text = str(value).strip()
+    if not text:
+        return text
+
+    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
+    text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
+    return text.strip()
+
+
+def _extract_position(value: object) -> str:
+    text = str(value).strip().upper()
+    if not text:
+        return text
+
+    for valid_position in ("QB", "RB", "WR", "TE", "DST", "K"):
+        if text.startswith(valid_position):
+            return valid_position
+
+    return text
+
+
+def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
+    normalized = pd.DataFrame(
+        {
+            "season": pd.to_numeric(raw_df["season"], errors="coerce").astype("Int64"),
+            "player_name": raw_df["Player Team (Bye)"].map(_split_player_name),
+            "position": raw_df["POS"].map(_extract_position),
+            "adp_overall": pd.to_numeric(raw_df["AVG"], errors="coerce"),
+            "source_name": raw_df["source_name"].astype("string").str.strip(),
+        }
+    )
+
+    normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
+    normalized["position"] =
+
+[TRUNCATED]
 ```
 
 ### `scripts/ingest_adp.py`
 
 ```text
-from packages.data.ingest.adp import fetch_historical_adp
-from packages.data.io import write_parquet
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from packages.data.constants import (
+    DEFAULT_PILOT_YEARS,
+    INTERMEDIATE_DATA_DIR,
+    RAW_DATA_DIR,
+)
+from packages.data.ingest.adp import (
+    DEFAULT_SOURCE_URLS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+)
 from packages.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
+DEFAULT_RAW_DIR = Path(RAW_DATA_DIR)
+DEFAULT_INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest historical fantasy football ADP data")
+    parser.add_argument(
+        "--years",
+        nargs="+",
+        type=int,
+        default=DEFAULT_PILOT_YEARS,
+        help="Season years to ingest, e.g. --years 2023 2024",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=DEFAULT_RAW_DIR,
+        help="Directory for raw HTML snapshots",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=DEFAULT_INTERMEDIATE_DIR,
+        help="Directory for normalized parquet outputs",
+    )
+    return parser.parse_args()
+
 
 def main() -> None:
-    logger.info("Fetching historical ADP data")
-    df = fetch_historical_adp()
-    output_path = "data/raw/adp_sample.parquet"
-    write_parquet(df, output_path)
-    logger.info("Wrote %s rows to %s", len(df), output_path)
+    args = parse_args()
+
+    source_urls = {year: DEFAULT_SOURCE_URLS[year] for year in args.years}
+
+    config = AdpIngestConfig(
+        years=args.years,
+        raw_dir=args.raw_dir,
+        intermediate_dir=args.intermediate_dir,
+        source_urls=source_urls,
+    )
+
+    logger.info("Ingesting historical ADP for seasons=%s", args.years)
+    df = ingest_historical_adp(config)
+    logger.info(
+        "ADP ingest complete: rows=%s cols=%s years=%s-%s",
+        len(df),
+        len(df.columns),
+        min(args.years),
+        max(args.years),
+    )
 
 
 if __name__ == "__main__":
     main()
+```
+
+### `tests/data/ingest/test_adp.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from packages.data.ingest.adp import (
+    REQUIRED_OUTPUT_COLUMNS,
+    UNIQUE_KEY_COLUMNS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+    normalize_historical_adp,
+)
+from packages.data.validation import ValidationError
+
+
+@pytest.fixture
+def fantasypros_html_2023() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
+            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+@pytest.fixture
+def fantasypros_html_2024() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
+            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+def test_normalize_historical_adp_requires_expected_columns() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
+            "POS": ["WR1"],
+            "AVG": [2.1],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    normalized = normalize_historical_adp(raw)
+
+    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
+    assert normalized.iloc[0]["position"] == "WR"
+
+
+def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024, 2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
+            "POS": ["WR1", "WR1"],
+            "AVG": [2.1, 2.1],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    with pytest.raises(ValidationError, match="duplicate rows"):
+        normalize_historical_adp(raw)
+
+
+def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
+    monkeypatch,
+    tmp_path: Path,
+    fantasypros_html_2023: str,
+    fantasypros_html_2024: str,
+) -> None:
+    from packages.data.ingest import adp as adp_module
+
+    html_by_url = {
+        "https://example.test/2023": fantasypros_html_2023,
+        "https://example.test/2024": fantasypros_html_2024,
+    }
+
+    def fake_fetch_html(url: str) -> str:
+        return html_by_url[url]
+
+    monkeypatch.setattr(adp_module, "_fetch_html", fake_fetch_html)
+
+    config = AdpIngestConfig(
+        years=[2023, 2024],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+        source_urls={
+            2023: "https://example.test/2023",
+            2024: "https://example.test/2024",
+        },
+    )
+
+    df = ingest_historical_adp(config)
+
+    assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert sorted(df["season"].unique().tolist()) == [2023, 2024]
+    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_nam
+
+[TRUNCATED]
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -1104,26 +1721,131 @@ if __name__ == "__main__":
 ```text
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from io import StringIO
+from pathlib import Path
+from typing import Final
+from urllib.request import Request, urlopen
+
 import pandas as pd
 
+from packages.data.constants import (
+    DEFAULT_PILOT_YEARS,
+    INTERMEDIATE_DATA_DIR,
+    RAW_DATA_DIR,
+)
+from packages.data.io import write_parquet
+from packages.data.validation import assert_unique_key, require_columns
 
-def fetch_historical_adp() -> pd.DataFrame:
-    """
-    Placeholder ADP ingestion function.
+REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
+    "season",
+    "player_name",
+    "position",
+    "adp_overall",
+    "source_name",
+]
 
-    Replace with careful historical ADP extraction logic.
-    """
-    return pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "player_name": "example_player",
-                "position": "RB",
-                "adp_overall": 42.5,
-                "source_name": "example_source",
-            }
-        ]
+UNIQUE_KEY_COLUMNS: Final[list[str]] = [
+    "season",
+    "player_name",
+    "position",
+    "source_name",
+]
+
+SOURCE_NAME: Final[str] = "fantasypros"
+
+DEFAULT_SOURCE_URLS: Final[dict[int, str]] = {
+    2023: "https://www.fantasypros.com/nfl/adp/overall.php?year=2023",
+    2024: "https://www.fantasypros.com/nfl/adp/overall.php?year=2024",
+}
+
+REQUEST_HEADERS: Final[dict[str, str]] = {
+    "User-Agent": "fantasy-draft-intelligence/0.1 (+historical-adp-ingestion)"
+}
+
+
+@dataclass(frozen=True)
+class AdpIngestConfig:
+    years: list[int]
+    raw_dir: Path
+    intermediate_dir: Path
+    source_urls: dict[int, str]
+
+
+def default_config() -> AdpIngestConfig:
+    return AdpIngestConfig(
+        years=list(DEFAULT_PILOT_YEARS),
+        raw_dir=Path(RAW_DATA_DIR),
+        intermediate_dir=Path(INTERMEDIATE_DATA_DIR),
+        source_urls=dict(DEFAULT_SOURCE_URLS),
     )
+
+
+def _fetch_html(url: str) -> str:
+    request = Request(url, headers=REQUEST_HEADERS)
+    with urlopen(request) as response:  # noqa: S310
+        return response.read().decode("utf-8")
+
+
+def _extract_raw_table_from_html(html: str, season: int) -> pd.DataFrame:
+    tables = pd.read_html(StringIO(html))
+    if not tables:
+        raise ValueError(f"No HTML tables found for season {season}")
+
+    raw = tables[0].copy()
+    raw.columns = [str(col).strip() for col in raw.columns]
+
+    expected_columns = {"Player Team (Bye)", "POS", "AVG"}
+    missing_columns = expected_columns.difference(raw.columns)
+    if missing_columns:
+        raise ValueError(
+            f"Missing expected FantasyPros columns for season {season}: "
+            f"{sorted(missing_columns)}"
+        )
+
+    raw["season"] = season
+    raw["source_name"] = SOURCE_NAME
+    return raw
+
+
+def _split_player_name(value: object) -> str:
+    text = str(value).strip()
+    if not text:
+        return text
+
+    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
+    text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
+    return text.strip()
+
+
+def _extract_position(value: object) -> str:
+    text = str(value).strip().upper()
+    if not text:
+        return text
+
+    for valid_position in ("QB", "RB", "WR", "TE", "DST", "K"):
+        if text.startswith(valid_position):
+            return valid_position
+
+    return text
+
+
+def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
+    normalized = pd.DataFrame(
+        {
+            "season": pd.to_numeric(raw_df["season"], errors="coerce").astype("Int64"),
+            "player_name": raw_df["Player Team (Bye)"].map(_split_player_name),
+            "position": raw_df["POS"].map(_extract_position),
+            "adp_overall": pd.to_numeric(raw_df["AVG"], errors="coerce"),
+            "source_name": raw_df["source_name"].astype("string").str.strip(),
+        }
+    )
+
+    normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
+    normalized["position"] =
+
+[TRUNCATED]
 ```
 
 ### `packages/data/ingest/coaching.py`
@@ -1280,6 +2002,144 @@ def write_partitioned_snapshots(
     config: NflverseIngestConfig,
 ) -> None:
     config.raw_dir.mkdir(parents=True,
+
+[TRUNCATED]
+```
+
+### `tests/data/ingest/test_adp.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from packages.data.ingest.adp import (
+    REQUIRED_OUTPUT_COLUMNS,
+    UNIQUE_KEY_COLUMNS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+    normalize_historical_adp,
+)
+from packages.data.validation import ValidationError
+
+
+@pytest.fixture
+def fantasypros_html_2023() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
+            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+@pytest.fixture
+def fantasypros_html_2024() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
+            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+def test_normalize_historical_adp_requires_expected_columns() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
+            "POS": ["WR1"],
+            "AVG": [2.1],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    normalized = normalize_historical_adp(raw)
+
+    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
+    assert normalized.iloc[0]["position"] == "WR"
+
+
+def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024, 2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
+            "POS": ["WR1", "WR1"],
+            "AVG": [2.1, 2.1],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    with pytest.raises(ValidationError, match="duplicate rows"):
+        normalize_historical_adp(raw)
+
+
+def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
+    monkeypatch,
+    tmp_path: Path,
+    fantasypros_html_2023: str,
+    fantasypros_html_2024: str,
+) -> None:
+    from packages.data.ingest import adp as adp_module
+
+    html_by_url = {
+        "https://example.test/2023": fantasypros_html_2023,
+        "https://example.test/2024": fantasypros_html_2024,
+    }
+
+    def fake_fetch_html(url: str) -> str:
+        return html_by_url[url]
+
+    monkeypatch.setattr(adp_module, "_fetch_html", fake_fetch_html)
+
+    config = AdpIngestConfig(
+        years=[2023, 2024],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+        source_urls={
+            2023: "https://example.test/2023",
+            2024: "https://example.test/2024",
+        },
+    )
+
+    df = ingest_historical_adp(config)
+
+    assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert sorted(df["season"].unique().tolist()) == [2023, 2024]
+    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_nam
 
 [TRUNCATED]
 ```
@@ -1448,19 +2308,74 @@ def assert_unique_key(df: pd.DataFrame, key_columns: Sequence[str]) -> None:
 ### `scripts/ingest_adp.py`
 
 ```text
-from packages.data.ingest.adp import fetch_historical_adp
-from packages.data.io import write_parquet
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from packages.data.constants import (
+    DEFAULT_PILOT_YEARS,
+    INTERMEDIATE_DATA_DIR,
+    RAW_DATA_DIR,
+)
+from packages.data.ingest.adp import (
+    DEFAULT_SOURCE_URLS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+)
 from packages.shared.logging import get_logger
 
 logger = get_logger(__name__)
 
+DEFAULT_RAW_DIR = Path(RAW_DATA_DIR)
+DEFAULT_INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest historical fantasy football ADP data")
+    parser.add_argument(
+        "--years",
+        nargs="+",
+        type=int,
+        default=DEFAULT_PILOT_YEARS,
+        help="Season years to ingest, e.g. --years 2023 2024",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=DEFAULT_RAW_DIR,
+        help="Directory for raw HTML snapshots",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=DEFAULT_INTERMEDIATE_DIR,
+        help="Directory for normalized parquet outputs",
+    )
+    return parser.parse_args()
+
 
 def main() -> None:
-    logger.info("Fetching historical ADP data")
-    df = fetch_historical_adp()
-    output_path = "data/raw/adp_sample.parquet"
-    write_parquet(df, output_path)
-    logger.info("Wrote %s rows to %s", len(df), output_path)
+    args = parse_args()
+
+    source_urls = {year: DEFAULT_SOURCE_URLS[year] for year in args.years}
+
+    config = AdpIngestConfig(
+        years=args.years,
+        raw_dir=args.raw_dir,
+        intermediate_dir=args.intermediate_dir,
+        source_urls=source_urls,
+    )
+
+    logger.info("Ingesting historical ADP for seasons=%s", args.years)
+    df = ingest_historical_adp(config)
+    logger.info(
+        "ADP ingest complete: rows=%s cols=%s years=%s-%s",
+        len(df),
+        len(df.columns),
+        min(args.years),
+        max(args.years),
+    )
 
 
 if __name__ == "__main__":
@@ -1526,23 +2441,6 @@ if __name__ == "__main__":
     main()
 ```
 
-### `scripts/validate_data.py`
-
-```text
-from packages.data.ingest.adp import fetch_historical_adp
-from packages.data.validation import require_columns
-
-
-def main() -> None:
-    adp = fetch_historical_adp()
-    require_columns(adp, ["season", "player_name", "position", "adp_overall"])
-    print("Validation passed.")
-
-
-if __name__ == "__main__":
-    main()
-```
-
 ## Testing and Quality Signals
 
 ### `tests/test_smoke.py`
@@ -1586,6 +2484,112 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
     df = pd.DataFrame({"season": [2024, 2024], "player": ["x", "x"]})
     with pytest.raises(ValidationError):
         assert_unique_key(df, ["season", "player"])
+```
+
+### `tests/data/ingest/test_adp.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from packages.data.ingest.adp import (
+    REQUIRED_OUTPUT_COLUMNS,
+    UNIQUE_KEY_COLUMNS,
+    AdpIngestConfig,
+    ingest_historical_adp,
+    normalize_historical_adp,
+)
+from packages.data.validation import ValidationError
+
+
+@pytest.fixture
+def fantasypros_html_2023() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
+            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+@pytest.fixture
+def fantasypros_html_2024() -> str:
+    return """
+    <html>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player Team (Bye)</th>
+              <th>POS</th>
+              <th>AVG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
+            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
+          </tbody>
+        </table>
+      </body>
+    </html>
+    """
+
+
+def test_normalize_historical_adp_requires_expected_columns() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
+            "POS": ["WR1"],
+            "AVG": [2.1],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    normalized = normalize_historical_adp(raw)
+
+    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
+    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
+    assert normalized.iloc[0]["position"] == "WR"
+
+
+def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
+    raw = pd.DataFrame(
+        {
+            "season": [2024, 2024],
+            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
+            "POS": ["WR1", "WR1"],
+            "AVG": [2.1, 2.1],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    with pytest.raises(ValidationError, match="duplicate rows"):
+        normalize_historical_adp(raw)
+
+
+def test_ingest_historical_adp_writes_raw_and_in
+
+[TRUNCATED]
 ```
 
 ### `tests/data/ingest/test_nflverse.py`
