@@ -28,10 +28,29 @@ This document tracks every external data source used by the project.
 ### 2. FantasyPros
 **Use for:**
 - historical ADP
-- overall and positional draft cost
+- overall draft cost baseline for MVP pilot seasons
 
 **Access method:**
-- careful scrape / controlled extract
+- controlled extract from season-specific historical overall ADP pages
+- explicit URL manifest by season
+- raw HTML snapshots saved to `data/raw/`
+- normalized parquet saved to `data/intermediate/`
+
+**Current provenance:**
+- FantasyPros NFL historical overall ADP page for 2023
+- FantasyPros NFL historical overall ADP page for 2024
+
+**Normalization fields:**
+- season
+- player_name
+- position
+- adp_overall
+- source_name
+
+**Reproducibility policy:**
+- snapshot raw source HTML during ingestion
+- avoid broad, dynamic scraping
+- extend coverage by adding explicit season URLs to the ingestion manifest
 
 **Priority:** Primary for ADP
 
