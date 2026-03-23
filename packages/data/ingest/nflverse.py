@@ -98,6 +98,11 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
     return normalized
 
 
+def fetch_weekly_player_data(years: Iterable[int]) -> pl.DataFrame:
+    """Backward-compatible wrapper for legacy callers/tests."""
+    return load_weekly_player_stats(years)
+
+
 def load_weekly_player_stats(years: Iterable[int]) -> pl.DataFrame:
     years = sorted({int(year) for year in years})
     if not years:
