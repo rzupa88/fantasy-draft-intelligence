@@ -254,6 +254,7 @@ packages = ["packages.data", "packages.data.ingest", "packages.modeling", "packa
 
 [tool.black]
 line-length = 100
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 100
