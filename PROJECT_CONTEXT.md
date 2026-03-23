@@ -138,6 +138,9 @@ pytest
 │   ├── ingest_nflverse.py
 │   └── validate_data.py
 ├── tests
+│   ├── data
+│   │   └── ingest
+│   │       └── test_nflverse.py
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
@@ -237,7 +240,10 @@ dependencies = [
   "scikit-learn>=1.5.0",
   "pyyaml>=6.0.1",
   "typer>=0.12.3",
-  "rich>=13.7.1"
+  "rich>=13.7.1",
+  "nflreadpy>=0.1.0",
+  "polars>=1.0.0",
+  "pyarrow>=15.0.0"
 ]
 
 [project.optional-dependencies]
@@ -535,29 +541,131 @@ def fetch_coaching_history() -> pd.DataFrame:
 ```text
 from __future__ import annotations
 
-import pandas as pd
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+import nflreadpy as nfl
+import polars as pl
+
+REQUIRED_OUTPUT_COLUMNS = [
+    "season",
+    "week",
+    "player_name",
+    "team",
+    "position",
+    "fantasy_points",
+]
+
+TEAM_COLUMN_CANDIDATES = [
+    "recent_team",
+    "team",
+    "team_abbr",
+    "posteam",
+]
+
+PLAYER_NAME_CANDIDATES = [
+    "player_display_name",
+    "player_name",
+]
+
+FANTASY_POINTS_CANDIDATES = [
+    "fantasy_points",
+    "fantasy_points_ppr",
+]
 
 
-def fetch_weekly_player_data(years: list[int]) -> pd.DataFrame:
-    """
-    Placeholder ingestion function.
+@dataclass(frozen=True)
+class NflverseIngestConfig:
+    years: Sequence[int]
+    raw_dir: Path
+    intermediate_dir: Path
 
-    Replace this with the actual nflverse / supported data access logic.
-    The purpose right now is to establish the contract and repo structure.
-    """
-    rows: list[dict] = []
-    for year in years:
-        rows.append(
-            {
-                "season": year,
-                "player_name": "example_player",
-                "position": "RB",
-                "team": "EX",
-                "week": 1,
-                "fantasy_points": 10.0,
-            }
+
+def _first_existing_column(df: pl.DataFrame, candidates: Sequence[str]) -> str:
+    for column in candidates:
+        if column in df.columns:
+            return column
+    raise ValueError(f"None of the candidate columns exist: {candidates}")
+
+
+def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
+    player_name_col = _first_existing_column(df, PLAYER_NAME_CANDIDATES)
+    team_col = _first_existing_column(df, TEAM_COLUMN_CANDIDATES)
+    fantasy_points_col = _first_existing_column(df, FANTASY_POINTS_CANDIDATES)
+
+    required_source_columns = {
+        "season",
+        "week",
+        player_name_col,
+        team_col,
+        "position",
+        fantasy_points_col,
+    }
+    missing = required_source_columns.difference(df.columns)
+    if missing:
+        raise ValueError(f"Missing required source columns: {sorted(missing)}")
+
+    normalized = (
+        df.select(
+            [
+                pl.col("season").cast(pl.Int64),
+                pl.col("week").cast(pl.Int64),
+                pl.col(player_name_col).alias("player_name").cast(pl.Utf8),
+                pl.col(team_col).alias("team").cast(pl.Utf8),
+                pl.col("position").cast(pl.Utf8),
+                pl.col(fantasy_points_col).alias("fantasy_points").cast(pl.Float64),
+            ]
         )
-    return pd.DataFrame(rows)
+        .filter(
+            pl.col("season").is_not_null()
+            & pl.col("week").is_not_null()
+            & pl.col("player_name").is_not_null()
+        )
+        .with_columns(
+            [
+                pl.col("player_name").str.strip_chars(),
+                pl.col("team").str.strip_chars(),
+                pl.col("position").str.strip_chars(),
+            ]
+        )
+        .sort(["season", "week", "player_name"])
+    )
+
+    missing_output = [col for col in REQUIRED_OUTPUT_COLUMNS if col not in normalized.columns]
+    if missing_output:
+        raise ValueError(f"Normalized output missing required columns: {missing_output}")
+
+    return normalized
+
+
+def fetch_weekly_player_data(years: Iterable[int]) -> pl.DataFrame:
+    """Backward-compatible wrapper for legacy callers/tests."""
+    return load_weekly_player_stats(years)
+
+
+def load_weekly_player_stats(years: Iterable[int]) -> pl.DataFrame:
+    years = sorted({int(year) for year in years})
+    if not years:
+        raise ValueError("At least one year must be provided")
+
+    # nflreadpy load_player_stats() returns a Polars DataFrame and supports
+    # week/reg/post/reg+post summary levels.
+    raw = nfl.load_player_stats(seasons=years, summary_level="week")
+    if not isinstance(raw, pl.DataFrame):
+        raw = pl.from_pandas(raw)
+
+    return raw
+
+
+def write_partitioned_snapshots(
+    raw_df: pl.DataFrame,
+    normalized_df: pl.DataFrame,
+    config: NflverseIngestConfig,
+) -> None:
+    config.raw_dir.mkdir(parents=True,
+
+[TRUNCATED]
 ```
 
 ### `packages/data/validation.py`
@@ -633,27 +741,57 @@ if __name__ == "__main__":
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
-from packages.data.ingest.nflverse import fetch_weekly_player_data
-from packages.data.io import write_parquet
-from packages.shared.logging import get_logger
+from packages.data.ingest.nflverse import NflverseIngestConfig, ingest_nflverse_weekly_players
 
-logger = get_logger(__name__)
+DEFAULT_YEARS = [2023, 2024]
+DEFAULT_RAW_DIR = Path("data/raw")
+DEFAULT_INTERMEDIATE_DIR = Path("data/intermediate")
 
 
-def main(years: list[int]) -> None:
-    logger.info("Fetching nflverse weekly player data for years=%s", years)
-    df = fetch_weekly_player_data(years)
-    output_path = "data/raw/nflverse_weekly_sample.parquet"
-    write_parquet(df, output_path)
-    logger.info("Wrote %s rows to %s", len(df), output_path)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest weekly NFL player data from nflverse")
+    parser.add_argument(
+        "--years",
+        nargs="+",
+        type=int,
+        default=DEFAULT_YEARS,
+        help="Season years to ingest, e.g. --years 2023 2024",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=DEFAULT_RAW_DIR,
+        help="Directory for raw parquet snapshots",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=DEFAULT_INTERMEDIATE_DIR,
+        help="Directory for normalized parquet outputs",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    config = NflverseIngestConfig(
+        years=args.years,
+        raw_dir=args.raw_dir,
+        intermediate_dir=args.intermediate_dir,
+    )
+
+    df = ingest_nflverse_weekly_players(config)
+    print(
+        f"Ingest complete: rows={df.height}, cols={df.width}, "
+        f"years={min(args.years)}-{max(args.years)}"
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--years", nargs="+", type=int, required=True)
-    args = parser.parse_args()
-    main(args.years)
+    main()
 ```
 
 ### `scripts/validate_data.py`
@@ -687,7 +825,7 @@ def test_fetch_historical_adp_returns_dataframe() -> None:
 
 def test_fetch_weekly_player_data_returns_dataframe() -> None:
     df = fetch_weekly_player_data([2024])
-    assert not df.empty
+    assert not df.is_empty()
 ```
 
 ### `tests/test_validation.py`
@@ -796,6 +934,98 @@ for directory in DIRECTORIES:
     Path(directory).mkdir(parents=True, exist_ok=True)
 
 print("Bootstrap complete.")
+```
+
+### `tests/data/ingest/test_nflverse.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from packages.data.ingest.nflverse import (
+    REQUIRED_OUTPUT_COLUMNS,
+    NflverseIngestConfig,
+    ingest_nflverse_weekly_players,
+)
+
+
+@pytest.fixture
+def sample_raw_df() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2023, 2023, 2024],
+            "week": [1, 2, 1],
+            "player_display_name": ["Christian McCaffrey", "Tyreek Hill", "Josh Allen"],
+            "recent_team": ["SF", "MIA", "BUF"],
+            "position": ["RB", "WR", "QB"],
+            "fantasy_points": [24.6, 31.2, 27.8],
+            "extra_col": [1, 2, 3],
+        }
+    )
+
+
+def test_ingest_nflverse_weekly_players_writes_outputs(
+    monkeypatch,
+    tmp_path: Path,
+    sample_raw_df: pl.DataFrame,
+) -> None:
+
+    from packages.data.ingest import nflverse as nflverse_module
+
+    def fake_load_player_stats(seasons, summary_level):
+        assert seasons == [2023, 2024]
+        assert summary_level == "week"
+        return sample_raw_df
+
+    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+
+    config = NflverseIngestConfig(
+        years=[2023, 2024],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+    )
+
+    df = ingest_nflverse_weekly_players(config)
+
+    assert df.height == 3
+    assert df.columns == REQUIRED_OUTPUT_COLUMNS
+    assert sorted(df["season"].unique().to_list()) == [2023, 2024]
+
+    raw_files = list((tmp_path / "raw").glob("*.parquet"))
+    intermediate_files = list((tmp_path / "intermediate").glob("*.parquet"))
+
+    assert len(raw_files) == 1
+    assert len(intermediate_files) == 1
+
+
+def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
+    from packages.data.ingest import nflverse as nflverse_module
+
+    bad_df = pl.DataFrame(
+        {
+            "season": [2023],
+            "week": [1],
+            "position": ["RB"],
+        }
+    )
+
+    def fake_load_player_stats(seasons, summary_level):
+        return bad_df
+
+    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+
+    config = NflverseIngestConfig(
+        years=[2023],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+    )
+
+    with pytest.raises(ValueError):
+        ingest_nflverse_weekly_players(config)
 ```
 
 ### `packages/data/__init__.py`
@@ -927,29 +1157,223 @@ def fetch_coaching_history() -> pd.DataFrame:
 ```text
 from __future__ import annotations
 
-import pandas as pd
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+
+import nflreadpy as nfl
+import polars as pl
+
+REQUIRED_OUTPUT_COLUMNS = [
+    "season",
+    "week",
+    "player_name",
+    "team",
+    "position",
+    "fantasy_points",
+]
+
+TEAM_COLUMN_CANDIDATES = [
+    "recent_team",
+    "team",
+    "team_abbr",
+    "posteam",
+]
+
+PLAYER_NAME_CANDIDATES = [
+    "player_display_name",
+    "player_name",
+]
+
+FANTASY_POINTS_CANDIDATES = [
+    "fantasy_points",
+    "fantasy_points_ppr",
+]
 
 
-def fetch_weekly_player_data(years: list[int]) -> pd.DataFrame:
-    """
-    Placeholder ingestion function.
+@dataclass(frozen=True)
+class NflverseIngestConfig:
+    years: Sequence[int]
+    raw_dir: Path
+    intermediate_dir: Path
 
-    Replace this with the actual nflverse / supported data access logic.
-    The purpose right now is to establish the contract and repo structure.
-    """
-    rows: list[dict] = []
-    for year in years:
-        rows.append(
-            {
-                "season": year,
-                "player_name": "example_player",
-                "position": "RB",
-                "team": "EX",
-                "week": 1,
-                "fantasy_points": 10.0,
-            }
+
+def _first_existing_column(df: pl.DataFrame, candidates: Sequence[str]) -> str:
+    for column in candidates:
+        if column in df.columns:
+            return column
+    raise ValueError(f"None of the candidate columns exist: {candidates}")
+
+
+def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
+    player_name_col = _first_existing_column(df, PLAYER_NAME_CANDIDATES)
+    team_col = _first_existing_column(df, TEAM_COLUMN_CANDIDATES)
+    fantasy_points_col = _first_existing_column(df, FANTASY_POINTS_CANDIDATES)
+
+    required_source_columns = {
+        "season",
+        "week",
+        player_name_col,
+        team_col,
+        "position",
+        fantasy_points_col,
+    }
+    missing = required_source_columns.difference(df.columns)
+    if missing:
+        raise ValueError(f"Missing required source columns: {sorted(missing)}")
+
+    normalized = (
+        df.select(
+            [
+                pl.col("season").cast(pl.Int64),
+                pl.col("week").cast(pl.Int64),
+                pl.col(player_name_col).alias("player_name").cast(pl.Utf8),
+                pl.col(team_col).alias("team").cast(pl.Utf8),
+                pl.col("position").cast(pl.Utf8),
+                pl.col(fantasy_points_col).alias("fantasy_points").cast(pl.Float64),
+            ]
         )
-    return pd.DataFrame(rows)
+        .filter(
+            pl.col("season").is_not_null()
+            & pl.col("week").is_not_null()
+            & pl.col("player_name").is_not_null()
+        )
+        .with_columns(
+            [
+                pl.col("player_name").str.strip_chars(),
+                pl.col("team").str.strip_chars(),
+                pl.col("position").str.strip_chars(),
+            ]
+        )
+        .sort(["season", "week", "player_name"])
+    )
+
+    missing_output = [col for col in REQUIRED_OUTPUT_COLUMNS if col not in normalized.columns]
+    if missing_output:
+        raise ValueError(f"Normalized output missing required columns: {missing_output}")
+
+    return normalized
+
+
+def fetch_weekly_player_data(years: Iterable[int]) -> pl.DataFrame:
+    """Backward-compatible wrapper for legacy callers/tests."""
+    return load_weekly_player_stats(years)
+
+
+def load_weekly_player_stats(years: Iterable[int]) -> pl.DataFrame:
+    years = sorted({int(year) for year in years})
+    if not years:
+        raise ValueError("At least one year must be provided")
+
+    # nflreadpy load_player_stats() returns a Polars DataFrame and supports
+    # week/reg/post/reg+post summary levels.
+    raw = nfl.load_player_stats(seasons=years, summary_level="week")
+    if not isinstance(raw, pl.DataFrame):
+        raw = pl.from_pandas(raw)
+
+    return raw
+
+
+def write_partitioned_snapshots(
+    raw_df: pl.DataFrame,
+    normalized_df: pl.DataFrame,
+    config: NflverseIngestConfig,
+) -> None:
+    config.raw_dir.mkdir(parents=True,
+
+[TRUNCATED]
+```
+
+### `tests/data/ingest/test_nflverse.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from packages.data.ingest.nflverse import (
+    REQUIRED_OUTPUT_COLUMNS,
+    NflverseIngestConfig,
+    ingest_nflverse_weekly_players,
+)
+
+
+@pytest.fixture
+def sample_raw_df() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2023, 2023, 2024],
+            "week": [1, 2, 1],
+            "player_display_name": ["Christian McCaffrey", "Tyreek Hill", "Josh Allen"],
+            "recent_team": ["SF", "MIA", "BUF"],
+            "position": ["RB", "WR", "QB"],
+            "fantasy_points": [24.6, 31.2, 27.8],
+            "extra_col": [1, 2, 3],
+        }
+    )
+
+
+def test_ingest_nflverse_weekly_players_writes_outputs(
+    monkeypatch,
+    tmp_path: Path,
+    sample_raw_df: pl.DataFrame,
+) -> None:
+
+    from packages.data.ingest import nflverse as nflverse_module
+
+    def fake_load_player_stats(seasons, summary_level):
+        assert seasons == [2023, 2024]
+        assert summary_level == "week"
+        return sample_raw_df
+
+    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+
+    config = NflverseIngestConfig(
+        years=[2023, 2024],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+    )
+
+    df = ingest_nflverse_weekly_players(config)
+
+    assert df.height == 3
+    assert df.columns == REQUIRED_OUTPUT_COLUMNS
+    assert sorted(df["season"].unique().to_list()) == [2023, 2024]
+
+    raw_files = list((tmp_path / "raw").glob("*.parquet"))
+    intermediate_files = list((tmp_path / "intermediate").glob("*.parquet"))
+
+    assert len(raw_files) == 1
+    assert len(intermediate_files) == 1
+
+
+def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
+    from packages.data.ingest import nflverse as nflverse_module
+
+    bad_df = pl.DataFrame(
+        {
+            "season": [2023],
+            "week": [1],
+            "position": ["RB"],
+        }
+    )
+
+    def fake_load_player_stats(seasons, summary_level):
+        return bad_df
+
+    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+
+    config = NflverseIngestConfig(
+        years=[2023],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+    )
+
+    with pytest.raises(ValueError):
+        ingest_nflverse_weekly_players(config)
 ```
 
 ### `packages/data/__init__.py`
@@ -1049,27 +1473,57 @@ if __name__ == "__main__":
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
-from packages.data.ingest.nflverse import fetch_weekly_player_data
-from packages.data.io import write_parquet
-from packages.shared.logging import get_logger
+from packages.data.ingest.nflverse import NflverseIngestConfig, ingest_nflverse_weekly_players
 
-logger = get_logger(__name__)
+DEFAULT_YEARS = [2023, 2024]
+DEFAULT_RAW_DIR = Path("data/raw")
+DEFAULT_INTERMEDIATE_DIR = Path("data/intermediate")
 
 
-def main(years: list[int]) -> None:
-    logger.info("Fetching nflverse weekly player data for years=%s", years)
-    df = fetch_weekly_player_data(years)
-    output_path = "data/raw/nflverse_weekly_sample.parquet"
-    write_parquet(df, output_path)
-    logger.info("Wrote %s rows to %s", len(df), output_path)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Ingest weekly NFL player data from nflverse")
+    parser.add_argument(
+        "--years",
+        nargs="+",
+        type=int,
+        default=DEFAULT_YEARS,
+        help="Season years to ingest, e.g. --years 2023 2024",
+    )
+    parser.add_argument(
+        "--raw-dir",
+        type=Path,
+        default=DEFAULT_RAW_DIR,
+        help="Directory for raw parquet snapshots",
+    )
+    parser.add_argument(
+        "--intermediate-dir",
+        type=Path,
+        default=DEFAULT_INTERMEDIATE_DIR,
+        help="Directory for normalized parquet outputs",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    config = NflverseIngestConfig(
+        years=args.years,
+        raw_dir=args.raw_dir,
+        intermediate_dir=args.intermediate_dir,
+    )
+
+    df = ingest_nflverse_weekly_players(config)
+    print(
+        f"Ingest complete: rows={df.height}, cols={df.width}, "
+        f"years={min(args.years)}-{max(args.years)}"
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--years", nargs="+", type=int, required=True)
-    args = parser.parse_args()
-    main(args.years)
+    main()
 ```
 
 ### `scripts/validate_data.py`
@@ -1105,7 +1559,7 @@ def test_fetch_historical_adp_returns_dataframe() -> None:
 
 def test_fetch_weekly_player_data_returns_dataframe() -> None:
     df = fetch_weekly_player_data([2024])
-    assert not df.empty
+    assert not df.is_empty()
 ```
 
 ### `tests/test_validation.py`
@@ -1132,6 +1586,98 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
     df = pd.DataFrame({"season": [2024, 2024], "player": ["x", "x"]})
     with pytest.raises(ValidationError):
         assert_unique_key(df, ["season", "player"])
+```
+
+### `tests/data/ingest/test_nflverse.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from packages.data.ingest.nflverse import (
+    REQUIRED_OUTPUT_COLUMNS,
+    NflverseIngestConfig,
+    ingest_nflverse_weekly_players,
+)
+
+
+@pytest.fixture
+def sample_raw_df() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2023, 2023, 2024],
+            "week": [1, 2, 1],
+            "player_display_name": ["Christian McCaffrey", "Tyreek Hill", "Josh Allen"],
+            "recent_team": ["SF", "MIA", "BUF"],
+            "position": ["RB", "WR", "QB"],
+            "fantasy_points": [24.6, 31.2, 27.8],
+            "extra_col": [1, 2, 3],
+        }
+    )
+
+
+def test_ingest_nflverse_weekly_players_writes_outputs(
+    monkeypatch,
+    tmp_path: Path,
+    sample_raw_df: pl.DataFrame,
+) -> None:
+
+    from packages.data.ingest import nflverse as nflverse_module
+
+    def fake_load_player_stats(seasons, summary_level):
+        assert seasons == [2023, 2024]
+        assert summary_level == "week"
+        return sample_raw_df
+
+    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+
+    config = NflverseIngestConfig(
+        years=[2023, 2024],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+    )
+
+    df = ingest_nflverse_weekly_players(config)
+
+    assert df.height == 3
+    assert df.columns == REQUIRED_OUTPUT_COLUMNS
+    assert sorted(df["season"].unique().to_list()) == [2023, 2024]
+
+    raw_files = list((tmp_path / "raw").glob("*.parquet"))
+    intermediate_files = list((tmp_path / "intermediate").glob("*.parquet"))
+
+    assert len(raw_files) == 1
+    assert len(intermediate_files) == 1
+
+
+def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
+    from packages.data.ingest import nflverse as nflverse_module
+
+    bad_df = pl.DataFrame(
+        {
+            "season": [2023],
+            "week": [1],
+            "position": ["RB"],
+        }
+    )
+
+    def fake_load_player_stats(seasons, summary_level):
+        return bad_df
+
+    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+
+    config = NflverseIngestConfig(
+        years=[2023],
+        raw_dir=tmp_path / "raw",
+        intermediate_dir=tmp_path / "intermediate",
+    )
+
+    with pytest.raises(ValueError):
+        ingest_nflverse_weekly_players(config)
 ```
 
 ## Open Implementation Notes
