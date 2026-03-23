@@ -54,13 +54,13 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
     fantasy_points_col = _first_existing_column(df, FANTASY_POINTS_CANDIDATES)
 
     required_source_columns = {
-    "season",
-    "week",
-    player_name_col,
-    team_col,
-    "position",
-    fantasy_points_col,
-}
+        "season",
+        "week",
+        player_name_col,
+        team_col,
+        "position",
+        fantasy_points_col,
+    }
     missing = required_source_columns.difference(df.columns)
     if missing:
         raise ValueError(f"Missing required source columns: {sorted(missing)}")

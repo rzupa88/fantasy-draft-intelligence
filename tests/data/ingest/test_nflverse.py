@@ -32,7 +32,7 @@ def test_ingest_nflverse_weekly_players_writes_outputs(
     tmp_path: Path,
     sample_raw_df: pl.DataFrame,
 ) -> None:
-    
+
     from packages.data.ingest import nflverse as nflverse_module
 
     def fake_load_player_stats(seasons, summary_level):
