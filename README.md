@@ -1,11 +1,6 @@
-Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
-
-```md
 # Fantasy Draft Intelligence
 
 A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
-
----
 
 ## Purpose
 
@@ -18,13 +13,9 @@ The product is built around four layers:
 3. **Predictive modeling and value scoring**
 4. **Draft decision support**
 
----
-
 ## Core Question
 
 At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
-
----
 
 ## Principles
 
@@ -33,8 +24,6 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - Opportunity matters more than story
 - Everything should be reproducible
 - Git is the operating system for the project
-
----
 
 ## Tech Stack
 
@@ -47,16 +36,13 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - ruff
 - black
 
----
-
 ## Data Architecture (M1 Foundation)
 
 The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
 
 ### Pipeline Flow
 
-```
-
+```text
 raw source data
 ↓
 normalized source tables (ADP, nflverse, etc.)
@@ -64,7 +50,6 @@ normalized source tables (ADP, nflverse, etc.)
 canonical player ID enrichment
 ↓
 player reference table (cross-source mapping)
-
 ```
 
 ### Key Concepts
@@ -81,33 +66,27 @@ player reference table (cross-source mapping)
 
 **Player Reference Table**
 - Located at:
-```
 
+```text
 data/intermediate/player_reference_<years>.parquet
-
 ```
+
 - Built from all normalized sources
 - Serves as the **join layer across datasets**
 
 **Join Rule (Important)**
 > All cross-source joins should use `canonical_player_id`, not raw `player_name`.
 
----
-
 ## Current Data Outputs
 
 After running ingestion + reference build:
 
-```
-
+```text
 data/intermediate/
 ├── adp_historical_2023_2024.parquet
 ├── nflverse_player_weekly_2023_2024.parquet
 └── player_reference_2023_2024.parquet
-
-````
-
----
+```
 
 ## Initial Milestone
 
@@ -124,14 +103,11 @@ This milestone includes:
 - player reference mapping
 - data validation and tests
 
----
-
 ## Quick Start
 
 ### 1. Open in Codespaces
-Open the repository in GitHub Codespaces.
 
----
+Open the repository in GitHub Codespaces.
 
 ### 2. Install dependencies
 
@@ -139,9 +115,7 @@ This should happen automatically in the devcontainer. If needed:
 
 ```bash
 pip install -e .[dev]
-````
-
----
+```
 
 ### 3. Run Data Pipeline
 
@@ -163,19 +137,15 @@ python scripts/ingest_nflverse.py
 python scripts/build_player_reference.py
 ```
 
----
-
 ### 4. Run Tests
 
 ```bash
 pytest
 ```
 
----
-
 ## Project Structure
 
-```
+```text
 packages/
   data/
     ingest/              # source ingestion (ADP, nflverse)
@@ -195,30 +165,21 @@ tests/
   data/                  # ingestion + ID tests
 ```
 
----
-
 ## Development Notes
 
-* Canonical ID logic is **code-first**, not notebook-based
-* All intermediate datasets are written as **Parquet**
-* Validation includes:
-
-  * required columns
-  * uniqueness constraints
-* Tests cover:
-
-  * normalization edge cases
-  * cross-source join stability
-
----
+- Canonical ID logic is **code-first**, not notebook-based
+- All intermediate datasets are written as **Parquet**
+- Validation includes:
+  - required columns
+  - uniqueness constraints
+- Tests cover:
+  - normalization edge cases
+  - cross-source join stability
 
 ## Next Steps
 
-* Expand player identity resolution (aliases, edge cases)
-* Add additional data sources (injuries, depth charts, projections)
-* Build feature engineering layer
-* Develop baseline predictive models
-* Implement draft decision engine
-
-```
-```
+- Expand player identity resolution (aliases, edge cases)
+- Add additional data sources (injuries, depth charts, projections)
+- Build feature engineering layer
+- Develop baseline predictive models
+- Implement draft decision engine

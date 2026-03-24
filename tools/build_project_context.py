@@ -96,6 +96,24 @@ def truncate(text: str, max_chars: int) -> str:
     return text[:max_chars].rstrip() + "\n\n[TRUNCATED]"
 
 
+def extract_embedded_markdown(text: str) -> str:
+    stripped = text.strip()
+    lines = stripped.splitlines()
+
+    if len(lines) >= 2 and lines[0].startswith("```") and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+
+    if "```md" in stripped:
+        start = stripped.find("```md")
+        end = stripped.rfind("```")
+        if start != -1 and end != -1 and end > start:
+            embedded = stripped[start + len("```md") : end].strip()
+            if embedded:
+                return embedded
+
+    return stripped
+
+
 def is_excluded(path: Path) -> bool:
     return any(part in EXCLUDED_DIRS for part in path.parts)
 
@@ -304,7 +322,8 @@ def build() -> str:
 
     readme = ROOT / "README.md"
     if readme.exists():
-        parts.append(section("Project Summary", truncate(safe_read(readme), 12000)))
+        readme_content = extract_embedded_markdown(safe_read(readme))
+        parts.append(section("Project Summary", truncate(readme_content, 12000)))
     else:
         parts.append(section("Project Summary", "README.md not found."))
 

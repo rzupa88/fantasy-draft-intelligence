@@ -4,14 +4,9 @@ This file is auto-generated to give ChatGPT a compact, practical understanding o
 
 ## Project Summary
 
-Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
-
-```md
 # Fantasy Draft Intelligence
 
 A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
-
----
 
 ## Purpose
 
@@ -24,13 +19,9 @@ The product is built around four layers:
 3. **Predictive modeling and value scoring**
 4. **Draft decision support**
 
----
-
 ## Core Question
 
 At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
-
----
 
 ## Principles
 
@@ -39,8 +30,6 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - Opportunity matters more than story
 - Everything should be reproducible
 - Git is the operating system for the project
-
----
 
 ## Tech Stack
 
@@ -53,16 +42,13 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - ruff
 - black
 
----
-
 ## Data Architecture (M1 Foundation)
 
 The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
 
 ### Pipeline Flow
 
-```
-
+```text
 raw source data
 ↓
 normalized source tables (ADP, nflverse, etc.)
@@ -70,7 +56,6 @@ normalized source tables (ADP, nflverse, etc.)
 canonical player ID enrichment
 ↓
 player reference table (cross-source mapping)
-
 ```
 
 ### Key Concepts
@@ -87,33 +72,27 @@ player reference table (cross-source mapping)
 
 **Player Reference Table**
 - Located at:
-```
 
+```text
 data/intermediate/player_reference_<years>.parquet
-
 ```
+
 - Built from all normalized sources
 - Serves as the **join layer across datasets**
 
 **Join Rule (Important)**
 > All cross-source joins should use `canonical_player_id`, not raw `player_name`.
 
----
-
 ## Current Data Outputs
 
 After running ingestion + reference build:
 
-```
-
+```text
 data/intermediate/
 ├── adp_historical_2023_2024.parquet
 ├── nflverse_player_weekly_2023_2024.parquet
 └── player_reference_2023_2024.parquet
-
-````
-
----
+```
 
 ## Initial Milestone
 
@@ -130,14 +109,11 @@ This milestone includes:
 - player reference mapping
 - data validation and tests
 
----
-
 ## Quick Start
 
 ### 1. Open in Codespaces
-Open the repository in GitHub Codespaces.
 
----
+Open the repository in GitHub Codespaces.
 
 ### 2. Install dependencies
 
@@ -145,9 +121,7 @@ This should happen automatically in the devcontainer. If needed:
 
 ```bash
 pip install -e .[dev]
-````
-
----
+```
 
 ### 3. Run Data Pipeline
 
@@ -169,19 +143,15 @@ python scripts/ingest_nflverse.py
 python scripts/build_player_reference.py
 ```
 
----
-
 ### 4. Run Tests
 
 ```bash
 pytest
 ```
 
----
-
 ## Project Structure
 
-```
+```text
 packages/
   data/
     ingest/              # source ingestion (ADP, nflverse)
@@ -201,33 +171,24 @@ tests/
   data/                  # ingestion + ID tests
 ```
 
----
-
 ## Development Notes
 
-* Canonical ID logic is **code-first**, not notebook-based
-* All intermediate datasets are written as **Parquet**
-* Validation includes:
-
-  * required columns
-  * uniqueness constraints
-* Tests cover:
-
-  * normalization edge cases
-  * cross-source join stability
-
----
+- Canonical ID logic is **code-first**, not notebook-based
+- All intermediate datasets are written as **Parquet**
+- Validation includes:
+  - required columns
+  - uniqueness constraints
+- Tests cover:
+  - normalization edge cases
+  - cross-source join stability
 
 ## Next Steps
 
-* Expand player identity resolution (aliases, edge cases)
-* Add additional data sources (injuries, depth charts, projections)
-* Build feature engineering layer
-* Develop baseline predictive models
-* Implement draft decision engine
-
-```
-```
+- Expand player identity resolution (aliases, edge cases)
+- Add additional data sources (injuries, depth charts, projections)
+- Build feature engineering layer
+- Develop baseline predictive models
+- Implement draft decision engine
 
 ## Quickstart and Useful Commands
 
@@ -250,9 +211,9 @@ build_player_reference.py
 tests/
 data/                  # ingestion + ID tests
 ## Development Notes
-* Tests cover:
-* Build feature engineering layer
-* Develop baseline predictive models
+- Tests cover:
+- Build feature engineering layer
+- Develop baseline predictive models
 [build-system]
 build-backend = "setuptools.build_meta"
 dev = [
@@ -330,8 +291,7 @@ test:
 │   │   │   ├── test_adp.py
 │   │   │   └── test_nflverse.py
 │   │   ├── test_player_ids.py
-│   │   ├── test_player_season_warehouse.py
-│   │   └── test_player_season_warehouse.py:146:5
+│   │   └── test_player_season_warehouse.py
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
@@ -348,14 +308,9 @@ test:
 ### `README.md`
 
 ```text
-Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
-
-```md
 # Fantasy Draft Intelligence
 
 A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
-
----
 
 ## Purpose
 
@@ -368,13 +323,9 @@ The product is built around four layers:
 3. **Predictive modeling and value scoring**
 4. **Draft decision support**
 
----
-
 ## Core Question
 
 At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
-
----
 
 ## Principles
 
@@ -383,8 +334,6 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - Opportunity matters more than story
 - Everything should be reproducible
 - Git is the operating system for the project
-
----
 
 ## Tech Stack
 
@@ -397,16 +346,13 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - ruff
 - black
 
----
-
 ## Data Architecture (M1 Foundation)
 
 The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
 
 ### Pipeline Flow
 
-```
-
+```text
 raw source data
 ↓
 normalized source tables (ADP, nflverse, etc.)
@@ -414,7 +360,6 @@ normalized source tables (ADP, nflverse, etc.)
 canonical player ID enrichment
 ↓
 player reference table (cross-source mapping)
-
 ```
 
 ### Key Concepts
@@ -431,33 +376,27 @@ player reference table (cross-source mapping)
 
 **Player Reference Table**
 - Located at:
-```
 
+```text
 data/intermediate/player_reference_<years>.parquet
-
 ```
+
 - Built from all normalized sources
 - Serves as the **join layer across datasets**
 
 **Join Rule (Important)**
 > All cross-source joins should use `canonical_player_id`, not raw `player_name`.
 
----
-
 ## Current Data Outputs
 
 After running ingestion + reference build:
 
-```
-
+```text
 data/intermediate/
 ├── adp_historical_2023_2024.parquet
 ├── nflverse_player_weekly_2023_2024.parquet
 └── player_reference_2023_2024.parquet
-
-````
-
----
+```
 
 ## Initial Milestone
 
@@ -474,14 +413,11 @@ This milestone includes:
 - player reference mapping
 - data validation and tests
 
----
-
 ## Quick Start
 
 ### 1. Open in Codespaces
-Open the repository in GitHub Codespaces.
 
----
+Open the repository in GitHub Codespaces.
 
 ### 2. Install dependencies
 
@@ -489,9 +425,7 @@ This should happen automatically in the devcontainer. If needed:
 
 ```bash
 pip install -e .[dev]
-````
-
----
+```
 
 ### 3. Run Data Pipeline
 
@@ -513,19 +447,15 @@ python scripts/ingest_nflverse.py
 python scripts/build_player_reference.py
 ```
 
----
-
 ### 4. Run Tests
 
 ```bash
 pytest
 ```
 
----
-
 ## Project Structure
 
-```
+```text
 packages/
   data/
     ingest/              # source ingestion (ADP, nflverse)
@@ -545,33 +475,24 @@ tests/
   data/                  # ingestion + ID tests
 ```
 
----
-
 ## Development Notes
 
-* Canonical ID logic is **code-first**, not notebook-based
-* All intermediate datasets are written as **Parquet**
-* Validation includes:
-
-  * required columns
-  * uniqueness constraints
-* Tests cover:
-
-  * normalization edge cases
-  * cross-source join stability
-
----
+- Canonical ID logic is **code-first**, not notebook-based
+- All intermediate datasets are written as **Parquet**
+- Validation includes:
+  - required columns
+  - uniqueness constraints
+- Tests cover:
+  - normalization edge cases
+  - cross-source join stability
 
 ## Next Steps
 
-* Expand player identity resolution (aliases, edge cases)
-* Add additional data sources (injuries, depth charts, projections)
-* Build feature engineering layer
-* Develop baseline predictive models
-* Implement draft decision engine
-
-```
-```
+- Expand player identity resolution (aliases, edge cases)
+- Add additional data sources (injuries, depth charts, projections)
+- Build feature engineering layer
+- Develop baseline predictive models
+- Implement draft decision engine
 ```
 
 ### `pyproject.toml`
@@ -1698,6 +1619,8 @@ DST_ALIAS_MAP: dict[str, str] = {
     "tampa bay buccaneers": "tampa_bay_buccaneers",
     "tennessee titans": "tennessee_titans",
     "washington commanders": "washington_commanders",
+    "washington football team": "washington_commanders",
+    "washington redskins": "washington_commanders",
 }
 
 DST_ABBR_MAP: dict[str, str] = {
@@ -1733,12 +1656,7 @@ DST_ABBR_MAP: dict[str, str] = {
     "TB": "tampa_bay_buccaneers",
     "TEN": "tennessee_titans",
     "WAS": "washington_commanders",
-}
-
-
-def normalize_position(value: object) -> str:
-    text = str(value).strip().upper()
-    return POSITION_NORMALIZA
+    "WSH
 
 [TRUNCATED]
 ```
@@ -2250,6 +2168,8 @@ def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
     assert normalize_dst_name("DAL") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+    assert normalize_dst_name("WSH") == "washington_commanders"
+    assert normalize_dst_name("Washington Football Team D/ST") == "washington_commanders"
 
 
 def test_build_canonical_player_id_is_stable() -> None:
@@ -2640,6 +2560,8 @@ DST_ALIAS_MAP: dict[str, str] = {
     "tampa bay buccaneers": "tampa_bay_buccaneers",
     "tennessee titans": "tennessee_titans",
     "washington commanders": "washington_commanders",
+    "washington football team": "washington_commanders",
+    "washington redskins": "washington_commanders",
 }
 
 DST_ABBR_MAP: dict[str, str] = {
@@ -2675,12 +2597,7 @@ DST_ABBR_MAP: dict[str, str] = {
     "TB": "tampa_bay_buccaneers",
     "TEN": "tennessee_titans",
     "WAS": "washington_commanders",
-}
-
-
-def normalize_position(value: object) -> str:
-    text = str(value).strip().upper()
-    return POSITION_NORMALIZA
+    "WSH
 
 [TRUNCATED]
 ```
@@ -3143,6 +3060,8 @@ def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
     assert normalize_dst_name("DAL") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+    assert normalize_dst_name("WSH") == "washington_commanders"
+    assert normalize_dst_name("Washington Football Team D/ST") == "washington_commanders"
 
 
 def test_build_canonical_player_id_is_stable() -> None:
@@ -3968,6 +3887,8 @@ DST_ALIAS_MAP: dict[str, str] = {
     "tampa bay buccaneers": "tampa_bay_buccaneers",
     "tennessee titans": "tennessee_titans",
     "washington commanders": "washington_commanders",
+    "washington football team": "washington_commanders",
+    "washington redskins": "washington_commanders",
 }
 
 DST_ABBR_MAP: dict[str, str] = {
@@ -4003,12 +3924,7 @@ DST_ABBR_MAP: dict[str, str] = {
     "TB": "tampa_bay_buccaneers",
     "TEN": "tennessee_titans",
     "WAS": "washington_commanders",
-}
-
-
-def normalize_position(value: object) -> str:
-    text = str(value).strip().upper()
-    return POSITION_NORMALIZA
+    "WSH
 
 [TRUNCATED]
 ```
@@ -4445,6 +4361,8 @@ def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
     assert normalize_dst_name("DAL") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+    assert normalize_dst_name("WSH") == "washington_commanders"
+    assert normalize_dst_name("Washington Football Team D/ST") == "washington_commanders"
 
 
 def test_build_canonical_player_id_is_stable() -> None:
@@ -4489,14 +4407,7 @@ def test_build_player_reference_table_unifies_cross_source_names() -> None:
         {
             "player_name": ["D.J. Moore", "Kenneth Walker III"],
             "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    nflverse = pd.DataFrame(
-        {
-            "player_name": ["DJ Moore", "Kenneth Walker"],
-            "position": ["WR", "
+            "source_name": ["fantasypros", "fantasyp
 
 [TRUNCATED]
 ```
