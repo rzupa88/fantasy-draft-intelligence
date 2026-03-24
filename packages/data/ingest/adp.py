@@ -15,11 +15,15 @@ from packages.data.constants import (
     RAW_DATA_DIR,
 )
 from packages.data.io import write_parquet
+from packages.data.player_ids import attach_canonical_ids_pandas
 from packages.data.validation import assert_unique_key, require_columns
 
 REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
     "season",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "position",
     "adp_overall",
     "source_name",
@@ -27,8 +31,7 @@ REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
 
 UNIQUE_KEY_COLUMNS: Final[list[str]] = [
     "season",
-    "player_name",
-    "position",
+    "canonical_player_id",
     "source_name",
 ]
 
@@ -93,7 +96,6 @@ def _split_player_name(value: object) -> str:
     if not text:
         return text
 
-    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
     text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
     return text.strip()
 
@@ -126,8 +128,6 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
 
     normalized = normalized.dropna(subset=["season", "player_name", "position", "adp_overall"])
 
-    normalized["player_name"] = normalized["player_name"].str.strip()
-
     normalized = normalized.loc[
         (normalized["player_name"] != "") & (normalized["player_name"].notna())
     ].copy()
@@ -135,10 +135,16 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
     normalized["season"] = normalized["season"].astype(int)
     normalized["adp_overall"] = normalized["adp_overall"].astype(float)
 
+    normalized = attach_canonical_ids_pandas(normalized)
+
     require_columns(normalized, REQUIRED_OUTPUT_COLUMNS)
     assert_unique_key(normalized, UNIQUE_KEY_COLUMNS)
 
-    return normalized.sort_values(["season", "adp_overall", "player_name"]).reset_index(drop=True)
+    normalized = normalized.loc[:, REQUIRED_OUTPUT_COLUMNS]
+
+    return normalized.sort_values(["season", "adp_overall", "canonical_player_id"]).reset_index(
+        drop=True
+    )
 
 
 def _raw_snapshot_path(raw_dir: Path, season: int) -> Path:
@@ -181,7 +187,4 @@ def ingest_historical_adp(config: AdpIngestConfig) -> pd.DataFrame:
 
 
 def fetch_historical_adp() -> pd.DataFrame:
-    """
-    Backward-compatible public entry point for historical ADP ingestion.
-    """
     return ingest_historical_adp(default_config())

@@ -5,4 +5,4 @@ INTERMEDIATE_DATA_DIR = "data/intermediate"
 PROCESSED_DATA_DIR = "data/processed"
 
 DEFAULT_PILOT_YEARS = [2023, 2024]
-VALID_POSITIONS = {"QB", "RB", "WR", "TE"}
+VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}

@@ -7,13 +7,19 @@ from pathlib import Path
 import nflreadpy as nfl
 import polars as pl
 
+from packages.data.player_ids import attach_canonical_ids_polars
+
 REQUIRED_OUTPUT_COLUMNS = [
     "season",
     "week",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "team",
     "position",
     "fantasy_points",
+    "source_name",
 ]
 
 TEAM_COLUMN_CANDIDATES = [
@@ -32,6 +38,8 @@ FANTASY_POINTS_CANDIDATES = [
     "fantasy_points",
     "fantasy_points_ppr",
 ]
+
+SOURCE_NAME = "nflverse"
 
 
 @dataclass(frozen=True)
@@ -86,10 +94,14 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
                 pl.col("player_name").str.strip_chars(),
                 pl.col("team").str.strip_chars(),
                 pl.col("position").str.strip_chars(),
+                pl.lit(SOURCE_NAME).alias("source_name"),
             ]
         )
-        .sort(["season", "week", "player_name"])
     )
+
+    normalized = attach_canonical_ids_polars(normalized)
+    normalized = normalized.select(REQUIRED_OUTPUT_COLUMNS)
+    normalized = normalized.sort(["season", "week", "canonical_player_id"])
 
     missing_output = [col for col in REQUIRED_OUTPUT_COLUMNS if col not in normalized.columns]
     if missing_output:
@@ -99,7 +111,6 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def fetch_weekly_player_data(years: Iterable[int]) -> pl.DataFrame:
-    """Backward-compatible wrapper for legacy callers/tests."""
     return load_weekly_player_stats(years)
 
 
@@ -108,8 +119,6 @@ def load_weekly_player_stats(years: Iterable[int]) -> pl.DataFrame:
     if not years:
         raise ValueError("At least one year must be provided")
 
-    # nflreadpy load_player_stats() returns a Polars DataFrame and supports
-    # week/reg/post/reg+post summary levels.
     raw = nfl.load_player_stats(seasons=years, summary_level="week")
     if not isinstance(raw, pl.DataFrame):
         raw = pl.from_pandas(raw)
@@ -135,7 +144,6 @@ def write_partitioned_snapshots(
         / f"nflverse_player_weekly_{min(config.years)}_{max(config.years)}.parquet"
     )
 
-    # actually write the files (this was missing / broken)
     raw_df.write_parquet(raw_path)
     normalized_df.write_parquet(normalized_path)
 
