@@ -23,6 +23,8 @@ def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
     assert normalize_dst_name("DAL") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
     assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+    assert normalize_dst_name("WSH") == "washington_commanders"
+    assert normalize_dst_name("Washington Football Team D/ST") == "washington_commanders"
 
 
 def test_build_canonical_player_id_is_stable() -> None:

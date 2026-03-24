@@ -65,6 +65,8 @@ DST_ALIAS_MAP: dict[str, str] = {
     "tampa bay buccaneers": "tampa_bay_buccaneers",
     "tennessee titans": "tennessee_titans",
     "washington commanders": "washington_commanders",
+    "washington football team": "washington_commanders",
+    "washington redskins": "washington_commanders",
 }
 
 DST_ABBR_MAP: dict[str, str] = {
@@ -100,6 +102,7 @@ DST_ABBR_MAP: dict[str, str] = {
     "TB": "tampa_bay_buccaneers",
     "TEN": "tennessee_titans",
     "WAS": "washington_commanders",
+    "WSH": "washington_commanders",
 }
 
 
