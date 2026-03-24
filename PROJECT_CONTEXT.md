@@ -304,6 +304,8 @@ test:
 │   │   │   ├── adp.py
 │   │   │   ├── coaching.py
 │   │   │   └── nflverse.py
+│   │   ├── warehouse
+│   │   │   └── player_season.py
 │   │   ├── __init__.py
 │   │   ├── constants.py
 │   │   ├── io.py
@@ -318,6 +320,7 @@ test:
 ├── scripts
 │   ├── bootstrap.py
 │   ├── build_player_reference.py
+│   ├── build_player_season_warehouse.py
 │   ├── ingest_adp.py
 │   ├── ingest_nflverse.py
 │   └── validate_data.py
@@ -326,7 +329,9 @@ test:
 │   │   ├── ingest
 │   │   │   ├── test_adp.py
 │   │   │   └── test_nflverse.py
-│   │   └── test_player_ids.py
+│   │   ├── test_player_ids.py
+│   │   ├── test_player_season_warehouse.py
+│   │   └── test_player_season_warehouse.py:146:5
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
@@ -1738,6 +1743,140 @@ def normalize_position(value: object) -> str:
 [TRUNCATED]
 ```
 
+### `packages/data/warehouse/player_season.py`
+
+```text
+# packages/data/warehouse/player_season.py
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from packages.data.constants import INTERMEDIATE_DATA_DIR
+from packages.data.io import write_parquet
+from packages.data.validation import assert_unique_key, require_columns
+
+PROCESSED_DATA_DIR = Path("data/processed")
+
+FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
+
+
+def _safe_mode(series: pd.Series):
+    non_null = series.dropna()
+    if non_null.empty:
+        return None
+    mode = non_null.mode()
+    if mode.empty:
+        return non_null.iloc[0]
+    return mode.iloc[0]
+
+
+def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
+    adp_df = adp_df.copy()
+
+    require_columns(
+        adp_df,
+        [
+            "season",
+            "canonical_player_id",
+            "position",
+            "adp_overall",
+        ],
+    )
+
+    adp_df = adp_df.sort_values(
+        ["season", "position", "adp_overall", "canonical_player_id"]
+    ).reset_index(drop=True)
+
+    adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
+
+    return adp_df
+
+
+def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
+    required = [
+        "season",
+        "canonical_player_id",
+        "player_name",
+        "normalized_player_name",
+        "position",
+        "team",
+    ]
+    require_columns(nflverse_df, required)
+
+    df = nflverse_df.copy()
+
+    # Expected weekly fantasy/stat columns may vary slightly across source versions.
+    # We only aggregate columns that actually exist.
+    sum_candidates = [
+        "fantasy_points_ppr",
+        "fantasy_points",
+        "completions",
+        "attempts",
+        "passing_yards",
+        "passing_tds",
+        "interceptions",
+        "carries",
+        "rushing_yards",
+        "rushing_tds",
+        "targets",
+        "receptions",
+        "receiving_yards",
+        "receiving_tds",
+    ]
+    sum_cols = [c for c in sum_candidates if c in df.columns]
+
+    if "week" in df.columns:
+        games_played_series = (
+            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
+        )
+    else:
+        games_played_series = (
+            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
+        )
+
+    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
+
+    agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
+
+    season_df = grouped.agg(agg_dict).reset_index()
+
+    identity_df = grouped.agg(
+        player_name=("player_name", _safe_mode),
+        normalized_player_name=("normalized_player_name", _safe_mode),
+        position=("position", _safe_mode),
+        team=("team", _safe_mode),
+    ).reset_index()
+
+    season_df = season_df.merge(
+        identity_df,
+        on=["season", "canonical_player_id"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    season_df = season_df.merge(
+        games_played_series.reset_index(),
+        on=["season", "canonical_player_id"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    if "fantasy_points_ppr" in season_df.columns:
+        season_df["fantasy_points_per_game"] = (
+            season_df["fantasy_points_ppr"] / season_df["games_played"]
+        ).round(2)
+    elif "fantasy_points" in season_df.columns:
+        season_df["fantasy_points_per_game"] = (
+            season_df["fantasy_points"] / season_df["games_played"]
+        ).round(2)
+    else:
+        season_df["fantasy_poi
+
+[TRUNCATED]
+```
+
 ### `packages/shared/logging.py`
 
 ```text
@@ -1812,6 +1951,40 @@ def main() -> None:
     print(
         f"Player reference build complete: rows={len(reference)}, "
         f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
+    )
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `scripts/build_player_season_warehouse.py`
+
+```text
+# scripts/build_player_season_warehouse.py
+from __future__ import annotations
+
+import logging
+
+from packages.data.warehouse.player_season import (
+    build_and_write_player_season_warehouse,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+def main() -> None:
+    seasons_label = "2023_2024"
+    logger.info("Building player-season warehouse for %s", seasons_label)
+    df = build_and_write_player_season_warehouse(seasons_label=seasons_label)
+    logger.info(
+        "Player-season warehouse complete: rows=%s cols=%s",
+        len(df),
+        len(df.columns),
     )
 
 
@@ -2142,16 +2315,124 @@ def test_build_player_reference_table_unifies_cross_source_names() -> None:
     assert len(kw_rows) == 2
 ```
 
-### `packages/data/__init__.py`
+### `tests/data/test_player_season_warehouse.py`
 
 ```text
-"""Data package for ingestion, normalization, and validation."""
-```
+from __future__ import annotations
 
-### `packages/shared/__init__.py`
+import pandas as pd
 
-```text
-"""Shared utilities."""
+from packages.data.warehouse.player_season import (
+    aggregate_nflverse_to_player_season,
+    build_player_season_warehouse,
+    prepare_adp_player_season,
+)
+
+
+def test_aggregate_nflverse_to_player_season_rolls_up_weekly_rows():
+    nflverse_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "week": 1,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 10.0,
+                "receiving_yards": 50,
+            },
+            {
+                "season": 2024,
+                "week": 2,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 20.0,
+                "receiving_yards": 100,
+            },
+        ]
+    )
+
+    result = aggregate_nflverse_to_player_season(nflverse_df)
+
+    assert len(result) == 1
+    assert result.loc[0, "games_played"] == 2
+    assert result.loc[0, "fantasy_points_ppr"] == 30.0
+    assert result.loc[0, "receiving_yards"] == 150
+    assert result.loc[0, "fantasy_points_per_game"] == 15.0
+
+
+def test_prepare_adp_player_season_adds_position_rank():
+    adp_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "canonical_player_id": "rb_1",
+                "player_name": "RB One",
+                "normalized_player_name": "rb one",
+                "position": "RB",
+                "adp_overall": 5.0,
+                "source_name": "fantasypros",
+            },
+            {
+                "season": 2024,
+                "canonical_player_id": "rb_2",
+                "player_name": "RB Two",
+                "normalized_player_name": "rb two",
+                "position": "RB",
+                "adp_overall": 10.0,
+                "source_name": "fantasypros",
+            },
+        ]
+    )
+
+    result = prepare_adp_player_season(adp_df)
+
+    assert len(result) == 2
+    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
+    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
+
+
+def test_build_player_season_warehouse_merges_stats_and_adp():
+    nflverse_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "week": 1,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 10.0,
+            },
+            {
+                "season": 2024,
+                "week": 2,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 20.0,
+            },
+        ]
+    )
+
+    adp_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position":
+
+[TRUNCATED]
 ```
 
 ## Fantasy Domain Logic Files
@@ -2404,6 +2685,140 @@ def normalize_position(value: object) -> str:
 [TRUNCATED]
 ```
 
+### `packages/data/warehouse/player_season.py`
+
+```text
+# packages/data/warehouse/player_season.py
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from packages.data.constants import INTERMEDIATE_DATA_DIR
+from packages.data.io import write_parquet
+from packages.data.validation import assert_unique_key, require_columns
+
+PROCESSED_DATA_DIR = Path("data/processed")
+
+FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
+
+
+def _safe_mode(series: pd.Series):
+    non_null = series.dropna()
+    if non_null.empty:
+        return None
+    mode = non_null.mode()
+    if mode.empty:
+        return non_null.iloc[0]
+    return mode.iloc[0]
+
+
+def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
+    adp_df = adp_df.copy()
+
+    require_columns(
+        adp_df,
+        [
+            "season",
+            "canonical_player_id",
+            "position",
+            "adp_overall",
+        ],
+    )
+
+    adp_df = adp_df.sort_values(
+        ["season", "position", "adp_overall", "canonical_player_id"]
+    ).reset_index(drop=True)
+
+    adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
+
+    return adp_df
+
+
+def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
+    required = [
+        "season",
+        "canonical_player_id",
+        "player_name",
+        "normalized_player_name",
+        "position",
+        "team",
+    ]
+    require_columns(nflverse_df, required)
+
+    df = nflverse_df.copy()
+
+    # Expected weekly fantasy/stat columns may vary slightly across source versions.
+    # We only aggregate columns that actually exist.
+    sum_candidates = [
+        "fantasy_points_ppr",
+        "fantasy_points",
+        "completions",
+        "attempts",
+        "passing_yards",
+        "passing_tds",
+        "interceptions",
+        "carries",
+        "rushing_yards",
+        "rushing_tds",
+        "targets",
+        "receptions",
+        "receiving_yards",
+        "receiving_tds",
+    ]
+    sum_cols = [c for c in sum_candidates if c in df.columns]
+
+    if "week" in df.columns:
+        games_played_series = (
+            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
+        )
+    else:
+        games_played_series = (
+            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
+        )
+
+    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
+
+    agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
+
+    season_df = grouped.agg(agg_dict).reset_index()
+
+    identity_df = grouped.agg(
+        player_name=("player_name", _safe_mode),
+        normalized_player_name=("normalized_player_name", _safe_mode),
+        position=("position", _safe_mode),
+        team=("team", _safe_mode),
+    ).reset_index()
+
+    season_df = season_df.merge(
+        identity_df,
+        on=["season", "canonical_player_id"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    season_df = season_df.merge(
+        games_played_series.reset_index(),
+        on=["season", "canonical_player_id"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    if "fantasy_points_ppr" in season_df.columns:
+        season_df["fantasy_points_per_game"] = (
+            season_df["fantasy_points_ppr"] / season_df["games_played"]
+        ).round(2)
+    elif "fantasy_points" in season_df.columns:
+        season_df["fantasy_points_per_game"] = (
+            season_df["fantasy_points"] / season_df["games_played"]
+        ).round(2)
+    else:
+        season_df["fantasy_poi
+
+[TRUNCATED]
+```
+
 ### `scripts/build_player_reference.py`
 
 ```text
@@ -2444,6 +2859,40 @@ def main() -> None:
     print(
         f"Player reference build complete: rows={len(reference)}, "
         f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
+    )
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `scripts/build_player_season_warehouse.py`
+
+```text
+# scripts/build_player_season_warehouse.py
+from __future__ import annotations
+
+import logging
+
+from packages.data.warehouse.player_season import (
+    build_and_write_player_season_warehouse,
+)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+def main() -> None:
+    seasons_label = "2023_2024"
+    logger.info("Building player-season warehouse for %s", seasons_label)
+    df = build_and_write_player_season_warehouse(seasons_label=seasons_label)
+    logger.info(
+        "Player-season warehouse complete: rows=%s cols=%s",
+        len(df),
+        len(df.columns),
     )
 
 
@@ -2757,6 +3206,126 @@ def test_build_player_reference_table_unifies_cross_source_names() -> None:
 
     assert len(dj_rows) == 2
     assert len(kw_rows) == 2
+```
+
+### `tests/data/test_player_season_warehouse.py`
+
+```text
+from __future__ import annotations
+
+import pandas as pd
+
+from packages.data.warehouse.player_season import (
+    aggregate_nflverse_to_player_season,
+    build_player_season_warehouse,
+    prepare_adp_player_season,
+)
+
+
+def test_aggregate_nflverse_to_player_season_rolls_up_weekly_rows():
+    nflverse_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "week": 1,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 10.0,
+                "receiving_yards": 50,
+            },
+            {
+                "season": 2024,
+                "week": 2,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 20.0,
+                "receiving_yards": 100,
+            },
+        ]
+    )
+
+    result = aggregate_nflverse_to_player_season(nflverse_df)
+
+    assert len(result) == 1
+    assert result.loc[0, "games_played"] == 2
+    assert result.loc[0, "fantasy_points_ppr"] == 30.0
+    assert result.loc[0, "receiving_yards"] == 150
+    assert result.loc[0, "fantasy_points_per_game"] == 15.0
+
+
+def test_prepare_adp_player_season_adds_position_rank():
+    adp_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "canonical_player_id": "rb_1",
+                "player_name": "RB One",
+                "normalized_player_name": "rb one",
+                "position": "RB",
+                "adp_overall": 5.0,
+                "source_name": "fantasypros",
+            },
+            {
+                "season": 2024,
+                "canonical_player_id": "rb_2",
+                "player_name": "RB Two",
+                "normalized_player_name": "rb two",
+                "position": "RB",
+                "adp_overall": 10.0,
+                "source_name": "fantasypros",
+            },
+        ]
+    )
+
+    result = prepare_adp_player_season(adp_df)
+
+    assert len(result) == 2
+    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
+    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
+
+
+def test_build_player_season_warehouse_merges_stats_and_adp():
+    nflverse_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "week": 1,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 10.0,
+            },
+            {
+                "season": 2024,
+                "week": 2,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 20.0,
+            },
+        ]
+    )
+
+    adp_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position":
+
+[TRUNCATED]
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -3471,51 +4040,138 @@ def assert_unique_key(df: pd.DataFrame, key_columns: Sequence[str]) -> None:
         )
 ```
 
-### `scripts/build_player_reference.py`
+### `packages/data/warehouse/player_season.py`
 
 ```text
+# packages/data/warehouse/player_season.py
 from __future__ import annotations
 
 from pathlib import Path
 
 import pandas as pd
 
-from packages.data.constants import DEFAULT_PILOT_YEARS, INTERMEDIATE_DATA_DIR
-from packages.data.io import read_parquet, write_parquet
-from packages.data.player_ids import build_player_reference_table
+from packages.data.constants import INTERMEDIATE_DATA_DIR
+from packages.data.io import write_parquet
+from packages.data.validation import assert_unique_key, require_columns
 
-INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+PROCESSED_DATA_DIR = Path("data/processed")
 
-
-def _adp_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"adp_historical_{min(years)}_{max(years)}.parquet"
+FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
 
 
-def _nflverse_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"nflverse_player_weekly_{min(years)}_{max(years)}.parquet"
+def _safe_mode(series: pd.Series):
+    non_null = series.dropna()
+    if non_null.empty:
+        return None
+    mode = non_null.mode()
+    if mode.empty:
+        return non_null.iloc[0]
+    return mode.iloc[0]
 
 
-def _reference_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"player_reference_{min(years)}_{max(years)}.parquet"
+def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
+    adp_df = adp_df.copy()
 
-
-def main() -> None:
-    years = list(DEFAULT_PILOT_YEARS)
-
-    adp = read_parquet(_adp_path(years))
-    nflverse = pd.read_parquet(_nflverse_path(years))
-
-    reference = build_player_reference_table([adp, nflverse])
-    write_parquet(reference, _reference_path(years))
-
-    print(
-        f"Player reference build complete: rows={len(reference)}, "
-        f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
+    require_columns(
+        adp_df,
+        [
+            "season",
+            "canonical_player_id",
+            "position",
+            "adp_overall",
+        ],
     )
 
+    adp_df = adp_df.sort_values(
+        ["season", "position", "adp_overall", "canonical_player_id"]
+    ).reset_index(drop=True)
 
-if __name__ == "__main__":
-    main()
+    adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
+
+    return adp_df
+
+
+def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
+    required = [
+        "season",
+        "canonical_player_id",
+        "player_name",
+        "normalized_player_name",
+        "position",
+        "team",
+    ]
+    require_columns(nflverse_df, required)
+
+    df = nflverse_df.copy()
+
+    # Expected weekly fantasy/stat columns may vary slightly across source versions.
+    # We only aggregate columns that actually exist.
+    sum_candidates = [
+        "fantasy_points_ppr",
+        "fantasy_points",
+        "completions",
+        "attempts",
+        "passing_yards",
+        "passing_tds",
+        "interceptions",
+        "carries",
+        "rushing_yards",
+        "rushing_tds",
+        "targets",
+        "receptions",
+        "receiving_yards",
+        "receiving_tds",
+    ]
+    sum_cols = [c for c in sum_candidates if c in df.columns]
+
+    if "week" in df.columns:
+        games_played_series = (
+            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
+        )
+    else:
+        games_played_series = (
+            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
+        )
+
+    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
+
+    agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
+
+    season_df = grouped.agg(agg_dict).reset_index()
+
+    identity_df = grouped.agg(
+        player_name=("player_name", _safe_mode),
+        normalized_player_name=("normalized_player_name", _safe_mode),
+        position=("position", _safe_mode),
+        team=("team", _safe_mode),
+    ).reset_index()
+
+    season_df = season_df.merge(
+        identity_df,
+        on=["season", "canonical_player_id"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    season_df = season_df.merge(
+        games_played_series.reset_index(),
+        on=["season", "canonical_player_id"],
+        how="left",
+        validate="one_to_one",
+    )
+
+    if "fantasy_points_ppr" in season_df.columns:
+        season_df["fantasy_points_per_game"] = (
+            season_df["fantasy_points_ppr"] / season_df["games_played"]
+        ).round(2)
+    elif "fantasy_points" in season_df.columns:
+        season_df["fantasy_points_per_game"] = (
+            season_df["fantasy_points"] / season_df["games_played"]
+        ).round(2)
+    else:
+        season_df["fantasy_poi
+
+[TRUNCATED]
 ```
 
 ## Testing and Quality Signals
@@ -3841,6 +4497,94 @@ def test_build_player_reference_table_unifies_cross_source_names() -> None:
         {
             "player_name": ["DJ Moore", "Kenneth Walker"],
             "position": ["WR", "
+
+[TRUNCATED]
+```
+
+### `tests/data/test_player_season_warehouse.py`
+
+```text
+from __future__ import annotations
+
+import pandas as pd
+
+from packages.data.warehouse.player_season import (
+    aggregate_nflverse_to_player_season,
+    build_player_season_warehouse,
+    prepare_adp_player_season,
+)
+
+
+def test_aggregate_nflverse_to_player_season_rolls_up_weekly_rows():
+    nflverse_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "week": 1,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 10.0,
+                "receiving_yards": 50,
+            },
+            {
+                "season": 2024,
+                "week": 2,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points_ppr": 20.0,
+                "receiving_yards": 100,
+            },
+        ]
+    )
+
+    result = aggregate_nflverse_to_player_season(nflverse_df)
+
+    assert len(result) == 1
+    assert result.loc[0, "games_played"] == 2
+    assert result.loc[0, "fantasy_points_ppr"] == 30.0
+    assert result.loc[0, "receiving_yards"] == 150
+    assert result.loc[0, "fantasy_points_per_game"] == 15.0
+
+
+def test_prepare_adp_player_season_adds_position_rank():
+    adp_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "canonical_player_id": "rb_1",
+                "player_name": "RB One",
+                "normalized_player_name": "rb one",
+                "position": "RB",
+                "adp_overall": 5.0,
+                "source_name": "fantasypros",
+            },
+            {
+                "season": 2024,
+                "canonical_player_id": "rb_2",
+                "player_name": "RB Two",
+                "normalized_player_name": "rb two",
+                "position": "RB",
+                "adp_overall": 10.0,
+                "source_name": "fantasypros",
+            },
+        ]
+    )
+
+    result = prepare_adp_player_season(adp_df)
+
+    assert len(result) == 2
+    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
+    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
+
+
+def test_build_player_season_warehouse_merges_stats_and_adp():
+    nfl
 
 [TRUNCATED]
 ```
