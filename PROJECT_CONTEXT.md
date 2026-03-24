@@ -125,6 +125,7 @@ pytest
 │   │   ├── __init__.py
 │   │   ├── constants.py
 │   │   ├── io.py
+│   │   ├── player_ids.py
 │   │   └── validation.py
 │   ├── modeling
 │   │   ├── __init__.py
@@ -134,14 +135,16 @@ pytest
 │       └── logging.py
 ├── scripts
 │   ├── bootstrap.py
+│   ├── build_player_reference.py
 │   ├── ingest_adp.py
 │   ├── ingest_nflverse.py
 │   └── validate_data.py
 ├── tests
 │   ├── data
-│   │   └── ingest
-│   │       ├── test_adp.py
-│   │       └── test_nflverse.py
+│   │   ├── ingest
+│   │   │   ├── test_adp.py
+│   │   │   └── test_nflverse.py
+│   │   └── test_player_ids.py
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
@@ -524,11 +527,15 @@ from packages.data.constants import (
     RAW_DATA_DIR,
 )
 from packages.data.io import write_parquet
+from packages.data.player_ids import attach_canonical_ids_pandas
 from packages.data.validation import assert_unique_key, require_columns
 
 REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
     "season",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "position",
     "adp_overall",
     "source_name",
@@ -536,8 +543,7 @@ REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
 
 UNIQUE_KEY_COLUMNS: Final[list[str]] = [
     "season",
-    "player_name",
-    "position",
+    "canonical_player_id",
     "source_name",
 ]
 
@@ -602,7 +608,6 @@ def _split_player_name(value: object) -> str:
     if not text:
         return text
 
-    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
     text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
     return text.strip()
 
@@ -630,8 +635,7 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
         }
     )
 
-    normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
-    normalized["position"] =
+    normalized["player_name"] = normalized["player_name"].astyp
 
 [TRUNCATED]
 ```
@@ -674,13 +678,19 @@ from pathlib import Path
 import nflreadpy as nfl
 import polars as pl
 
+from packages.data.player_ids import attach_canonical_ids_polars
+
 REQUIRED_OUTPUT_COLUMNS = [
     "season",
     "week",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "team",
     "position",
     "fantasy_points",
+    "source_name",
 ]
 
 TEAM_COLUMN_CANDIDATES = [
@@ -699,6 +709,8 @@ FANTASY_POINTS_CANDIDATES = [
     "fantasy_points",
     "fantasy_points_ppr",
 ]
+
+SOURCE_NAME = "nflverse"
 
 
 @dataclass(frozen=True)
@@ -753,10 +765,14 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
                 pl.col("player_name").str.strip_chars(),
                 pl.col("team").str.strip_chars(),
                 pl.col("position").str.strip_chars(),
+                pl.lit(SOURCE_NAME).alias("source_name"),
             ]
         )
-        .sort(["season", "week", "player_name"])
     )
+
+    normalized = attach_canonical_ids_polars(normalized)
+    normalized = normalized.select(REQUIRED_OUTPUT_COLUMNS)
+    normalized = normalized.sort(["season", "week", "canonical_player_id"])
 
     missing_output = [col for col in REQUIRED_OUTPUT_COLUMNS if col not in normalized.columns]
     if missing_output:
@@ -766,7 +782,6 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def fetch_weekly_player_data(years: Iterable[int]) -> pl.DataFrame:
-    """Backward-compatible wrapper for legacy callers/tests."""
     return load_weekly_player_stats(years)
 
 
@@ -775,21 +790,9 @@ def load_weekly_player_stats(years: Iterable[int]) -> pl.DataFrame:
     if not years:
         raise ValueError("At least one year must be provided")
 
-    # nflreadpy load_player_stats() returns a Polars DataFrame and supports
-    # week/reg/post/reg+post summary levels.
     raw = nfl.load_player_stats(seasons=years, summary_level="week")
     if not isinstance(raw, pl.DataFrame):
-        raw = pl.from_pandas(raw)
-
-    return raw
-
-
-def write_partitioned_snapshots(
-    raw_df: pl.DataFrame,
-    normalized_df: pl.DataFrame,
-    config: NflverseIngestConfig,
-) -> None:
-    config.raw_dir.mkdir(parents=True,
+        raw = pl.from_
 
 [TRUNCATED]
 ```
@@ -1057,7 +1060,7 @@ INTERMEDIATE_DATA_DIR = "data/intermediate"
 PROCESSED_DATA_DIR = "data/processed"
 
 DEFAULT_PILOT_YEARS = [2023, 2024]
-VALID_POSITIONS = {"QB", "RB", "WR", "TE"}
+VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}
 ```
 
 ### `packages/data/io.py`
@@ -1081,6 +1084,121 @@ def write_parquet(df: pd.DataFrame, path: str | Path) -> None:
 
 def read_parquet(path: str | Path) -> pd.DataFrame:
     return pd.read_parquet(path)
+```
+
+### `packages/data/player_ids.py`
+
+```text
+from __future__ import annotations
+
+import re
+import unicodedata
+from collections.abc import Iterable
+
+import pandas as pd
+import polars as pl
+
+from packages.data.validation import assert_unique_key, require_columns
+
+CANONICAL_ID_COLUMN = "canonical_player_id"
+NORMALIZED_NAME_COLUMN = "normalized_player_name"
+ENTITY_TYPE_COLUMN = "entity_type"
+
+PLAYER_ENTITY = "player"
+DST_ENTITY = "dst"
+
+POSITION_NORMALIZATION_MAP: dict[str, str] = {
+    "QB": "QB",
+    "RB": "RB",
+    "WR": "WR",
+    "TE": "TE",
+    "K": "K",
+    "DST": "DST",
+    "DEF": "DST",
+    "D/ST": "DST",
+}
+
+_SUFFIX_PATTERN = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b", flags=re.IGNORECASE)
+_MULTI_SPACE_PATTERN = re.compile(r"\s+")
+_NON_WORD_SPACE_HYPHEN_SLASH_PATTERN = re.compile(r"[^a-z0-9\s\-/]")
+_DST_TOKEN_PATTERN = re.compile(r"\b(?:d\s*/\s*st|dst|defense|def)\b", flags=re.IGNORECASE)
+
+DST_ALIAS_MAP: dict[str, str] = {
+    "arizona cardinals": "arizona_cardinals",
+    "atlanta falcons": "atlanta_falcons",
+    "baltimore ravens": "baltimore_ravens",
+    "buffalo bills": "buffalo_bills",
+    "carolina panthers": "carolina_panthers",
+    "chicago bears": "chicago_bears",
+    "cincinnati bengals": "cincinnati_bengals",
+    "cleveland browns": "cleveland_browns",
+    "dallas cowboys": "dallas_cowboys",
+    "denver broncos": "denver_broncos",
+    "detroit lions": "detroit_lions",
+    "green bay packers": "green_bay_packers",
+    "houston texans": "houston_texans",
+    "indianapolis colts": "indianapolis_colts",
+    "jacksonville jaguars": "jacksonville_jaguars",
+    "kansas city chiefs": "kansas_city_chiefs",
+    "las vegas raiders": "las_vegas_raiders",
+    "los angeles chargers": "los_angeles_chargers",
+    "los angeles rams": "los_angeles_rams",
+    "miami dolphins": "miami_dolphins",
+    "minnesota vikings": "minnesota_vikings",
+    "new england patriots": "new_england_patriots",
+    "new orleans saints": "new_orleans_saints",
+    "new york giants": "new_york_giants",
+    "new york jets": "new_york_jets",
+    "philadelphia eagles": "philadelphia_eagles",
+    "pittsburgh steelers": "pittsburgh_steelers",
+    "san francisco 49ers": "san_francisco_49ers",
+    "seattle seahawks": "seattle_seahawks",
+    "tampa bay buccaneers": "tampa_bay_buccaneers",
+    "tennessee titans": "tennessee_titans",
+    "washington commanders": "washington_commanders",
+}
+
+DST_ABBR_MAP: dict[str, str] = {
+    "ARI": "arizona_cardinals",
+    "ATL": "atlanta_falcons",
+    "BAL": "baltimore_ravens",
+    "BUF": "buffalo_bills",
+    "CAR": "carolina_panthers",
+    "CHI": "chicago_bears",
+    "CIN": "cincinnati_bengals",
+    "CLE": "cleveland_browns",
+    "DAL": "dallas_cowboys",
+    "DEN": "denver_broncos",
+    "DET": "detroit_lions",
+    "GB": "green_bay_packers",
+    "HOU": "houston_texans",
+    "IND": "indianapolis_colts",
+    "JAX": "jacksonville_jaguars",
+    "KC": "kansas_city_chiefs",
+    "LV": "las_vegas_raiders",
+    "LAC": "los_angeles_chargers",
+    "LAR": "los_angeles_rams",
+    "MIA": "miami_dolphins",
+    "MIN": "minnesota_vikings",
+    "NE": "new_england_patriots",
+    "NO": "new_orleans_saints",
+    "NYG": "new_york_giants",
+    "NYJ": "new_york_jets",
+    "PHI": "philadelphia_eagles",
+    "PIT": "pittsburgh_steelers",
+    "SF": "san_francisco_49ers",
+    "SEA": "seattle_seahawks",
+    "TB": "tampa_bay_buccaneers",
+    "TEN": "tennessee_titans",
+    "WAS": "washington_commanders",
+}
+
+
+def normalize_position(value: object) -> str:
+    text = str(value).strip().upper()
+    return POSITION_NORMALIZA
+
+[TRUNCATED]
 ```
 
 ### `packages/shared/logging.py`
@@ -1115,6 +1233,53 @@ for directory in DIRECTORIES:
     Path(directory).mkdir(parents=True, exist_ok=True)
 
 print("Bootstrap complete.")
+```
+
+### `scripts/build_player_reference.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from packages.data.constants import DEFAULT_PILOT_YEARS, INTERMEDIATE_DATA_DIR
+from packages.data.io import read_parquet, write_parquet
+from packages.data.player_ids import build_player_reference_table
+
+INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+
+
+def _adp_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"adp_historical_{min(years)}_{max(years)}.parquet"
+
+
+def _nflverse_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"nflverse_player_weekly_{min(years)}_{max(years)}.parquet"
+
+
+def _reference_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"player_reference_{min(years)}_{max(years)}.parquet"
+
+
+def main() -> None:
+    years = list(DEFAULT_PILOT_YEARS)
+
+    adp = read_parquet(_adp_path(years))
+    nflverse = pd.read_parquet(_nflverse_path(years))
+
+    reference = build_player_reference_table([adp, nflverse])
+    write_parquet(reference, _reference_path(years))
+
+    print(
+        f"Player reference build complete: rows={len(reference)}, "
+        f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
+    )
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ### `tests/data/ingest/test_adp.py`
@@ -1250,7 +1415,7 @@ def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
 
     assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
     assert sorted(df["season"].unique().tolist()) == [2023, 2024]
-    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_nam
+    assert UNIQUE_KEY_COLUMNS == ["season", "canonical_player_id", "source_name"]
 
 [TRUNCATED]
 ```
@@ -1347,6 +1512,99 @@ def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
         ingest_nflverse_weekly_players(config)
 ```
 
+### `tests/data/test_player_ids.py`
+
+```text
+from __future__ import annotations
+
+import pandas as pd
+import polars as pl
+
+from packages.data.player_ids import (
+    attach_canonical_ids_pandas,
+    attach_canonical_ids_polars,
+    build_canonical_player_id,
+    build_player_reference_table,
+    normalize_dst_name,
+    normalize_player_name,
+)
+
+
+def test_normalize_player_name_removes_punctuation_and_suffix() -> None:
+    assert normalize_player_name("D.J. Moore") == "dj_moore"
+    assert normalize_player_name("Kenneth Walker III") == "kenneth_walker"
+    assert normalize_player_name("Brian Thomas Jr.") == "brian_thomas"
+
+
+def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
+    assert normalize_dst_name("DAL") == "dallas_cowboys"
+    assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
+    assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+
+
+def test_build_canonical_player_id_is_stable() -> None:
+    assert build_canonical_player_id("D.J. Moore", "WR") == "player:dj_moore:WR"
+    assert build_canonical_player_id("Kenneth Walker III", "RB") == "player:kenneth_walker:RB"
+    assert build_canonical_player_id("Dallas Cowboys DST", "DST") == "dst:dallas_cowboys:DST"
+
+
+def test_attach_canonical_ids_pandas() -> None:
+    df = pd.DataFrame(
+        {
+            "player_name": ["D.J. Moore", "Kenneth Walker III"],
+            "position": ["WR", "RB"],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    out = attach_canonical_ids_pandas(df)
+
+    assert "canonical_player_id" in out.columns
+    assert out.loc[0, "canonical_player_id"] == "player:dj_moore:WR"
+    assert out.loc[1, "canonical_player_id"] == "player:kenneth_walker:RB"
+
+
+def test_attach_canonical_ids_polars() -> None:
+    df = pl.DataFrame(
+        {
+            "player_name": ["Dallas Cowboys DST"],
+            "position": ["DST"],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    out = attach_canonical_ids_polars(df)
+
+    assert "canonical_player_id" in out.columns
+    assert out["canonical_player_id"].to_list() == ["dst:dallas_cowboys:DST"]
+
+
+def test_build_player_reference_table_unifies_cross_source_names() -> None:
+    adp = pd.DataFrame(
+        {
+            "player_name": ["D.J. Moore", "Kenneth Walker III"],
+            "position": ["WR", "RB"],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    nflverse = pd.DataFrame(
+        {
+            "player_name": ["DJ Moore", "Kenneth Walker"],
+            "position": ["WR", "RB"],
+            "source_name": ["nflverse", "nflverse"],
+        }
+    )
+
+    reference = build_player_reference_table([adp, nflverse])
+
+    dj_rows = reference.loc[reference["canonical_player_id"] == "player:dj_moore:WR"]
+    kw_rows = reference.loc[reference["canonical_player_id"] == "player:kenneth_walker:RB"]
+
+    assert len(dj_rows) == 2
+    assert len(kw_rows) == 2
+```
+
 ### `packages/data/__init__.py`
 
 ```text
@@ -1381,11 +1639,15 @@ from packages.data.constants import (
     RAW_DATA_DIR,
 )
 from packages.data.io import write_parquet
+from packages.data.player_ids import attach_canonical_ids_pandas
 from packages.data.validation import assert_unique_key, require_columns
 
 REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
     "season",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "position",
     "adp_overall",
     "source_name",
@@ -1393,8 +1655,7 @@ REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
 
 UNIQUE_KEY_COLUMNS: Final[list[str]] = [
     "season",
-    "player_name",
-    "position",
+    "canonical_player_id",
     "source_name",
 ]
 
@@ -1459,7 +1720,6 @@ def _split_player_name(value: object) -> str:
     if not text:
         return text
 
-    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
     text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
     return text.strip()
 
@@ -1487,10 +1747,171 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
         }
     )
 
-    normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
-    normalized["position"] =
+    normalized["player_name"] = normalized["player_name"].astyp
 
 [TRUNCATED]
+```
+
+### `packages/data/player_ids.py`
+
+```text
+from __future__ import annotations
+
+import re
+import unicodedata
+from collections.abc import Iterable
+
+import pandas as pd
+import polars as pl
+
+from packages.data.validation import assert_unique_key, require_columns
+
+CANONICAL_ID_COLUMN = "canonical_player_id"
+NORMALIZED_NAME_COLUMN = "normalized_player_name"
+ENTITY_TYPE_COLUMN = "entity_type"
+
+PLAYER_ENTITY = "player"
+DST_ENTITY = "dst"
+
+POSITION_NORMALIZATION_MAP: dict[str, str] = {
+    "QB": "QB",
+    "RB": "RB",
+    "WR": "WR",
+    "TE": "TE",
+    "K": "K",
+    "DST": "DST",
+    "DEF": "DST",
+    "D/ST": "DST",
+}
+
+_SUFFIX_PATTERN = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b", flags=re.IGNORECASE)
+_MULTI_SPACE_PATTERN = re.compile(r"\s+")
+_NON_WORD_SPACE_HYPHEN_SLASH_PATTERN = re.compile(r"[^a-z0-9\s\-/]")
+_DST_TOKEN_PATTERN = re.compile(r"\b(?:d\s*/\s*st|dst|defense|def)\b", flags=re.IGNORECASE)
+
+DST_ALIAS_MAP: dict[str, str] = {
+    "arizona cardinals": "arizona_cardinals",
+    "atlanta falcons": "atlanta_falcons",
+    "baltimore ravens": "baltimore_ravens",
+    "buffalo bills": "buffalo_bills",
+    "carolina panthers": "carolina_panthers",
+    "chicago bears": "chicago_bears",
+    "cincinnati bengals": "cincinnati_bengals",
+    "cleveland browns": "cleveland_browns",
+    "dallas cowboys": "dallas_cowboys",
+    "denver broncos": "denver_broncos",
+    "detroit lions": "detroit_lions",
+    "green bay packers": "green_bay_packers",
+    "houston texans": "houston_texans",
+    "indianapolis colts": "indianapolis_colts",
+    "jacksonville jaguars": "jacksonville_jaguars",
+    "kansas city chiefs": "kansas_city_chiefs",
+    "las vegas raiders": "las_vegas_raiders",
+    "los angeles chargers": "los_angeles_chargers",
+    "los angeles rams": "los_angeles_rams",
+    "miami dolphins": "miami_dolphins",
+    "minnesota vikings": "minnesota_vikings",
+    "new england patriots": "new_england_patriots",
+    "new orleans saints": "new_orleans_saints",
+    "new york giants": "new_york_giants",
+    "new york jets": "new_york_jets",
+    "philadelphia eagles": "philadelphia_eagles",
+    "pittsburgh steelers": "pittsburgh_steelers",
+    "san francisco 49ers": "san_francisco_49ers",
+    "seattle seahawks": "seattle_seahawks",
+    "tampa bay buccaneers": "tampa_bay_buccaneers",
+    "tennessee titans": "tennessee_titans",
+    "washington commanders": "washington_commanders",
+}
+
+DST_ABBR_MAP: dict[str, str] = {
+    "ARI": "arizona_cardinals",
+    "ATL": "atlanta_falcons",
+    "BAL": "baltimore_ravens",
+    "BUF": "buffalo_bills",
+    "CAR": "carolina_panthers",
+    "CHI": "chicago_bears",
+    "CIN": "cincinnati_bengals",
+    "CLE": "cleveland_browns",
+    "DAL": "dallas_cowboys",
+    "DEN": "denver_broncos",
+    "DET": "detroit_lions",
+    "GB": "green_bay_packers",
+    "HOU": "houston_texans",
+    "IND": "indianapolis_colts",
+    "JAX": "jacksonville_jaguars",
+    "KC": "kansas_city_chiefs",
+    "LV": "las_vegas_raiders",
+    "LAC": "los_angeles_chargers",
+    "LAR": "los_angeles_rams",
+    "MIA": "miami_dolphins",
+    "MIN": "minnesota_vikings",
+    "NE": "new_england_patriots",
+    "NO": "new_orleans_saints",
+    "NYG": "new_york_giants",
+    "NYJ": "new_york_jets",
+    "PHI": "philadelphia_eagles",
+    "PIT": "pittsburgh_steelers",
+    "SF": "san_francisco_49ers",
+    "SEA": "seattle_seahawks",
+    "TB": "tampa_bay_buccaneers",
+    "TEN": "tennessee_titans",
+    "WAS": "washington_commanders",
+}
+
+
+def normalize_position(value: object) -> str:
+    text = str(value).strip().upper()
+    return POSITION_NORMALIZA
+
+[TRUNCATED]
+```
+
+### `scripts/build_player_reference.py`
+
+```text
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from packages.data.constants import DEFAULT_PILOT_YEARS, INTERMEDIATE_DATA_DIR
+from packages.data.io import read_parquet, write_parquet
+from packages.data.player_ids import build_player_reference_table
+
+INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+
+
+def _adp_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"adp_historical_{min(years)}_{max(years)}.parquet"
+
+
+def _nflverse_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"nflverse_player_weekly_{min(years)}_{max(years)}.parquet"
+
+
+def _reference_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"player_reference_{min(years)}_{max(years)}.parquet"
+
+
+def main() -> None:
+    years = list(DEFAULT_PILOT_YEARS)
+
+    adp = read_parquet(_adp_path(years))
+    nflverse = pd.read_parquet(_nflverse_path(years))
+
+    reference = build_player_reference_table([adp, nflverse])
+    write_parquet(reference, _reference_path(years))
+
+    print(
+        f"Player reference build complete: rows={len(reference)}, "
+        f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
+    )
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ### `scripts/ingest_adp.py`
@@ -1703,9 +2124,102 @@ def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
 
     assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
     assert sorted(df["season"].unique().tolist()) == [2023, 2024]
-    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_nam
+    assert UNIQUE_KEY_COLUMNS == ["season", "canonical_player_id", "source_name"]
 
 [TRUNCATED]
+```
+
+### `tests/data/test_player_ids.py`
+
+```text
+from __future__ import annotations
+
+import pandas as pd
+import polars as pl
+
+from packages.data.player_ids import (
+    attach_canonical_ids_pandas,
+    attach_canonical_ids_polars,
+    build_canonical_player_id,
+    build_player_reference_table,
+    normalize_dst_name,
+    normalize_player_name,
+)
+
+
+def test_normalize_player_name_removes_punctuation_and_suffix() -> None:
+    assert normalize_player_name("D.J. Moore") == "dj_moore"
+    assert normalize_player_name("Kenneth Walker III") == "kenneth_walker"
+    assert normalize_player_name("Brian Thomas Jr.") == "brian_thomas"
+
+
+def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
+    assert normalize_dst_name("DAL") == "dallas_cowboys"
+    assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
+    assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+
+
+def test_build_canonical_player_id_is_stable() -> None:
+    assert build_canonical_player_id("D.J. Moore", "WR") == "player:dj_moore:WR"
+    assert build_canonical_player_id("Kenneth Walker III", "RB") == "player:kenneth_walker:RB"
+    assert build_canonical_player_id("Dallas Cowboys DST", "DST") == "dst:dallas_cowboys:DST"
+
+
+def test_attach_canonical_ids_pandas() -> None:
+    df = pd.DataFrame(
+        {
+            "player_name": ["D.J. Moore", "Kenneth Walker III"],
+            "position": ["WR", "RB"],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    out = attach_canonical_ids_pandas(df)
+
+    assert "canonical_player_id" in out.columns
+    assert out.loc[0, "canonical_player_id"] == "player:dj_moore:WR"
+    assert out.loc[1, "canonical_player_id"] == "player:kenneth_walker:RB"
+
+
+def test_attach_canonical_ids_polars() -> None:
+    df = pl.DataFrame(
+        {
+            "player_name": ["Dallas Cowboys DST"],
+            "position": ["DST"],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    out = attach_canonical_ids_polars(df)
+
+    assert "canonical_player_id" in out.columns
+    assert out["canonical_player_id"].to_list() == ["dst:dallas_cowboys:DST"]
+
+
+def test_build_player_reference_table_unifies_cross_source_names() -> None:
+    adp = pd.DataFrame(
+        {
+            "player_name": ["D.J. Moore", "Kenneth Walker III"],
+            "position": ["WR", "RB"],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    nflverse = pd.DataFrame(
+        {
+            "player_name": ["DJ Moore", "Kenneth Walker"],
+            "position": ["WR", "RB"],
+            "source_name": ["nflverse", "nflverse"],
+        }
+    )
+
+    reference = build_player_reference_table([adp, nflverse])
+
+    dj_rows = reference.loc[reference["canonical_player_id"] == "player:dj_moore:WR"]
+    kw_rows = reference.loc[reference["canonical_player_id"] == "player:kenneth_walker:RB"]
+
+    assert len(dj_rows) == 2
+    assert len(kw_rows) == 2
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -1736,11 +2250,15 @@ from packages.data.constants import (
     RAW_DATA_DIR,
 )
 from packages.data.io import write_parquet
+from packages.data.player_ids import attach_canonical_ids_pandas
 from packages.data.validation import assert_unique_key, require_columns
 
 REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
     "season",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "position",
     "adp_overall",
     "source_name",
@@ -1748,8 +2266,7 @@ REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
 
 UNIQUE_KEY_COLUMNS: Final[list[str]] = [
     "season",
-    "player_name",
-    "position",
+    "canonical_player_id",
     "source_name",
 ]
 
@@ -1814,7 +2331,6 @@ def _split_player_name(value: object) -> str:
     if not text:
         return text
 
-    # Remove trailing "TEAM (BYE)" suffix, e.g. "DAL (7)", "SF (9)", "NYJ (12)"
     text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
     return text.strip()
 
@@ -1842,8 +2358,7 @@ def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
         }
     )
 
-    normalized["player_name"] = normalized["player_name"].astype("string").str.strip()
-    normalized["position"] =
+    normalized["player_name"] = normalized["player_name"].astyp
 
 [TRUNCATED]
 ```
@@ -1886,13 +2401,19 @@ from pathlib import Path
 import nflreadpy as nfl
 import polars as pl
 
+from packages.data.player_ids import attach_canonical_ids_polars
+
 REQUIRED_OUTPUT_COLUMNS = [
     "season",
     "week",
     "player_name",
+    "normalized_player_name",
+    "entity_type",
+    "canonical_player_id",
     "team",
     "position",
     "fantasy_points",
+    "source_name",
 ]
 
 TEAM_COLUMN_CANDIDATES = [
@@ -1911,6 +2432,8 @@ FANTASY_POINTS_CANDIDATES = [
     "fantasy_points",
     "fantasy_points_ppr",
 ]
+
+SOURCE_NAME = "nflverse"
 
 
 @dataclass(frozen=True)
@@ -1965,10 +2488,14 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
                 pl.col("player_name").str.strip_chars(),
                 pl.col("team").str.strip_chars(),
                 pl.col("position").str.strip_chars(),
+                pl.lit(SOURCE_NAME).alias("source_name"),
             ]
         )
-        .sort(["season", "week", "player_name"])
     )
+
+    normalized = attach_canonical_ids_polars(normalized)
+    normalized = normalized.select(REQUIRED_OUTPUT_COLUMNS)
+    normalized = normalized.sort(["season", "week", "canonical_player_id"])
 
     missing_output = [col for col in REQUIRED_OUTPUT_COLUMNS if col not in normalized.columns]
     if missing_output:
@@ -1978,7 +2505,6 @@ def _normalize_weekly_player_stats(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def fetch_weekly_player_data(years: Iterable[int]) -> pl.DataFrame:
-    """Backward-compatible wrapper for legacy callers/tests."""
     return load_weekly_player_stats(years)
 
 
@@ -1987,21 +2513,9 @@ def load_weekly_player_stats(years: Iterable[int]) -> pl.DataFrame:
     if not years:
         raise ValueError("At least one year must be provided")
 
-    # nflreadpy load_player_stats() returns a Polars DataFrame and supports
-    # week/reg/post/reg+post summary levels.
     raw = nfl.load_player_stats(seasons=years, summary_level="week")
     if not isinstance(raw, pl.DataFrame):
-        raw = pl.from_pandas(raw)
-
-    return raw
-
-
-def write_partitioned_snapshots(
-    raw_df: pl.DataFrame,
-    normalized_df: pl.DataFrame,
-    config: NflverseIngestConfig,
-) -> None:
-    config.raw_dir.mkdir(parents=True,
+        raw = pl.from_
 
 [TRUNCATED]
 ```
@@ -2139,7 +2653,7 @@ def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
 
     assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
     assert sorted(df["season"].unique().tolist()) == [2023, 2024]
-    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_nam
+    assert UNIQUE_KEY_COLUMNS == ["season", "canonical_player_id", "source_name"]
 
 [TRUNCATED]
 ```
@@ -2252,7 +2766,7 @@ INTERMEDIATE_DATA_DIR = "data/intermediate"
 PROCESSED_DATA_DIR = "data/processed"
 
 DEFAULT_PILOT_YEARS = [2023, 2024]
-VALID_POSITIONS = {"QB", "RB", "WR", "TE"}
+VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}
 ```
 
 ### `packages/data/io.py`
@@ -2276,6 +2790,121 @@ def write_parquet(df: pd.DataFrame, path: str | Path) -> None:
 
 def read_parquet(path: str | Path) -> pd.DataFrame:
     return pd.read_parquet(path)
+```
+
+### `packages/data/player_ids.py`
+
+```text
+from __future__ import annotations
+
+import re
+import unicodedata
+from collections.abc import Iterable
+
+import pandas as pd
+import polars as pl
+
+from packages.data.validation import assert_unique_key, require_columns
+
+CANONICAL_ID_COLUMN = "canonical_player_id"
+NORMALIZED_NAME_COLUMN = "normalized_player_name"
+ENTITY_TYPE_COLUMN = "entity_type"
+
+PLAYER_ENTITY = "player"
+DST_ENTITY = "dst"
+
+POSITION_NORMALIZATION_MAP: dict[str, str] = {
+    "QB": "QB",
+    "RB": "RB",
+    "WR": "WR",
+    "TE": "TE",
+    "K": "K",
+    "DST": "DST",
+    "DEF": "DST",
+    "D/ST": "DST",
+}
+
+_SUFFIX_PATTERN = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b", flags=re.IGNORECASE)
+_MULTI_SPACE_PATTERN = re.compile(r"\s+")
+_NON_WORD_SPACE_HYPHEN_SLASH_PATTERN = re.compile(r"[^a-z0-9\s\-/]")
+_DST_TOKEN_PATTERN = re.compile(r"\b(?:d\s*/\s*st|dst|defense|def)\b", flags=re.IGNORECASE)
+
+DST_ALIAS_MAP: dict[str, str] = {
+    "arizona cardinals": "arizona_cardinals",
+    "atlanta falcons": "atlanta_falcons",
+    "baltimore ravens": "baltimore_ravens",
+    "buffalo bills": "buffalo_bills",
+    "carolina panthers": "carolina_panthers",
+    "chicago bears": "chicago_bears",
+    "cincinnati bengals": "cincinnati_bengals",
+    "cleveland browns": "cleveland_browns",
+    "dallas cowboys": "dallas_cowboys",
+    "denver broncos": "denver_broncos",
+    "detroit lions": "detroit_lions",
+    "green bay packers": "green_bay_packers",
+    "houston texans": "houston_texans",
+    "indianapolis colts": "indianapolis_colts",
+    "jacksonville jaguars": "jacksonville_jaguars",
+    "kansas city chiefs": "kansas_city_chiefs",
+    "las vegas raiders": "las_vegas_raiders",
+    "los angeles chargers": "los_angeles_chargers",
+    "los angeles rams": "los_angeles_rams",
+    "miami dolphins": "miami_dolphins",
+    "minnesota vikings": "minnesota_vikings",
+    "new england patriots": "new_england_patriots",
+    "new orleans saints": "new_orleans_saints",
+    "new york giants": "new_york_giants",
+    "new york jets": "new_york_jets",
+    "philadelphia eagles": "philadelphia_eagles",
+    "pittsburgh steelers": "pittsburgh_steelers",
+    "san francisco 49ers": "san_francisco_49ers",
+    "seattle seahawks": "seattle_seahawks",
+    "tampa bay buccaneers": "tampa_bay_buccaneers",
+    "tennessee titans": "tennessee_titans",
+    "washington commanders": "washington_commanders",
+}
+
+DST_ABBR_MAP: dict[str, str] = {
+    "ARI": "arizona_cardinals",
+    "ATL": "atlanta_falcons",
+    "BAL": "baltimore_ravens",
+    "BUF": "buffalo_bills",
+    "CAR": "carolina_panthers",
+    "CHI": "chicago_bears",
+    "CIN": "cincinnati_bengals",
+    "CLE": "cleveland_browns",
+    "DAL": "dallas_cowboys",
+    "DEN": "denver_broncos",
+    "DET": "detroit_lions",
+    "GB": "green_bay_packers",
+    "HOU": "houston_texans",
+    "IND": "indianapolis_colts",
+    "JAX": "jacksonville_jaguars",
+    "KC": "kansas_city_chiefs",
+    "LV": "las_vegas_raiders",
+    "LAC": "los_angeles_chargers",
+    "LAR": "los_angeles_rams",
+    "MIA": "miami_dolphins",
+    "MIN": "minnesota_vikings",
+    "NE": "new_england_patriots",
+    "NO": "new_orleans_saints",
+    "NYG": "new_york_giants",
+    "NYJ": "new_york_jets",
+    "PHI": "philadelphia_eagles",
+    "PIT": "pittsburgh_steelers",
+    "SF": "san_francisco_49ers",
+    "SEA": "seattle_seahawks",
+    "TB": "tampa_bay_buccaneers",
+    "TEN": "tennessee_titans",
+    "WAS": "washington_commanders",
+}
+
+
+def normalize_position(value: object) -> str:
+    text = str(value).strip().upper()
+    return POSITION_NORMALIZA
+
+[TRUNCATED]
 ```
 
 ### `packages/data/validation.py`
@@ -2305,135 +2934,46 @@ def assert_unique_key(df: pd.DataFrame, key_columns: Sequence[str]) -> None:
         )
 ```
 
-### `scripts/ingest_adp.py`
+### `scripts/build_player_reference.py`
 
 ```text
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
 
-from packages.data.constants import (
-    DEFAULT_PILOT_YEARS,
-    INTERMEDIATE_DATA_DIR,
-    RAW_DATA_DIR,
-)
-from packages.data.ingest.adp import (
-    DEFAULT_SOURCE_URLS,
-    AdpIngestConfig,
-    ingest_historical_adp,
-)
-from packages.shared.logging import get_logger
+import pandas as pd
 
-logger = get_logger(__name__)
+from packages.data.constants import DEFAULT_PILOT_YEARS, INTERMEDIATE_DATA_DIR
+from packages.data.io import read_parquet, write_parquet
+from packages.data.player_ids import build_player_reference_table
 
-DEFAULT_RAW_DIR = Path(RAW_DATA_DIR)
-DEFAULT_INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
+INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest historical fantasy football ADP data")
-    parser.add_argument(
-        "--years",
-        nargs="+",
-        type=int,
-        default=DEFAULT_PILOT_YEARS,
-        help="Season years to ingest, e.g. --years 2023 2024",
-    )
-    parser.add_argument(
-        "--raw-dir",
-        type=Path,
-        default=DEFAULT_RAW_DIR,
-        help="Directory for raw HTML snapshots",
-    )
-    parser.add_argument(
-        "--intermediate-dir",
-        type=Path,
-        default=DEFAULT_INTERMEDIATE_DIR,
-        help="Directory for normalized parquet outputs",
-    )
-    return parser.parse_args()
+def _adp_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"adp_historical_{min(years)}_{max(years)}.parquet"
+
+
+def _nflverse_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"nflverse_player_weekly_{min(years)}_{max(years)}.parquet"
+
+
+def _reference_path(years: list[int]) -> Path:
+    return INTERMEDIATE_DIR / f"player_reference_{min(years)}_{max(years)}.parquet"
 
 
 def main() -> None:
-    args = parse_args()
+    years = list(DEFAULT_PILOT_YEARS)
 
-    source_urls = {year: DEFAULT_SOURCE_URLS[year] for year in args.years}
+    adp = read_parquet(_adp_path(years))
+    nflverse = pd.read_parquet(_nflverse_path(years))
 
-    config = AdpIngestConfig(
-        years=args.years,
-        raw_dir=args.raw_dir,
-        intermediate_dir=args.intermediate_dir,
-        source_urls=source_urls,
-    )
+    reference = build_player_reference_table([adp, nflverse])
+    write_parquet(reference, _reference_path(years))
 
-    logger.info("Ingesting historical ADP for seasons=%s", args.years)
-    df = ingest_historical_adp(config)
-    logger.info(
-        "ADP ingest complete: rows=%s cols=%s years=%s-%s",
-        len(df),
-        len(df.columns),
-        min(args.years),
-        max(args.years),
-    )
-
-
-if __name__ == "__main__":
-    main()
-```
-
-### `scripts/ingest_nflverse.py`
-
-```text
-from __future__ import annotations
-
-import argparse
-from pathlib import Path
-
-from packages.data.ingest.nflverse import NflverseIngestConfig, ingest_nflverse_weekly_players
-
-DEFAULT_YEARS = [2023, 2024]
-DEFAULT_RAW_DIR = Path("data/raw")
-DEFAULT_INTERMEDIATE_DIR = Path("data/intermediate")
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest weekly NFL player data from nflverse")
-    parser.add_argument(
-        "--years",
-        nargs="+",
-        type=int,
-        default=DEFAULT_YEARS,
-        help="Season years to ingest, e.g. --years 2023 2024",
-    )
-    parser.add_argument(
-        "--raw-dir",
-        type=Path,
-        default=DEFAULT_RAW_DIR,
-        help="Directory for raw parquet snapshots",
-    )
-    parser.add_argument(
-        "--intermediate-dir",
-        type=Path,
-        default=DEFAULT_INTERMEDIATE_DIR,
-        help="Directory for normalized parquet outputs",
-    )
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-
-    config = NflverseIngestConfig(
-        years=args.years,
-        raw_dir=args.raw_dir,
-        intermediate_dir=args.intermediate_dir,
-    )
-
-    df = ingest_nflverse_weekly_players(config)
     print(
-        f"Ingest complete: rows={df.height}, cols={df.width}, "
-        f"years={min(args.years)}-{max(args.years)}"
+        f"Player reference build complete: rows={len(reference)}, "
+        f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
     )
 
 
@@ -2682,6 +3222,90 @@ def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         ingest_nflverse_weekly_players(config)
+```
+
+### `tests/data/test_player_ids.py`
+
+```text
+from __future__ import annotations
+
+import pandas as pd
+import polars as pl
+
+from packages.data.player_ids import (
+    attach_canonical_ids_pandas,
+    attach_canonical_ids_polars,
+    build_canonical_player_id,
+    build_player_reference_table,
+    normalize_dst_name,
+    normalize_player_name,
+)
+
+
+def test_normalize_player_name_removes_punctuation_and_suffix() -> None:
+    assert normalize_player_name("D.J. Moore") == "dj_moore"
+    assert normalize_player_name("Kenneth Walker III") == "kenneth_walker"
+    assert normalize_player_name("Brian Thomas Jr.") == "brian_thomas"
+
+
+def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
+    assert normalize_dst_name("DAL") == "dallas_cowboys"
+    assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
+    assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+
+
+def test_build_canonical_player_id_is_stable() -> None:
+    assert build_canonical_player_id("D.J. Moore", "WR") == "player:dj_moore:WR"
+    assert build_canonical_player_id("Kenneth Walker III", "RB") == "player:kenneth_walker:RB"
+    assert build_canonical_player_id("Dallas Cowboys DST", "DST") == "dst:dallas_cowboys:DST"
+
+
+def test_attach_canonical_ids_pandas() -> None:
+    df = pd.DataFrame(
+        {
+            "player_name": ["D.J. Moore", "Kenneth Walker III"],
+            "position": ["WR", "RB"],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    out = attach_canonical_ids_pandas(df)
+
+    assert "canonical_player_id" in out.columns
+    assert out.loc[0, "canonical_player_id"] == "player:dj_moore:WR"
+    assert out.loc[1, "canonical_player_id"] == "player:kenneth_walker:RB"
+
+
+def test_attach_canonical_ids_polars() -> None:
+    df = pl.DataFrame(
+        {
+            "player_name": ["Dallas Cowboys DST"],
+            "position": ["DST"],
+            "source_name": ["fantasypros"],
+        }
+    )
+
+    out = attach_canonical_ids_polars(df)
+
+    assert "canonical_player_id" in out.columns
+    assert out["canonical_player_id"].to_list() == ["dst:dallas_cowboys:DST"]
+
+
+def test_build_player_reference_table_unifies_cross_source_names() -> None:
+    adp = pd.DataFrame(
+        {
+            "player_name": ["D.J. Moore", "Kenneth Walker III"],
+            "position": ["WR", "RB"],
+            "source_name": ["fantasypros", "fantasypros"],
+        }
+    )
+
+    nflverse = pd.DataFrame(
+        {
+            "player_name": ["DJ Moore", "Kenneth Walker"],
+            "position": ["WR", "
+
+[TRUNCATED]
 ```
 
 ## Open Implementation Notes
