@@ -128,7 +128,7 @@ def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
 
     assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
     assert sorted(df["season"].unique().tolist()) == [2023, 2024]
-    assert UNIQUE_KEY_COLUMNS == ["season", "player_name", "position", "source_name"]
+    assert UNIQUE_KEY_COLUMNS == ["season", "canonical_player_id", "source_name"]
 
     raw_files = list((tmp_path / "raw").glob("*.html"))
     intermediate_files = list((tmp_path / "intermediate").glob("*.parquet"))
