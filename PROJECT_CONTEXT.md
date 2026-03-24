@@ -4,30 +4,46 @@ This file is auto-generated to give ChatGPT a compact, practical understanding o
 
 ## Project Summary
 
+Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
+
+```md
 # Fantasy Draft Intelligence
 
 A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
 
+---
+
 ## Purpose
+
 This project aims to identify when the fantasy football market is mispricing players relative to expected outcomes.
 
 The product is built around four layers:
-1. Data collection and normalization
-2. Feature engineering and research
-3. Predictive modeling and value scoring
-4. Draft decision support
+
+1. **Data collection and normalization**
+2. **Feature engineering and research**
+3. **Predictive modeling and value scoring**
+4. **Draft decision support**
+
+---
 
 ## Core Question
+
 At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
 
+---
+
 ## Principles
+
 - ADP is the baseline, not the answer
 - Narratives must become variables
 - Opportunity matters more than story
 - Everything should be reproducible
 - Git is the operating system for the project
 
+---
+
 ## Tech Stack
+
 - Python
 - GitHub Codespaces
 - Pandas / Polars
@@ -37,28 +53,181 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - ruff
 - black
 
+---
+
+## Data Architecture (M1 Foundation)
+
+The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
+
+### Pipeline Flow
+
+```
+
+raw source data
+↓
+normalized source tables (ADP, nflverse, etc.)
+↓
+canonical player ID enrichment
+↓
+player reference table (cross-source mapping)
+
+```
+
+### Key Concepts
+
+**Canonical Player ID**
+- Stable identifier used across all datasets
+- Generated via normalization logic in `packages/data/player_ids.py`
+- Handles:
+  - suffixes (Jr., Sr., III)
+  - punctuation
+  - casing / whitespace
+  - common naming inconsistencies
+  - DST naming standardization
+
+**Player Reference Table**
+- Located at:
+```
+
+data/intermediate/player_reference_<years>.parquet
+
+```
+- Built from all normalized sources
+- Serves as the **join layer across datasets**
+
+**Join Rule (Important)**
+> All cross-source joins should use `canonical_player_id`, not raw `player_name`.
+
+---
+
+## Current Data Outputs
+
+After running ingestion + reference build:
+
+```
+
+data/intermediate/
+├── adp_historical_2023_2024.parquet
+├── nflverse_player_weekly_2023_2024.parquet
+└── player_reference_2023_2024.parquet
+
+````
+
+---
+
 ## Initial Milestone
-**M1: Core Historical Warehouse for Pilot Seasons**
+
+### **M1: Core Historical Warehouse for Pilot Seasons**
 
 This milestone includes:
+
 - repo setup
 - Codespaces environment
 - source inventory
 - nflverse ingestion
-- ADP ingestion prototype
-- canonical IDs
-- initial validation
+- ADP ingestion
+- canonical player ID layer
+- player reference mapping
+- data validation and tests
+
+---
 
 ## Quick Start
 
 ### 1. Open in Codespaces
 Open the repository in GitHub Codespaces.
 
+---
+
 ### 2. Install dependencies
+
 This should happen automatically in the devcontainer. If needed:
 
 ```bash
 pip install -e .[dev]
+````
+
+---
+
+### 3. Run Data Pipeline
+
+#### Ingest ADP
+
+```bash
+python scripts/ingest_adp.py
+```
+
+#### Ingest nflverse
+
+```bash
+python scripts/ingest_nflverse.py
+```
+
+#### Build Player Reference Table
+
+```bash
+python scripts/build_player_reference.py
+```
+
+---
+
+### 4. Run Tests
+
+```bash
+pytest
+```
+
+---
+
+## Project Structure
+
+```
+packages/
+  data/
+    ingest/              # source ingestion (ADP, nflverse)
+    player_ids.py        # canonical ID logic
+    io.py                # read/write utilities
+    validation.py        # data validation helpers
+
+scripts/
+  ingest_*.py            # ingestion entrypoints
+  build_player_reference.py
+
+data/
+  raw/                   # source snapshots
+  intermediate/          # normalized + canonical outputs
+
+tests/
+  data/                  # ingestion + ID tests
+```
+
+---
+
+## Development Notes
+
+* Canonical ID logic is **code-first**, not notebook-based
+* All intermediate datasets are written as **Parquet**
+* Validation includes:
+
+  * required columns
+  * uniqueness constraints
+* Tests cover:
+
+  * normalization edge cases
+  * cross-source join stability
+
+---
+
+## Next Steps
+
+* Expand player identity resolution (aliases, edge cases)
+* Add additional data sources (injuries, depth charts, projections)
+* Build feature engineering layer
+* Develop baseline predictive models
+* Implement draft decision engine
+
+```
+```
 
 ## Quickstart and Useful Commands
 
@@ -66,10 +235,24 @@ Potentially useful commands and setup hints found in project files:
 
 ```text
 - pytest
+After running ingestion + reference build:
+- data validation and tests
 ## Quick Start
 ### 2. Install dependencies
 This should happen automatically in the devcontainer. If needed:
 pip install -e .[dev]
+### 3. Run Data Pipeline
+#### Build Player Reference Table
+python scripts/build_player_reference.py
+### 4. Run Tests
+pytest
+build_player_reference.py
+tests/
+data/                  # ingestion + ID tests
+## Development Notes
+* Tests cover:
+* Build feature engineering layer
+* Develop baseline predictive models
 [build-system]
 build-backend = "setuptools.build_meta"
 dev = [
@@ -81,7 +264,6 @@ testpaths = ["tests"]
 install:
 lint:
 test:
-pytest
 ```
 
 ## Repository Structure
@@ -161,30 +343,46 @@ pytest
 ### `README.md`
 
 ```text
+Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
+
+```md
 # Fantasy Draft Intelligence
 
 A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
 
+---
+
 ## Purpose
+
 This project aims to identify when the fantasy football market is mispricing players relative to expected outcomes.
 
 The product is built around four layers:
-1. Data collection and normalization
-2. Feature engineering and research
-3. Predictive modeling and value scoring
-4. Draft decision support
+
+1. **Data collection and normalization**
+2. **Feature engineering and research**
+3. **Predictive modeling and value scoring**
+4. **Draft decision support**
+
+---
 
 ## Core Question
+
 At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
 
+---
+
 ## Principles
+
 - ADP is the baseline, not the answer
 - Narratives must become variables
 - Opportunity matters more than story
 - Everything should be reproducible
 - Git is the operating system for the project
 
+---
+
 ## Tech Stack
+
 - Python
 - GitHub Codespaces
 - Pandas / Polars
@@ -194,28 +392,181 @@ At a given draft pick, which available player offers the best risk-adjusted valu
 - ruff
 - black
 
+---
+
+## Data Architecture (M1 Foundation)
+
+The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
+
+### Pipeline Flow
+
+```
+
+raw source data
+↓
+normalized source tables (ADP, nflverse, etc.)
+↓
+canonical player ID enrichment
+↓
+player reference table (cross-source mapping)
+
+```
+
+### Key Concepts
+
+**Canonical Player ID**
+- Stable identifier used across all datasets
+- Generated via normalization logic in `packages/data/player_ids.py`
+- Handles:
+  - suffixes (Jr., Sr., III)
+  - punctuation
+  - casing / whitespace
+  - common naming inconsistencies
+  - DST naming standardization
+
+**Player Reference Table**
+- Located at:
+```
+
+data/intermediate/player_reference_<years>.parquet
+
+```
+- Built from all normalized sources
+- Serves as the **join layer across datasets**
+
+**Join Rule (Important)**
+> All cross-source joins should use `canonical_player_id`, not raw `player_name`.
+
+---
+
+## Current Data Outputs
+
+After running ingestion + reference build:
+
+```
+
+data/intermediate/
+├── adp_historical_2023_2024.parquet
+├── nflverse_player_weekly_2023_2024.parquet
+└── player_reference_2023_2024.parquet
+
+````
+
+---
+
 ## Initial Milestone
-**M1: Core Historical Warehouse for Pilot Seasons**
+
+### **M1: Core Historical Warehouse for Pilot Seasons**
 
 This milestone includes:
+
 - repo setup
 - Codespaces environment
 - source inventory
 - nflverse ingestion
-- ADP ingestion prototype
-- canonical IDs
-- initial validation
+- ADP ingestion
+- canonical player ID layer
+- player reference mapping
+- data validation and tests
+
+---
 
 ## Quick Start
 
 ### 1. Open in Codespaces
 Open the repository in GitHub Codespaces.
 
+---
+
 ### 2. Install dependencies
+
 This should happen automatically in the devcontainer. If needed:
 
 ```bash
 pip install -e .[dev]
+````
+
+---
+
+### 3. Run Data Pipeline
+
+#### Ingest ADP
+
+```bash
+python scripts/ingest_adp.py
+```
+
+#### Ingest nflverse
+
+```bash
+python scripts/ingest_nflverse.py
+```
+
+#### Build Player Reference Table
+
+```bash
+python scripts/build_player_reference.py
+```
+
+---
+
+### 4. Run Tests
+
+```bash
+pytest
+```
+
+---
+
+## Project Structure
+
+```
+packages/
+  data/
+    ingest/              # source ingestion (ADP, nflverse)
+    player_ids.py        # canonical ID logic
+    io.py                # read/write utilities
+    validation.py        # data validation helpers
+
+scripts/
+  ingest_*.py            # ingestion entrypoints
+  build_player_reference.py
+
+data/
+  raw/                   # source snapshots
+  intermediate/          # normalized + canonical outputs
+
+tests/
+  data/                  # ingestion + ID tests
+```
+
+---
+
+## Development Notes
+
+* Canonical ID logic is **code-first**, not notebook-based
+* All intermediate datasets are written as **Parquet**
+* Validation includes:
+
+  * required columns
+  * uniqueness constraints
+* Tests cover:
+
+  * normalization edge cases
+  * cross-source join stability
+
+---
+
+## Next Steps
+
+* Expand player identity resolution (aliases, edge cases)
+* Add additional data sources (injuries, depth charts, projections)
+* Build feature engineering layer
+* Develop baseline predictive models
+* Implement draft decision engine
+
+```
+```
 ```
 
 ### `pyproject.toml`
@@ -374,14 +725,124 @@ Why was this chosen over alternatives?
 ```text
 # Architecture Notes
 
-This directory stores architecture diagrams, decisions, and system design notes.
+This directory stores system design decisions, data flow structure, and architectural principles.
 
-Suggested future contents:
-- system context diagram
-- data flow diagram
-- storage design notes
-- model lifecycle notes
-- app architecture notes
+---
+
+## Data Architecture Overview
+
+The project follows a layered, reproducible data pipeline designed to support stable cross-source joins and downstream modeling.
+
+### Pipeline Flow
+
+
+raw source data
+↓
+normalized source tables (ADP, nflverse, etc.)
+↓
+canonical player ID enrichment
+↓
+player reference table (cross-source mapping)
+
+
+---
+
+## Core Components
+
+### 1. Source Ingestion
+
+Located in:
+
+packages/data/ingest/
+
+
+Responsibilities:
+- extract data from external sources
+- normalize schema into structured tables
+- write outputs to `data/intermediate/`
+
+---
+
+### 2. Canonical Player ID Layer
+
+Located in:
+
+packages/data/player_ids.py
+
+
+Responsibilities:
+- normalize player names across sources
+- generate a stable `canonical_player_id`
+- handle:
+  - suffixes (Jr., Sr., III)
+  - punctuation (D.J. vs DJ)
+  - casing and whitespace
+  - DST naming inconsistencies
+
+---
+
+### 3. Player Reference Table
+
+Built via:
+
+scripts/build_player_reference.py
+
+
+Output:
+
+data/intermediate/player_reference_<years>.parquet
+
+
+Responsibilities:
+- unify player identities across sources
+- enable consistent joins between datasets
+- act as a foundational lookup table
+
+---
+
+## Design Decisions
+
+### Canonical IDs as Join Key
+
+All joins across datasets must use:
+
+
+canonical_player_id
+
+
+**Reason:**
+Raw `player_name` fields are inconsistent across sources and will lead to:
+- broken joins
+- duplicate entities
+- incorrect modeling inputs
+
+---
+
+### Code-First Data Logic
+
+- All normalization and ID logic lives in `packages/data/`
+- Notebooks are for exploration only
+- Ensures reproducibility and testability
+
+---
+
+### Intermediate Data = Source of Truth
+
+- All normalized datasets are stored in `data/intermediate/`
+- Format: Parquet
+- These serve as the foundation for:
+  - feature engineering
+  - modeling
+  - validation
+
+---
+
+## Next Architecture Steps
+
+- Introduce alias resolution layer (nicknames, edge cases)
+- Add additional data sources (injuries, depth charts)
+- Build feature engineering pipeline
+- Introduce modeling layer with versioned outputs
 ```
 
 ### `docs/MASTER_PROJECT_PLAN.md`
@@ -426,17 +887,24 @@ Suggested future runbooks:
 # Source Inventory
 
 ## Purpose
-This document tracks every external data source used by the project.
+This document tracks every external data source used by the project and how each source is normalized into the data warehouse.
+
+---
 
 ## Guiding Rules
+
 - Prefer free and reproducible sources
 - Minimize scraping surface area
 - Snapshot volatile data where practical
 - Document provenance for every dataset
+- Normalize all sources into a common schema with canonical IDs
+
+---
 
 ## Core Sources
 
 ### 1. nflverse
+
 **Use for:**
 - weekly player stats
 - rosters
@@ -446,63 +914,132 @@ This document tracks every external data source used by the project.
 - team-level data where applicable
 
 **Access method:**
-- Python package access or direct supported data access workflow
+- Python package / supported data access workflows
 
 **Priority:** Primary
 
+**Output location:**
+
+data/intermediate/nflverse_player_weekly_<years>.parquet
+
+
+**Normalized fields (key subset):**
+- season
+- player_name
+- position
+- team
+- stats fields (yards, TDs, etc.)
+- **normalized_player_name**
+- **canonical_player_id**
+- source_name
+
+---
+
 ### 2. FantasyPros
+
 **Use for:**
 - historical ADP
-- overall draft cost baseline for MVP pilot seasons
+- market pricing baseline
 
 **Access method:**
-- controlled extract from season-specific historical overall ADP pages
+- controlled extraction from season-specific ADP pages
 - explicit URL manifest by season
-- raw HTML snapshots saved to `data/raw/`
-- normalized parquet saved to `data/intermediate/`
+- raw HTML snapshots stored locally
+
+**Raw storage:**
+
+data/raw/adp_fantasypros_<season>_overall.html
+
+
+**Output location:**
+
+data/intermediate/adp_historical_<years>.parquet
+
 
 **Current provenance:**
-- FantasyPros NFL historical overall ADP page for 2023
-- FantasyPros NFL historical overall ADP page for 2024
+- FantasyPros NFL historical overall ADP (2023, 2024)
 
-**Normalization fields:**
+**Normalized fields:**
 - season
 - player_name
 - position
 - adp_overall
 - source_name
+- **normalized_player_name**
+- **entity_type** (player / DST)
+- **canonical_player_id**
 
-**Reproducibility policy:**
-- snapshot raw source HTML during ingestion
-- avoid broad, dynamic scraping
-- extend coverage by adding explicit season URLs to the ingestion manifest
-
-**Priority:** Primary for ADP
+---
 
 ### 3. Pro-Football-Reference
+
 **Use for:**
 - coaching history
 - team-level reference data
-- fallback cross-checking
+- fallback validation
 
 **Access method:**
-- careful scrape or manual maintenance when needed
+- targeted scrape or manual ingestion
 
-**Priority:** Secondary / selective
+**Priority:** Secondary
+
+---
+
+## Derived Artifacts
+
+### Player Reference Table
+
+**Location:**
+
+data/intermediate/player_reference_<years>.parquet
+
+
+**Purpose:**
+- provides a unified mapping of players across all sources
+- enables stable joins between datasets
+
+**Built from:**
+- normalized nflverse output
+- normalized ADP output
+
+**Key fields:**
+- canonical_player_id
+- normalized_player_name
+- source_name
+- source_player_name
+
+---
+
+## Join Standard (Critical)
+
+> All cross-source joins must use `canonical_player_id`.
+
+Raw `player_name` values are not reliable due to:
+- suffix differences (Jr., Sr., III)
+- punctuation (D.J. vs DJ)
+- spacing / casing inconsistencies
+- DST naming differences
+
+---
 
 ## Datasets Required for MVP
+
 - weekly player stats
-- season player stats
+- season-level stats
 - snap counts
 - rosters
 - ADP
 - coaching history
-- team season context
+- team context
+
+---
 
 ## Open Questions
-- exact ADP historical coverage by season
-- whether coaching table should be fully manual for MVP
-- whether additional context sources are needed for QB changes / depth chart changes
+
+- ADP historical depth across more seasons
+- alias handling (nicknames, alternate spellings)
+- DST normalization edge cases
+- whether coaching data should be fully manual for MVP
 ```
 
 ## Important Source Files
