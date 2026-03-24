@@ -73,14 +73,8 @@ def test_prepare_adp_player_season_adds_position_rank():
     result = prepare_adp_player_season(adp_df)
 
     assert len(result) == 2
-    assert (
-        result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0]
-        == 1
-    )
-    assert (
-        result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0]
-        == 2
-    )
+    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
+    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
 
 
 def test_build_player_season_warehouse_merges_stats_and_adp():

@@ -13,6 +13,7 @@ PROCESSED_DATA_DIR = Path("data/processed")
 
 FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
 
+
 def _safe_mode(series: pd.Series):
     non_null = series.dropna()
     if non_null.empty:
@@ -186,9 +187,7 @@ def build_player_season_warehouse(
     stats_df = aggregate_nflverse_to_player_season(nflverse_df)
     stats_df = stats_df[stats_df["position"].isin(FANTASY_POSITIONS)].copy()
     adp_season_df = prepare_adp_player_season(adp_df)
-    adp_season_df = adp_season_df[
-        adp_season_df["position"].isin(FANTASY_POSITIONS)
-    ].copy()
+    adp_season_df = adp_season_df[adp_season_df["position"].isin(FANTASY_POSITIONS)].copy()
 
     warehouse_df = stats_df.merge(
         adp_season_df[
