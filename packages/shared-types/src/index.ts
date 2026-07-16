@@ -14,6 +14,8 @@ export const ROSTER_SLOT_TYPES = [
 ] as const;
 export type RosterSlotType = (typeof ROSTER_SLOT_TYPES)[number];
 
+export const DRAFT_EXPORT_SCHEMA_VERSION = "1.0" as const;
+
 export type ScoringPreset = "standard" | "half_ppr" | "ppr" | "custom";
 
 export interface ScoringSettings {
@@ -86,6 +88,8 @@ export interface DraftOrderSlot {
 
 export interface DraftPick extends DraftOrderSlot {
   playerId: string;
+  rosterSlot: RosterSlotType;
+  rosterSlotIndex: number;
 }
 
 export type DraftStatus = "not_started" | "in_progress" | "complete";
@@ -95,6 +99,7 @@ export interface DraftState {
   settings: LeagueSettings;
   teams: DraftTeam[];
   order: DraftOrderSlot[];
+  playerDataRelease: PlayerDataRelease;
   playerPoolIds: string[];
   availablePlayerIds: string[];
   picks: DraftPick[];
@@ -103,8 +108,27 @@ export interface DraftState {
   revision: number;
 }
 
+export interface DraftExportPayload {
+  draftId: string;
+  settings: LeagueSettings;
+  teams: DraftTeam[];
+  playerDataRelease: PlayerDataRelease;
+  pickPlayerIds: string[];
+  revision: number;
+}
+
+export interface DraftExportEnvelope {
+  schema_version: typeof DRAFT_EXPORT_SCHEMA_VERSION;
+  exported_at: string;
+  draft: DraftExportPayload;
+}
+
 export function isPlayerPosition(value: unknown): value is PlayerPosition {
   return typeof value === "string" && PLAYER_POSITIONS.includes(value as PlayerPosition);
+}
+
+export function isRosterSlotType(value: unknown): value is RosterSlotType {
+  return typeof value === "string" && ROSTER_SLOT_TYPES.includes(value as RosterSlotType);
 }
 
 export function assertPlayerDataRelease(value: unknown): asserts value is PlayerDataRelease {
