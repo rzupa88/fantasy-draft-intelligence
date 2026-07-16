@@ -25,4 +25,13 @@ describe("snake draft order", () => {
 
     expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
   });
+
+  it("requires roster capacity to equal the configured rounds", () => {
+    const settings = leagueSettings({
+      rounds: 3,
+      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
+    });
+
+    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
+  });
 });
