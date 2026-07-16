@@ -17,14 +17,16 @@ At any draft pick, identify which available player offers the best risk-adjusted
 
 ## Current foundation
 
-The repository currently includes the first historical data foundation:
+The repository includes:
 
 - nflverse weekly data ingestion
 - historical ADP ingestion
 - canonical player ID normalization
 - cross-source player reference data
 - Parquet-based intermediate datasets
-- validation and unit tests
+- a TypeScript shared-contract package
+- a deterministic snake-draft engine
+- full-draft simulation tests
 
 ## Target application
 
@@ -55,6 +57,7 @@ See:
 - [`docs/product-requirements.md`](docs/product-requirements.md)
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
+- [`docs/draft-engine.md`](docs/draft-engine.md)
 
 ## Python setup
 
@@ -66,7 +69,7 @@ source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-## Existing data pipeline
+Run the existing data pipeline and tests:
 
 ```bash
 python scripts/ingest_adp.py
@@ -75,31 +78,43 @@ python scripts/build_player_reference.py
 pytest
 ```
 
+## TypeScript setup
+
+Requires Node.js 22 and npm 10 or later.
+
+```bash
+npm install
+npm run check
+```
+
+Useful commands:
+
+```bash
+npm run typecheck
+npm test
+npm run test:watch
+npm run build
+```
+
 ## Current project structure
 
 ```text
 packages/
-  data/
-    ingest/
-    player_ids.py
-    io.py
-    validation.py
-scripts/
-  ingest_adp.py
-  ingest_nflverse.py
-  build_player_reference.py
-data/
-  raw/
-  intermediate/
-tests/
-  data/
-docs/
+  data/                  # Python ingestion and identity logic
+  modeling/              # Python modeling package
+  shared/                # Python shared package
+  shared-types/          # TypeScript contracts and runtime release validation
+  draft-engine/          # Deterministic TypeScript draft state engine
+scripts/                 # Python pipeline entrypoints
+data/                    # Raw, intermediate, and processed data
+tests/                   # Python tests
+docs/                    # Product and technical documentation
 ```
 
 ## Milestones
 
 - **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** current
+- **M2 — Offline draft engine foundation:** in progress
 - **M3 — Recommendation engine v1**
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
