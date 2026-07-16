@@ -1,224 +1,105 @@
-Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
-
-```md
 # Fantasy Draft Intelligence
 
-A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
+A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 
----
+## Product goal
 
-## Purpose
+At any draft pick, identify which available player offers the best risk-adjusted value relative to market price, positional scarcity, expected availability, and roster needs.
 
-This project aims to identify when the fantasy football market is mispricing players relative to expected outcomes.
+## Core principles
 
-The product is built around four layers:
+- The live draft experience must work without an internet connection.
+- Git is the operating system for the project.
+- ADP is an input, not the answer.
+- Recommendations must be explainable.
+- Cross-source player joins use `canonical_player_id`, never raw player names.
+- Draft state, recommendation logic, and the user interface remain independently testable.
 
-1. **Data collection and normalization**
-2. **Feature engineering and research**
-3. **Predictive modeling and value scoring**
-4. **Draft decision support**
+## Current foundation
 
----
+The repository currently includes the first historical data foundation:
 
-## Core Question
+- nflverse weekly data ingestion
+- historical ADP ingestion
+- canonical player ID normalization
+- cross-source player reference data
+- Parquet-based intermediate datasets
+- validation and unit tests
 
-At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
+## Target application
 
----
+The completed product will be a locally installed desktop application with:
 
-## Principles
+- manual pick entry
+- configurable snake-draft settings
+- live roster and available-player tracking
+- dynamic player recommendations
+- undo and pick correction
+- local autosave and recovery
+- draft export and import
+- no required network connection during the draft
 
-- ADP is the baseline, not the answer
-- Narratives must become variables
-- Opportunity matters more than story
-- Everything should be reproducible
-- Git is the operating system for the project
+The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 
----
+## Architecture direction
 
-## Tech Stack
+- **Data preparation:** Python, Polars/Pandas, DuckDB, Parquet
+- **Draft and recommendation engines:** TypeScript
+- **Interface:** React and Vite
+- **Desktop packaging:** Tauri
+- **Local persistence:** SQLite
+- **Testing:** pytest, Vitest, Playwright
 
-- Python
-- GitHub Codespaces
-- Pandas / Polars
-- DuckDB / Parquet
-- scikit-learn
-- pytest
-- ruff
-- black
+See:
 
----
+- [`docs/product-requirements.md`](docs/product-requirements.md)
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/roadmap.md`](docs/roadmap.md)
 
-## Data Architecture (M1 Foundation)
+## Python setup
 
-The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
-
-### Pipeline Flow
-
-```
-
-raw source data
-↓
-normalized source tables (ADP, nflverse, etc.)
-↓
-canonical player ID enrichment
-↓
-player reference table (cross-source mapping)
-
-```
-
-### Key Concepts
-
-**Canonical Player ID**
-- Stable identifier used across all datasets
-- Generated via normalization logic in `packages/data/player_ids.py`
-- Handles:
-  - suffixes (Jr., Sr., III)
-  - punctuation
-  - casing / whitespace
-  - common naming inconsistencies
-  - DST naming standardization
-
-**Player Reference Table**
-- Located at:
-```
-
-data/intermediate/player_reference_<years>.parquet
-
-```
-- Built from all normalized sources
-- Serves as the **join layer across datasets**
-
-**Join Rule (Important)**
-> All cross-source joins should use `canonical_player_id`, not raw `player_name`.
-
----
-
-## Current Data Outputs
-
-After running ingestion + reference build:
-
-```
-
-data/intermediate/
-├── adp_historical_2023_2024.parquet
-├── nflverse_player_weekly_2023_2024.parquet
-└── player_reference_2023_2024.parquet
-
-````
-
----
-
-## Initial Milestone
-
-### **M1: Core Historical Warehouse for Pilot Seasons**
-
-This milestone includes:
-
-- repo setup
-- Codespaces environment
-- source inventory
-- nflverse ingestion
-- ADP ingestion
-- canonical player ID layer
-- player reference mapping
-- data validation and tests
-
----
-
-## Quick Start
-
-### 1. Open in Codespaces
-Open the repository in GitHub Codespaces.
-
----
-
-### 2. Install dependencies
-
-This should happen automatically in the devcontainer. If needed:
+Requires Python 3.11 or later.
 
 ```bash
-pip install -e .[dev]
-````
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+```
 
----
-
-### 3. Run Data Pipeline
-
-#### Ingest ADP
+## Existing data pipeline
 
 ```bash
 python scripts/ingest_adp.py
-```
-
-#### Ingest nflverse
-
-```bash
 python scripts/ingest_nflverse.py
-```
-
-#### Build Player Reference Table
-
-```bash
 python scripts/build_player_reference.py
-```
-
----
-
-### 4. Run Tests
-
-```bash
 pytest
 ```
 
----
+## Current project structure
 
-## Project Structure
-
-```
+```text
 packages/
   data/
-    ingest/              # source ingestion (ADP, nflverse)
-    player_ids.py        # canonical ID logic
-    io.py                # read/write utilities
-    validation.py        # data validation helpers
-
+    ingest/
+    player_ids.py
+    io.py
+    validation.py
 scripts/
-  ingest_*.py            # ingestion entrypoints
+  ingest_adp.py
+  ingest_nflverse.py
   build_player_reference.py
-
 data/
-  raw/                   # source snapshots
-  intermediate/          # normalized + canonical outputs
-
+  raw/
+  intermediate/
 tests/
-  data/                  # ingestion + ID tests
+  data/
+docs/
 ```
 
----
+## Milestones
 
-## Development Notes
-
-* Canonical ID logic is **code-first**, not notebook-based
-* All intermediate datasets are written as **Parquet**
-* Validation includes:
-
-  * required columns
-  * uniqueness constraints
-* Tests cover:
-
-  * normalization edge cases
-  * cross-source join stability
-
----
-
-## Next Steps
-
-* Expand player identity resolution (aliases, edge cases)
-* Add additional data sources (injuries, depth charts, projections)
-* Build feature engineering layer
-* Develop baseline predictive models
-* Implement draft decision engine
-
-```
-```
+- **M1 — Historical data foundation:** established
+- **M2 — Offline draft engine foundation:** current
+- **M3 — Recommendation engine v1**
+- **M4 — Local draft-room interface**
+- **M5 — Desktop packaging and release**
