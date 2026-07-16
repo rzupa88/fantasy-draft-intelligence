@@ -26,6 +26,8 @@ The repository includes:
 - Parquet-based intermediate datasets
 - a TypeScript shared-contract package
 - a deterministic snake-draft engine
+- position-aware roster allocation
+- versioned draft export/import
 - full-draft simulation tests
 
 ## Target application
@@ -58,6 +60,7 @@ See:
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/draft-engine.md`](docs/draft-engine.md)
+- [`docs/draft-persistence.md`](docs/draft-persistence.md)
 
 ## Python setup
 
