@@ -10,6 +10,51 @@ export const UDK_ADP_SOURCES = ["average", "sleeper", "espn", "yahoo", "underdog
 export type UdkAdpSource = (typeof UDK_ADP_SOURCES)[number];
 export type UdkAnalyst = "Andy" | "Jason" | "Mike";
 
+type ProjectionStat =
+  | "passingYards"
+  | "passingTouchdowns"
+  | "interceptions"
+  | "rushingAttempts"
+  | "rushingYards"
+  | "rushingTouchdowns"
+  | "receptions"
+  | "receivingYards"
+  | "receivingTouchdowns"
+  | "fumbles";
+
+type ProjectionStats = Partial<Record<ProjectionStat, number>>;
+
+interface UdkRankingRow {
+  name: string;
+  position: PlayerPosition;
+  team: string | null;
+  byeWeek: number | null;
+  positionRank: number;
+  projectedPoints: number | null;
+  risk: number | null;
+  upside: number | null;
+  tier: number | null;
+}
+
+interface UdkProjectionRow {
+  analyst: UdkAnalyst;
+  name: string;
+  position: PlayerPosition;
+  stats: ProjectionStats;
+}
+
+interface UdkAdpRow {
+  name: string;
+  position: PlayerPosition;
+  values: Record<UdkAdpSource, string | null>;
+}
+
+export interface UdkRecognizedFile {
+  path: string;
+  kind: "rankings" | "projections" | "adp" | "career" | "value-scout";
+  rowCount: number;
+}
+
 export interface UdkImportPackage {
   season: number;
   recognizedFiles: UdkRecognizedFile[];
@@ -18,12 +63,6 @@ export interface UdkImportPackage {
   projections: UdkProjectionRow[];
   adpRows: UdkAdpRow[];
   warnings: string[];
-}
-
-export interface UdkRecognizedFile {
-  path: string;
-  kind: "rankings" | "projections" | "adp" | "career" | "value-scout";
-  rowCount: number;
 }
 
 export interface UdkBuildOptions {
@@ -52,58 +91,15 @@ export interface UdkBuildResult {
   report: UdkBuildReport;
 }
 
-interface UdkRankingRow {
-  name: string;
-  position: PlayerPosition;
-  team: string | null;
-  byeWeek: number | null;
-  positionRank: number;
-  projectedPoints: number | null;
-  risk: number | null;
-  upside: number | null;
-  adp: string | null;
-  tier: number | null;
-}
-
-interface UdkProjectionRow {
-  analyst: UdkAnalyst;
-  name: string;
-  position: PlayerPosition;
-  team: string | null;
-  byeWeek: number | null;
-  stats: ProjectionStats;
-}
-
-interface ProjectionStats {
-  passingYards?: number;
-  passingTouchdowns?: number;
-  interceptions?: number;
-  rushingAttempts?: number;
-  rushingYards?: number;
-  rushingTouchdowns?: number;
-  receptions?: number;
-  receivingYards?: number;
-  receivingTouchdowns?: number;
-  fumbles?: number;
-}
-
-interface UdkAdpRow {
-  name: string;
-  position: PlayerPosition;
-  team: string | null;
-  values: Record<UdkAdpSource, string | null>;
-}
-
-interface BuiltPlayer extends PlayerDataRecord {
-  sortAdp: number | null;
-}
-
-export function parseUdkZip(bytes: Uint8Array, fallbackSeason = new Date().getFullYear()): UdkImportPackage {
+export function parseUdkZip(
+  bytes: Uint8Array,
+  fallbackSeason = new Date().getFullYear(),
+): UdkImportPackage {
   let archive: Record<string, Uint8Array>;
   try {
     archive = unzipSync(bytes);
   } catch (error) {
-    throw new TypeError(`The selected file is not a readable ZIP archive: ${toErrorMessage(error)}`);
+    throw new TypeError(`The selected file is not a readable ZIP archive: ${messageOf(error)}`);
   }
 
   const recognizedFiles: UdkRecognizedFile[] = [];
@@ -114,23 +110,17 @@ export function parseUdkZip(bytes: Uint8Array, fallbackSeason = new Date().getFu
   const warnings: string[] = [];
   const careerYears: number[] = [];
 
-  for (const [rawPath, contents] of Object.entries(archive)) {
+  for (const [rawPath, bytesForFile] of Object.entries(archive)) {
     const path = rawPath.replaceAll("\\", "/");
-    if (path.endsWith("/") || contents.length === 0) {
-      continue;
-    }
+    if (path.endsWith("/") || bytesForFile.length === 0) continue;
     const filename = path.split("/").at(-1) ?? path;
 
-    if (/\.pdf$/i.test(filename)) {
-      ignoredFiles.push(path);
-      continue;
-    }
-    if (!/\.csv$/i.test(filename)) {
+    if (/\.pdf$/i.test(filename) || !/\.csv$/i.test(filename)) {
       ignoredFiles.push(path);
       continue;
     }
 
-    const rows = parseCsv(strFromU8(contents));
+    const rows = parseCsv(strFromU8(bytesForFile));
     if (rows.length === 0) {
       warnings.push(`${path} was empty and was ignored.`);
       continue;
@@ -149,11 +139,18 @@ export function parseUdkZip(bytes: Uint8Array, fallbackSeason = new Date().getFu
       continue;
     }
 
-    const projectionMatch = filename.match(/UDK - (Andys|Jasons|Mikes) Projections - (QB|RB|WR|TE)\.csv$/i);
+    const projectionMatch = filename.match(
+      /UDK - (Andys|Jasons|Mikes) Projections - (QB|RB|WR|TE)\.csv$/i,
+    );
     if (projectionMatch !== null) {
       const analyst = normalizeAnalyst(projectionMatch[1]);
       const position = normalizePosition(projectionMatch[2]);
-      if (analyst === null || position === null || position === "K" || position === "DST") {
+      if (
+        analyst === null ||
+        position === null ||
+        position === "K" ||
+        position === "DST"
+      ) {
         warnings.push(`${path} used unsupported projection metadata.`);
         continue;
       }
@@ -171,18 +168,19 @@ export function parseUdkZip(bytes: Uint8Array, fallbackSeason = new Date().getFu
     }
 
     if (/Consistency Charts/i.test(filename)) {
-      const header = rows[0] ?? [];
-      for (const cell of header) {
-        if (/^20\d{2}$/.test(cell.trim())) {
-          careerYears.push(Number(cell));
-        }
+      for (const cell of rows[0] ?? []) {
+        if (/^20\d{2}$/.test(cell.trim())) careerYears.push(Number(cell));
       }
       recognizedFiles.push({ path, kind: "career", rowCount: Math.max(0, rows.length - 1) });
       continue;
     }
 
     if (/Value Scout/i.test(filename)) {
-      recognizedFiles.push({ path, kind: "value-scout", rowCount: Math.max(0, rows.length - 1) });
+      recognizedFiles.push({
+        path,
+        kind: "value-scout",
+        rowCount: Math.max(0, rows.length - 1),
+      });
       continue;
     }
 
@@ -192,17 +190,11 @@ export function parseUdkZip(bytes: Uint8Array, fallbackSeason = new Date().getFu
   if (rankings.length === 0) {
     throw new TypeError("No UDK position-ranking CSV files were found in the ZIP archive.");
   }
-
-  const season = careerYears.length > 0 ? Math.max(...careerYears) + 1 : fallbackSeason;
-  if (projections.length === 0) {
-    warnings.push("No Andy, Jason, or Mike projection files were recognized.");
-  }
-  if (adpRows.length === 0) {
-    warnings.push("No UDK ADP Comparison file was recognized.");
-  }
+  if (projections.length === 0) warnings.push("No Andy, Jason, or Mike projection files were recognized.");
+  if (adpRows.length === 0) warnings.push("No UDK ADP Comparison file was recognized.");
 
   return {
-    season,
+    season: careerYears.length > 0 ? Math.max(...careerYears) + 1 : fallbackSeason,
     recognizedFiles,
     ignoredFiles,
     rankings,
@@ -216,7 +208,11 @@ export function buildUdkPlayerDataRelease(
   source: UdkImportPackage,
   options: UdkBuildOptions,
 ): UdkBuildResult {
-  if (!Number.isInteger(options.adpTeamCount) || options.adpTeamCount < 2 || options.adpTeamCount > 20) {
+  if (
+    !Number.isInteger(options.adpTeamCount) ||
+    options.adpTeamCount < 2 ||
+    options.adpTeamCount > 20
+  ) {
     throw new RangeError("ADP team count must be an integer between 2 and 20.");
   }
   if (!UDK_ADP_SOURCES.includes(options.adpSource)) {
@@ -224,66 +220,66 @@ export function buildUdkPlayerDataRelease(
   }
 
   const generatedAt = options.generatedAt ?? new Date().toISOString();
-  const rankingByKey = new Map<string, UdkRankingRow>();
+  const rankingsByKey = new Map<string, UdkRankingRow>();
   for (const row of source.rankings) {
     const key = playerKey(row.name, row.position);
-    if (rankingByKey.has(key)) {
+    if (rankingsByKey.has(key)) {
       throw new TypeError(`Duplicate UDK ranking row for ${row.name} (${row.position}).`);
     }
-    rankingByKey.set(key, row);
+    rankingsByKey.set(key, row);
   }
 
   const projectionsByKey = groupBy(source.projections, (row) => playerKey(row.name, row.position));
   const adpByKey = new Map(source.adpRows.map((row) => [playerKey(row.name, row.position), row]));
+
   const unmatchedProjectionRows = uniqueSorted(
     source.projections
-      .filter((row) => !rankingByKey.has(playerKey(row.name, row.position)))
+      .filter((row) => !rankingsByKey.has(playerKey(row.name, row.position)))
       .map((row) => `${row.name} (${row.position}, ${row.analyst})`),
   );
   const unmatchedAdpRows = uniqueSorted(
     source.adpRows
-      .filter((row) => !rankingByKey.has(playerKey(row.name, row.position)))
+      .filter((row) => !rankingsByKey.has(playerKey(row.name, row.position)))
       .map((row) => `${row.name} (${row.position})`),
   );
 
-  const builtPlayers: BuiltPlayer[] = source.rankings.map((ranking) => {
+  const playersWithoutOverallRank: PlayerDataRecord[] = source.rankings.map((ranking) => {
     const key = playerKey(ranking.name, ranking.position);
-    const projectionRows = projectionsByKey.get(key) ?? [];
-    const analystPoints = projectionRows.map((row) => scoreProjection(row.stats, options.scoring));
+    const analystPoints = (projectionsByKey.get(key) ?? []).map((row) =>
+      scoreProjection(row.stats, options.scoring),
+    );
     const projection = median(analystPoints) ?? ranking.projectedPoints;
     const adpRow = adpByKey.get(key);
-    const marketAdp = adpRow === undefined
-      ? null
-      : parseOverallAdp(adpRow.values[options.adpSource], options.adpTeamCount) ??
-        parseOverallAdp(adpRow.values.average, options.adpTeamCount) ??
-        firstAvailableAdp(adpRow, options.adpTeamCount);
+    const selectedAdp =
+      adpRow === undefined
+        ? null
+        : parseOverallAdp(adpRow.values[options.adpSource], options.adpTeamCount) ??
+          parseOverallAdp(adpRow.values.average, options.adpTeamCount) ??
+          firstAvailableAdp(adpRow, options.adpTeamCount);
 
     return {
-      canonical_player_id: createUdkPlayerId(source.season, ranking.name, ranking.position),
+      canonical_player_id: createPlayerId(source.season, ranking.name, ranking.position),
       display_name: ranking.name,
       position: ranking.position,
       nfl_team: ranking.team,
       bye_week: ranking.byeWeek,
       overall_rank: null,
       position_rank: ranking.positionRank,
-      adp: marketAdp,
+      adp: selectedAdp,
       projected_points: projection === null ? null : round(projection, 1),
       tier: ranking.tier,
       risk_score: ranking.risk,
       upside_score: ranking.upside,
       availability_status: "active",
-      sortAdp: marketAdp,
     };
   });
 
-  const ranked = [...builtPlayers].sort(compareForOverallRank);
-  const overallRankById = new Map(
-    ranked.map((player, index) => [player.canonical_player_id, index + 1]),
-  );
-  const players: PlayerDataRecord[] = builtPlayers
-    .map(({ sortAdp: _sortAdp, ...player }) => ({
+  const sorted = [...playersWithoutOverallRank].sort(comparePlayerValue);
+  const rankById = new Map(sorted.map((player, index) => [player.canonical_player_id, index + 1]));
+  const players = playersWithoutOverallRank
+    .map((player) => ({
       ...player,
-      overall_rank: overallRankById.get(player.canonical_player_id) ?? null,
+      overall_rank: rankById.get(player.canonical_player_id) ?? null,
     }))
     .sort((left, right) => (left.overall_rank ?? Infinity) - (right.overall_rank ?? Infinity));
 
@@ -298,31 +294,37 @@ export function buildUdkPlayerDataRelease(
   const allAnalystProjectionCount = source.rankings.filter(
     (row) => (projectionCounts.get(playerKey(row.name, row.position)) ?? 0) >= 3,
   ).length;
-  const adpPlayerCount = source.rankings.filter((row) => adpByKey.has(playerKey(row.name, row.position))).length;
-  const selectedAdpPlayerCount = players.filter((player) => player.adp !== null).length;
+  const adpPlayerCount = source.rankings.filter((row) =>
+    adpByKey.has(playerKey(row.name, row.position)),
+  ).length;
   const warnings = [...source.warnings];
   if (unmatchedProjectionRows.length > 0) {
-    warnings.push(`${unmatchedProjectionRows.length} projection rows did not match a position-ranking player.`);
+    warnings.push(
+      `${unmatchedProjectionRows.length} projection rows did not match a position-ranking player.`,
+    );
   }
   if (unmatchedAdpRows.length > 0) {
     warnings.push(`${unmatchedAdpRows.length} ADP rows did not match a position-ranking player.`);
   }
 
-  const release: PlayerDataRelease = {
-    schema_version: "1.0",
-    season: source.season,
-    release_id: createReleaseId(source.season, generatedAt, options.scoring.preset, options.adpSource),
-    generated_at: generatedAt,
-    sources: [
-      "Fantasy Footballers UDK position rankings",
-      "Fantasy Footballers UDK analyst projections",
-      `Fantasy Footballers UDK ${options.adpSource} ADP`,
-    ],
-    players,
-  };
-
   return {
-    release,
+    release: {
+      schema_version: "1.0",
+      season: source.season,
+      release_id: createReleaseId(
+        source.season,
+        generatedAt,
+        options.scoring.preset,
+        options.adpSource,
+      ),
+      generated_at: generatedAt,
+      sources: [
+        "Fantasy Footballers UDK position rankings",
+        "Fantasy Footballers UDK analyst projections",
+        `Fantasy Footballers UDK ${options.adpSource} ADP`,
+      ],
+      players,
+    },
     report: {
       season: source.season,
       recognizedFileCount: source.recognizedFiles.length,
@@ -331,7 +333,7 @@ export function buildUdkPlayerDataRelease(
       projectedPlayerCount,
       allAnalystProjectionCount,
       adpPlayerCount,
-      selectedAdpPlayerCount,
+      selectedAdpPlayerCount: players.filter((player) => player.adp !== null).length,
       unmatchedProjectionRows,
       unmatchedAdpRows,
       warnings,
@@ -362,33 +364,22 @@ export function parseCsv(input: string): string[][] {
       continue;
     }
 
-    if (character === '"' && field.length === 0) {
-      quoted = true;
-    } else if (character === ",") {
+    if (character === '"' && field.length === 0) quoted = true;
+    else if (character === ",") {
       row.push(field);
       field = "";
     } else if (character === "\n" || character === "\r") {
-      if (character === "\r" && text[index + 1] === "\n") {
-        index += 1;
-      }
+      if (character === "\r" && text[index + 1] === "\n") index += 1;
       row.push(field);
       field = "";
-      if (row.some((cell) => cell.length > 0)) {
-        rows.push(row);
-      }
+      if (row.some((cell) => cell.length > 0)) rows.push(row);
       row = [];
-    } else {
-      field += character;
-    }
+    } else field += character;
   }
 
+  if (quoted) throw new TypeError("CSV input ended inside a quoted field.");
   row.push(field);
-  if (row.some((cell) => cell.length > 0)) {
-    rows.push(row);
-  }
-  if (quoted) {
-    throw new TypeError("CSV input ended inside a quoted field.");
-  }
+  if (row.some((cell) => cell.length > 0)) rows.push(row);
   return rows;
 }
 
@@ -401,10 +392,8 @@ function parseRankingRows(
   const result: UdkRankingRow[] = [];
   for (const [offset, row] of rows.slice(1).entries()) {
     const name = cleanString(row[0]);
-    if (name === null) {
-      continue;
-    }
-    const rank = parsePositiveInteger(row[4]);
+    if (name === null) continue;
+    const rank = positiveInteger(row[4]);
     if (rank === null) {
       warnings.push(`${path} row ${offset + 2} was skipped because Rank was invalid.`);
       continue;
@@ -414,13 +403,12 @@ function parseRankingRows(
       name,
       position,
       team: cleanString(row[2]),
-      byeWeek: parsePositiveInteger(row[3]),
+      byeWeek: positiveInteger(row[3]),
       positionRank: rank,
-      projectedPoints: offensive ? parseNumber(row[5]) : null,
-      risk: offensive ? parseNumber(row[6]) : null,
-      upside: offensive ? parseNumber(row[7]) : null,
-      adp: offensive ? cleanString(row[8]) : null,
-      tier: offensive ? parsePositiveInteger(row[9]) : null,
+      projectedPoints: offensive ? numberValue(row[5]) : null,
+      risk: offensive ? numberValue(row[6]) : null,
+      upside: offensive ? numberValue(row[7]) : null,
+      tier: offensive ? positiveInteger(row[9]) : null,
     });
   }
   return result;
@@ -436,66 +424,57 @@ function parseProjectionRows(
   const result: UdkProjectionRow[] = [];
   for (const [offset, row] of rows.slice(1).entries()) {
     const name = cleanString(row[0]);
-    if (name === null) {
-      continue;
-    }
-    const stats = parseProjectionStats(row, position);
+    if (name === null) continue;
+    const stats = projectionStats(row, position);
     if (Object.keys(stats).length === 0) {
       warnings.push(`${path} row ${offset + 2} had no usable projection statistics.`);
     }
-    result.push({
-      analyst,
-      name,
-      position,
-      team: cleanString(row[1]),
-      byeWeek: parsePositiveInteger(row[2]),
-      stats,
-    });
+    result.push({ analyst, name, position, stats });
   }
   return result;
 }
 
-function parseProjectionStats(
+function projectionStats(
   row: string[],
   position: Exclude<PlayerPosition, "K" | "DST">,
 ): ProjectionStats {
   if (position === "QB") {
     return compactStats({
-      passingYards: parseNumber(row[5]),
-      passingTouchdowns: parseNumber(row[6]),
-      rushingYards: parseNumber(row[7]),
-      rushingTouchdowns: parseNumber(row[8]),
-      interceptions: parseNumber(row[9]),
-      fumbles: parseNumber(row[10]),
+      passingYards: numberValue(row[5]),
+      passingTouchdowns: numberValue(row[6]),
+      rushingYards: numberValue(row[7]),
+      rushingTouchdowns: numberValue(row[8]),
+      interceptions: numberValue(row[9]),
+      fumbles: numberValue(row[10]),
     });
   }
   if (position === "RB") {
     return compactStats({
-      rushingAttempts: parseNumber(row[5]),
-      rushingYards: parseNumber(row[6]),
-      rushingTouchdowns: parseNumber(row[7]),
-      receptions: parseNumber(row[8]),
-      receivingYards: parseNumber(row[9]),
-      receivingTouchdowns: parseNumber(row[10]),
-      fumbles: parseNumber(row[11]),
+      rushingAttempts: numberValue(row[5]),
+      rushingYards: numberValue(row[6]),
+      rushingTouchdowns: numberValue(row[7]),
+      receptions: numberValue(row[8]),
+      receivingYards: numberValue(row[9]),
+      receivingTouchdowns: numberValue(row[10]),
+      fumbles: numberValue(row[11]),
     });
   }
   if (position === "WR") {
     return compactStats({
-      receptions: parseNumber(row[5]),
-      receivingYards: parseNumber(row[6]),
-      receivingTouchdowns: parseNumber(row[7]),
-      rushingAttempts: parseNumber(row[8]),
-      rushingYards: parseNumber(row[9]),
-      rushingTouchdowns: parseNumber(row[10]),
-      fumbles: parseNumber(row[11]),
+      receptions: numberValue(row[5]),
+      receivingYards: numberValue(row[6]),
+      receivingTouchdowns: numberValue(row[7]),
+      rushingAttempts: numberValue(row[8]),
+      rushingYards: numberValue(row[9]),
+      rushingTouchdowns: numberValue(row[10]),
+      fumbles: numberValue(row[11]),
     });
   }
   return compactStats({
-    receptions: parseNumber(row[5]),
-    receivingYards: parseNumber(row[6]),
-    receivingTouchdowns: parseNumber(row[7]),
-    fumbles: parseNumber(row[8]),
+    receptions: numberValue(row[5]),
+    receivingYards: numberValue(row[6]),
+    receivingTouchdowns: numberValue(row[7]),
+    fumbles: numberValue(row[8]),
   });
 }
 
@@ -505,15 +484,12 @@ function parseAdpRows(rows: string[][], path: string, warnings: string[]): UdkAd
     const name = cleanString(row[1]);
     const position = normalizePosition(row[3]);
     if (name === null || position === null || position === "K" || position === "DST") {
-      if (name !== null) {
-        warnings.push(`${path} row ${offset + 2} used an unsupported ADP position.`);
-      }
+      if (name !== null) warnings.push(`${path} row ${offset + 2} used an unsupported ADP position.`);
       continue;
     }
     result.push({
       name,
       position,
-      team: cleanString(row[2]),
       values: {
         average: cleanString(row[5]),
         sleeper: cleanString(row[6]),
@@ -541,43 +517,30 @@ function scoreProjection(stats: ProjectionStats, scoring: ScoringSettings): numb
 }
 
 function parseOverallAdp(value: string | null, teamCount: number): number | null {
-  if (value === null) {
-    return null;
-  }
-  const match = value.trim().match(/^(\d+)\.(\d{1,2})$/);
-  if (match === null) {
-    return null;
-  }
+  const match = value?.trim().match(/^(\d+)\.(\d{1,2})$/);
+  if (match === undefined || match === null) return null;
   const roundNumber = Number(match[1]);
-  const pickInRound = Number(match[2]);
-  if (roundNumber < 1 || pickInRound < 1 || pickInRound > teamCount) {
-    return null;
-  }
-  return (roundNumber - 1) * teamCount + pickInRound;
+  const pick = Number(match[2]);
+  if (roundNumber < 1 || pick < 1 || pick > teamCount) return null;
+  return (roundNumber - 1) * teamCount + pick;
 }
 
 function firstAvailableAdp(row: UdkAdpRow, teamCount: number): number | null {
   for (const source of UDK_ADP_SOURCES) {
     const value = parseOverallAdp(row.values[source], teamCount);
-    if (value !== null) {
-      return value;
-    }
+    if (value !== null) return value;
   }
   return null;
 }
 
-function compareForOverallRank(left: BuiltPlayer, right: BuiltPlayer): number {
-  if (left.sortAdp !== null || right.sortAdp !== null) {
-    const comparison = (left.sortAdp ?? Infinity) - (right.sortAdp ?? Infinity);
-    if (comparison !== 0) {
-      return comparison;
-    }
+function comparePlayerValue(left: PlayerDataRecord, right: PlayerDataRecord): number {
+  if (left.adp !== null || right.adp !== null) {
+    const comparison = (left.adp ?? Infinity) - (right.adp ?? Infinity);
+    if (comparison !== 0) return comparison;
   }
   if (left.projected_points !== null || right.projected_points !== null) {
     const comparison = (right.projected_points ?? -Infinity) - (left.projected_points ?? -Infinity);
-    if (comparison !== 0) {
-      return comparison;
-    }
+    if (comparison !== 0) return comparison;
   }
   if (left.position !== right.position) {
     return positionOrder(left.position) - positionOrder(right.position);
@@ -585,37 +548,35 @@ function compareForOverallRank(left: BuiltPlayer, right: BuiltPlayer): number {
   return (left.position_rank ?? Infinity) - (right.position_rank ?? Infinity);
 }
 
-function positionOrder(position: PlayerPosition): number {
-  return ["RB", "WR", "QB", "TE", "K", "DST"].indexOf(position);
-}
-
-function compactStats(input: Record<keyof ProjectionStats, number | null | undefined>): ProjectionStats {
+function compactStats(
+  values: Partial<Record<ProjectionStat, number | null | undefined>>,
+): ProjectionStats {
   return Object.fromEntries(
-    Object.entries(input).filter((entry): entry is [string, number] => entry[1] !== null && entry[1] !== undefined),
-  ) as ProjectionStats;
+    Object.entries(values).filter(
+      (entry): entry is [ProjectionStat, number] => entry[1] !== null && entry[1] !== undefined,
+    ),
+  );
 }
 
 function normalizePosition(value: string | undefined): PlayerPosition | null {
   const normalized = value?.trim().toUpperCase();
-  if (normalized === "D" || normalized === "DEF" || normalized === "D/ST") {
-    return "DST";
-  }
-  return normalized === "QB" || normalized === "RB" || normalized === "WR" || normalized === "TE" || normalized === "K" || normalized === "DST"
-    ? normalized
-    : null;
+  if (normalized === "D" || normalized === "DEF" || normalized === "D/ST") return "DST";
+  if (
+    normalized === "QB" ||
+    normalized === "RB" ||
+    normalized === "WR" ||
+    normalized === "TE" ||
+    normalized === "K" ||
+    normalized === "DST"
+  ) return normalized;
+  return null;
 }
 
 function normalizeAnalyst(value: string | undefined): UdkAnalyst | null {
   const normalized = value?.trim().toLowerCase();
-  if (normalized === "andys") {
-    return "Andy";
-  }
-  if (normalized === "jasons") {
-    return "Jason";
-  }
-  if (normalized === "mikes") {
-    return "Mike";
-  }
+  if (normalized === "andys") return "Andy";
+  if (normalized === "jasons") return "Jason";
+  if (normalized === "mikes") return "Mike";
   return null;
 }
 
@@ -633,7 +594,7 @@ function normalizeName(value: string): string {
     .toLowerCase();
 }
 
-function createUdkPlayerId(season: number, name: string, position: PlayerPosition): string {
+function createPlayerId(season: number, name: string, position: PlayerPosition): string {
   const slug = name
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -650,17 +611,14 @@ function createReleaseId(
   scoringPreset: string,
   adpSource: UdkAdpSource,
 ): string {
-  const timestamp = generatedAt.replace(/[^0-9]/g, "").slice(0, 14);
-  return `udk-${season}-${scoringPreset}-${adpSource}-${timestamp}`;
+  return `udk-${season}-${scoringPreset}-${adpSource}-${generatedAt.replace(/[^0-9]/g, "").slice(0, 14)}`;
 }
 
 function groupBy<T>(values: T[], keyFor: (value: T) => string): Map<string, T[]> {
   const result = new Map<string, T[]>();
   for (const value of values) {
     const key = keyFor(value);
-    const group = result.get(key) ?? [];
-    group.push(value);
-    result.set(key, group);
+    result.set(key, [...(result.get(key) ?? []), value]);
   }
   return result;
 }
@@ -670,9 +628,7 @@ function uniqueSorted(values: string[]): string[] {
 }
 
 function median(values: number[]): number | null {
-  if (values.length === 0) {
-    return null;
-  }
+  if (values.length === 0) return null;
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 1
@@ -680,16 +636,14 @@ function median(values: number[]): number | null {
     : (sorted[middle - 1]! + sorted[middle]!) / 2;
 }
 
-function parseNumber(value: string | undefined): number | null {
-  if (value === undefined || value.trim() === "") {
-    return null;
-  }
+function numberValue(value: string | undefined): number | null {
+  if (value === undefined || value.trim() === "") return null;
   const parsed = Number(value.replaceAll(",", ""));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parsePositiveInteger(value: string | undefined): number | null {
-  const parsed = parseNumber(value);
+function positiveInteger(value: string | undefined): number | null {
+  const parsed = numberValue(value);
   return parsed !== null && Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
@@ -698,11 +652,15 @@ function cleanString(value: string | undefined): string | null {
   return cleaned === undefined || cleaned.length === 0 ? null : cleaned;
 }
 
+function positionOrder(position: PlayerPosition): number {
+  return ["RB", "WR", "QB", "TE", "K", "DST"].indexOf(position);
+}
+
 function round(value: number, digits: number): number {
   const factor = 10 ** digits;
   return Math.round(value * factor) / factor;
 }
 
-function toErrorMessage(error: unknown): string {
+function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
