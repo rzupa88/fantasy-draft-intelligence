@@ -68,30 +68,43 @@ The baseline exit criteria are covered by the draft-engine, roster-allocation, p
 - Repeatable scenarios expose scoring behavior for tuning.
 - Recommendation behavior can be checked in CI before interface changes merge.
 
-Items 1 through 11 now have baseline implementations. The remaining calibration work is broader mock-draft and historical replay analysis using real preseason player releases. That work can continue alongside the interface because the scenario harness now protects the stable public API and core behavioral expectations.
+Items 1 through 11 have baseline implementations. Broader calibration with real preseason releases can continue without blocking interface work because the stable public API is protected by the evaluation harness.
 
 ## M4 — Local draft-room interface
+
+**Status:** First functional React/Vite shell implemented
 
 **Goal:** Make the engine practical during a real draft.
 
 ### Deliverables
 
-1. React and Vite application
-2. New-draft setup flow
-3. Player search and filters
-4. Manual pick entry
-5. Live draft board
-6. Team roster views
-7. Recommendation panel
-8. Undo and correction interface
-9. Keyboard-first workflow
-10. Playwright end-to-end tests
+1. React and Vite application — baseline complete
+2. New-draft setup flow — baseline complete
+3. Player search and filters — baseline complete
+4. Manual pick entry — baseline complete
+5. Live draft board and recent-pick feed — baseline complete
+6. Team roster views — baseline complete
+7. Recommendation panel — baseline complete
+8. Undo and correction interface — undo complete; correction pending
+9. Keyboard-first workflow — pending
+10. Player-data import and draft restore flow — pending
+11. Playwright end-to-end tests — pending
+
+### Current shell behavior
+
+- Setup creates a real deterministic draft state rather than mocked UI state.
+- Every manual selection advances the snake order through the draft engine.
+- Position-aware roster assignments are shown for every fantasy team.
+- Recommendations recalculate from the current user roster and remaining player pool.
+- The interface can export the engine's versioned JSON draft backup.
+- A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
 
 ### Exit criteria
 
 - A user can complete a draft without developer assistance.
 - Common pick entry requires minimal interaction.
 - Errors are recoverable and clearly explained.
+- A browser-level test completes a representative draft workflow.
 
 ## M5 — Local persistence and desktop release
 
@@ -138,8 +151,8 @@ The active build sequence is:
 3. Add versioned export and restoration.
 4. Implement Recommendation Engine v1.
 5. Add named recommendation scenarios, score snapshots, and weight comparisons.
-6. Build the React draft-room interface against stable engine APIs.
-7. Expand evaluation with full mock drafts and historical player releases.
-8. Add SQLite autosave and Tauri desktop packaging.
-
-The next primary product increment is the React draft-room shell and setup flow. Recommendation calibration remains test-driven through the evaluation harness rather than blocking all interface progress.
+6. Build the React/Vite draft-room shell against stable engine APIs.
+7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
+8. Replace demo data with versioned preseason app releases.
+9. Expand evaluation with full mock drafts and historical player releases.
+10. Add SQLite autosave and Tauri desktop packaging.
