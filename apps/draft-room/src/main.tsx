@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
 import "./styles.css";
 import "./recovery.css";
+import "./roster-config.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
