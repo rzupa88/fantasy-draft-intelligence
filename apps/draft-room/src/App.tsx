@@ -22,6 +22,11 @@ import {
   saveDraftRecovery,
 } from "./draft-storage.js";
 import {
+  enrichPlayerDataReleaseWithNflverse,
+  importNflverseHistoryFile,
+  type NflverseHistoryRelease,
+} from "./nflverse-history.js";
+import {
   buildUdkPlayerDataRelease,
   parseUdkZip,
   type UdkImportPackage,
@@ -34,6 +39,8 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
+  const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
+  const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
@@ -51,6 +58,13 @@ export function App() {
     });
   }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
 
+  const historyBuild = useMemo(() => {
+    if (udkBuild === null || historyRelease === null) {
+      return null;
+    }
+    return enrichPlayerDataReleaseWithNflverse(udkBuild.release, historyRelease);
+  }, [historyRelease, udkBuild]);
+
   useEffect(() => {
     if (draftState === null) {
       return;
@@ -61,10 +75,10 @@ export function App() {
 
   function startDraft(): void {
     try {
-      const release = udkBuild?.release;
+      const release = historyBuild?.release ?? udkBuild?.release;
       if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
         throw new RangeError(
-          `The imported UDK package contains ${release.players.length} players, but this draft requires ${
+          `The imported player release contains ${release.players.length} players, but this draft requires ${
             setup.teamCount * setup.rounds
           } selections.`,
         );
@@ -77,7 +91,9 @@ export function App() {
       setNotice(
         release === undefined
           ? "Draft created with demonstration player data."
-          : `Draft created with the ${release.season} UDK release and ${release.players.length} players.`,
+          : historyBuild === null
+            ? `Draft created with the ${release.season} UDK release and ${release.players.length} players.`
+            : `Draft created with UDK projections and ${historyBuild.report.matchedPlayerCount} NFLverse identity matches.`,
       );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
@@ -102,6 +118,26 @@ export function App() {
   function clearUdkPackage(): void {
     setUdkPackage(null);
     setUdkFilename(null);
+    setErrorMessage(null);
+  }
+
+  async function importHistory(file: File): Promise<void> {
+    try {
+      const parsed = await importNflverseHistoryFile(file);
+      setHistoryRelease(parsed);
+      setHistoryFilename(file.name);
+      setErrorMessage(null);
+      setNotice(null);
+    } catch (error) {
+      setHistoryRelease(null);
+      setHistoryFilename(null);
+      setErrorMessage(toErrorMessage(error));
+    }
+  }
+
+  function clearHistory(): void {
+    setHistoryRelease(null);
+    setHistoryFilename(null);
     setErrorMessage(null);
   }
 
@@ -231,6 +267,9 @@ export function App() {
         recoveredDraft={recoveredDraft}
         udkReport={udkBuild?.report ?? null}
         udkFilename={udkFilename}
+        history={historyRelease}
+        historyReport={historyBuild?.report ?? null}
+        historyFilename={historyFilename}
         errorMessage={errorMessage}
         onSetupChange={(nextSetup) => {
           setSetup(nextSetup);
@@ -242,6 +281,8 @@ export function App() {
         onImportDraft={importDraft}
         onImportUdk={importUdkPackage}
         onClearUdk={clearUdkPackage}
+        onImportHistory={importHistory}
+        onClearHistory={clearHistory}
       />
     );
   }
