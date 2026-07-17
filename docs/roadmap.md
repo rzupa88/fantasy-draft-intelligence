@@ -72,7 +72,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** Functional recoverable browser application implemented
+**Status:** Functional, recoverable, and roster-configurable browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -89,7 +89,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 9. Keyboard-first workflow — baseline complete
 10. Draft import, autosave, and recovery — complete for the browser application
 11. Playwright end-to-end tests — baseline complete
-12. Custom roster editor — pending
+12. Custom roster editor — complete
 13. Production player-data release import — pending
 
 ### Current behavior
@@ -102,7 +102,10 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - The interface autosaves after every state change and restores the latest valid draft after a reload.
 - Versioned JSON backups can be exported, cleared from local recovery, and imported again.
 - Keyboard shortcuts support search, player navigation, drafting, undo, export, and latest-pick correction.
-- Playwright validates keyboard drafting, recovery, correction, undo, export, and import in Chromium.
+- League setup supports editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts.
+- Draft rounds and total selections are derived automatically from roster capacity.
+- Standard, no-kicker, no-defense, extra-flex, two-QB, and superflex structures are supported.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, import, and custom roster setup in Chromium.
 - A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
 
 ### Exit criteria
@@ -112,7 +115,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
 
-The baseline exit criteria are now covered. Remaining M4 work is customization and replacing demonstration data with a production preseason release.
+The interface and resilience exit criteria are covered. Remaining M4 work is replacing demonstration data with a validated production preseason release.
 
 ## M5 — Local persistence and desktop release
 
@@ -144,8 +147,7 @@ Browser storage has already validated the autosave/recovery behavior and state b
 
 After v1.0:
 
-- superflex and two-quarterback formats
-- tight-end premium
+- tight-end premium and fully custom scoring
 - auction drafts
 - dynasty and keeper logic
 - best ball
@@ -165,6 +167,7 @@ The active build sequence is:
 5. Add named recommendation scenarios, score snapshots, and weight comparisons.
 6. Build the React/Vite draft-room shell against stable engine APIs.
 7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
-8. Add custom roster editing and versioned preseason player-data releases.
-9. Expand evaluation with full mock drafts and historical player releases.
-10. Add SQLite autosave and Tauri desktop packaging.
+8. Add custom roster editing.
+9. Replace demonstration data with versioned preseason player-data releases.
+10. Expand evaluation with full mock drafts and historical player releases.
+11. Add SQLite autosave and Tauri desktop packaging.
