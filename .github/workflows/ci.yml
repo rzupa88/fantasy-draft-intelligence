@@ -42,22 +42,7 @@ jobs:
         run: npm install
 
       - name: Typecheck
-        id: typecheck
-        shell: bash
-        run: |
-          set +e
-          npm run typecheck > typecheck.log 2>&1
-          status=$?
-          cat typecheck.log
-          exit "$status"
-
-      - name: Upload TypeScript diagnostics
-        if: failure() && steps.typecheck.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: typescript-diagnostics
-          path: typecheck.log
-          retention-days: 3
+        run: npm run typecheck
 
       - name: Test
         run: npm test
