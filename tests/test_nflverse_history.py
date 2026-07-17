@@ -79,9 +79,7 @@ def test_builds_stable_identity_and_prior_season_summaries() -> None:
     assert len(release["players"]) == 2
 
     veteran = next(
-        player
-        for player in release["players"]
-        if player["nflverse_player_id"] == "00-0039001"
+        player for player in release["players"] if player["nflverse_player_id"] == "00-0039001"
     )
     assert veteran["canonical_player_id"] == "nflverse:00-0039001"
     assert veteran["normalized_name"] == "amon_ra_st_brown"
@@ -111,9 +109,7 @@ def test_builds_stable_identity_and_prior_season_summaries() -> None:
     }
 
     rookie = next(
-        player
-        for player in release["players"]
-        if player["nflverse_player_id"] == "00-0042002"
+        player for player in release["players"] if player["nflverse_player_id"] == "00-0042002"
     )
     assert rookie["display_name"] == "Rookie Runner Jr."
     assert "Rookie Runner" in rookie["aliases"]
