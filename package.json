@@ -13,7 +13,9 @@
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test"
+    "check": "npm run typecheck && npm test",
+    "evaluate:recommendations": "npm run build && node scripts/evaluate_recommendations.mjs",
+    "evaluate:recommendations:json": "npm run build && node scripts/evaluate_recommendations.mjs --json"
   },
   "devDependencies": {
     "typescript": "5.9.2",
