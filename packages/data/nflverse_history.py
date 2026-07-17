@@ -78,20 +78,12 @@ def _normalize_players(players: pl.DataFrame) -> pl.DataFrame:
                 .str.strip_chars()
                 .alias("nflverse_player_id")
             ),
-            (
-                pl.col(name_col)
-                .cast(pl.Utf8, strict=False)
-                .str.strip_chars()
-                .alias("player_name")
-            ),
+            (pl.col(name_col).cast(pl.Utf8, strict=False).str.strip_chars().alias("player_name")),
             pl.col(position_col)
             .map_elements(normalize_position, return_dtype=pl.Utf8)
             .alias("position"),
             *[
-                pl.col(column)
-                .cast(pl.Utf8, strict=False)
-                .str.strip_chars()
-                .alias(f"alias_{index}")
+                pl.col(column).cast(pl.Utf8, strict=False).str.strip_chars().alias(f"alias_{index}")
                 for index, column in enumerate(alias_columns)
             ],
         ]
@@ -209,9 +201,7 @@ def _aggregate_prior_stats(stats: pl.DataFrame, prior_season: int) -> pl.DataFra
             (pl.col("fantasy_points_standard") + pl.col("receptions") * 0.5).alias(
                 "fantasy_points_half_ppr"
             ),
-            pl.sum_horizontal([pl.col(column) for column in FUMBLE_COLUMNS]).alias(
-                "fumbles_lost"
-            ),
+            pl.sum_horizontal([pl.col(column) for column in FUMBLE_COLUMNS]).alias("fumbles_lost"),
         ]
     )
 
@@ -232,15 +222,9 @@ def _aggregate_prior_stats(stats: pl.DataFrame, prior_season: int) -> pl.DataFra
 
     return aggregated.with_columns(
         [
-            (pl.col("fantasy_points_standard") / pl.col("games")).alias(
-                "points_per_game_standard"
-            ),
-            (pl.col("fantasy_points_half_ppr") / pl.col("games")).alias(
-                "points_per_game_half_ppr"
-            ),
-            (pl.col("fantasy_points_ppr") / pl.col("games")).alias(
-                "points_per_game_ppr"
-            ),
+            (pl.col("fantasy_points_standard") / pl.col("games")).alias("points_per_game_standard"),
+            (pl.col("fantasy_points_half_ppr") / pl.col("games")).alias("points_per_game_half_ppr"),
+            (pl.col("fantasy_points_ppr") / pl.col("games")).alias("points_per_game_ppr"),
         ]
     )
 
@@ -266,9 +250,7 @@ def build_nflverse_history_release(
     identities = identities.with_columns(
         [
             pl.coalesce([pl.col("player_name"), pl.col("roster_name")]).alias("display_name"),
-            pl.coalesce([pl.col("position"), pl.col("roster_position")]).alias(
-                "resolved_position"
-            ),
+            pl.coalesce([pl.col("position"), pl.col("roster_position")]).alias("resolved_position"),
         ]
     )
     identities = identities.filter(
