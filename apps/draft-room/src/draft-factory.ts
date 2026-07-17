@@ -2,6 +2,7 @@ import { createDraftState } from "@fdi/draft-engine";
 import type {
   DraftState,
   LeagueSettings,
+  PlayerDataRelease,
   PlayerPosition,
   RosterSlotRule,
   RosterSlotType,
@@ -9,6 +10,7 @@ import type {
   ScoringSettings,
 } from "@fdi/shared-types";
 import { createDemoPlayerDataRelease } from "./demo-data.js";
+import { UDK_ADP_SOURCES, type UdkAdpSource } from "./udk-importer.js";
 
 export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
 export type RosterCounts = Record<RosterSlotType, number>;
@@ -19,6 +21,7 @@ export interface DraftSetup {
   userDraftSlot: number;
   rounds: number;
   scoringPreset: SupportedScoringPreset;
+  adpSource: UdkAdpSource;
   rosterCounts: RosterCounts;
 }
 
@@ -124,11 +127,11 @@ export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   userDraftSlot: 6,
   rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
+  adpSource: "sleeper",
   rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
 };
 
 export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
-export const ROUND_OPTIONS = [14, 15, 16, 17, 18] as const;
 
 export const SCORING_OPTIONS: Array<{
   value: SupportedScoringPreset;
@@ -155,6 +158,7 @@ export const SCORING_OPTIONS: Array<{
 export function createDraftFromSetup(
   setup: DraftSetup,
   draftId = createDraftId(setup.leagueName),
+  playerDataRelease?: PlayerDataRelease,
 ): DraftState {
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
@@ -166,7 +170,8 @@ export function createDraftFromSetup(
     draftId,
     settings,
     teamNames,
-    playerDataRelease: createDemoPlayerDataRelease(setup.teamCount * settings.rounds + 40),
+    playerDataRelease:
+      playerDataRelease ?? createDemoPlayerDataRelease(setup.teamCount * settings.rounds + 40),
   });
 }
 
@@ -222,7 +227,7 @@ export function resetRosterCounts(setup: DraftSetup): DraftSetup {
   };
 }
 
-function createScoringSettings(preset: SupportedScoringPreset): ScoringSettings {
+export function createScoringSettings(preset: SupportedScoringPreset): ScoringSettings {
   const reception = preset === "ppr" ? 1 : preset === "half_ppr" ? 0.5 : 0;
 
   return {
@@ -273,6 +278,9 @@ function validateDraftSetup(setup: DraftSetup): void {
   }
   if (!SCORING_OPTIONS.some((option) => option.value === setup.scoringPreset)) {
     throw new RangeError("Unsupported scoring preset.");
+  }
+  if (!UDK_ADP_SOURCES.includes(setup.adpSource)) {
+    throw new RangeError("Unsupported ADP market.");
   }
 }
 
