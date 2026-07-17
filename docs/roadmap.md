@@ -13,6 +13,8 @@
 
 ## M2 — Offline draft engine foundation
 
+**Status:** Baseline implementation complete
+
 **Goal:** Establish the domain model and run a complete draft without a graphical interface.
 
 ### Deliverables
@@ -35,7 +37,11 @@
 - Undo and correction leave the state valid.
 - State can be serialized and restored without information loss.
 
+The baseline exit criteria are covered by the draft-engine, roster-allocation, persistence, and full-draft regression suites.
+
 ## M3 — Recommendation engine v1
+
+**Status:** Baseline scoring implementation in progress
 
 **Goal:** Return explainable recommendations after every pick.
 
@@ -58,6 +64,9 @@
 - Recommendations change logically with roster and draft state.
 - Every recommendation has a structured explanation.
 - Engine output is deterministic for fixed inputs.
+- Repeatable mock-draft scenarios expose scoring behavior for tuning.
+
+The baseline engine now covers items 1 through 10. The remaining M3 work is the repeatable simulation and evaluation harness used to tune weights before the graphical interface depends on them.
 
 ## M4 — Local draft-room interface
 
@@ -120,15 +129,14 @@ After v1.0:
 
 ## Implementation order
 
-The next build sequence is:
+The active build sequence is:
 
-1. Define TypeScript domain schemas.
-2. Implement snake-order generation.
-3. Implement immutable draft-state transitions.
-4. Add roster validation.
-5. Add undo and correction.
-6. Add full-draft fixtures and tests.
-7. Define the app-ready player-data contract.
-8. Begin recommendation engine v1.
+1. Complete the deterministic draft-state engine.
+2. Enforce position-aware roster legality.
+3. Add versioned export and restoration.
+4. Implement Recommendation Engine v1.
+5. Add repeatable recommendation simulation and evaluation fixtures.
+6. Build the React draft-room interface against stable engine APIs.
+7. Add SQLite autosave and Tauri desktop packaging.
 
-No interface implementation should begin until the draft engine can complete deterministic simulated drafts.
+Interface implementation begins only after the recommendation evaluation harness demonstrates stable, explainable behavior across representative draft scenarios.
