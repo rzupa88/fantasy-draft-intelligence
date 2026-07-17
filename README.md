@@ -28,7 +28,8 @@ The repository includes:
 - a deterministic snake-draft engine
 - position-aware roster allocation
 - versioned draft export/import
-- full-draft simulation tests
+- a deterministic explainable recommendation engine
+- full-draft and recommendation regression tests
 
 ## Target application
 
@@ -61,6 +62,7 @@ See:
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/draft-engine.md`](docs/draft-engine.md)
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
+- [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 
 ## Python setup
 
@@ -108,6 +110,7 @@ packages/
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
+  recommendation-engine/ # Explainable TypeScript recommendation scoring
 scripts/                 # Python pipeline entrypoints
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
@@ -117,7 +120,7 @@ docs/                    # Product and technical documentation
 ## Milestones
 
 - **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** in progress
-- **M3 — Recommendation engine v1**
+- **M2 — Offline draft engine foundation:** established
+- **M3 — Recommendation engine v1:** in progress
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
