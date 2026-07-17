@@ -78,7 +78,11 @@ def test_builds_stable_identity_and_prior_season_summaries() -> None:
     assert release["roster_season"] == 2026
     assert len(release["players"]) == 2
 
-    veteran = next(player for player in release["players"] if player["nflverse_player_id"] == "00-0039001")
+    veteran = next(
+        player
+        for player in release["players"]
+        if player["nflverse_player_id"] == "00-0039001"
+    )
     assert veteran["canonical_player_id"] == "nflverse:00-0039001"
     assert veteran["normalized_name"] == "amon_ra_st_brown"
     assert veteran["current_team"] == "DET"
@@ -106,7 +110,11 @@ def test_builds_stable_identity_and_prior_season_summaries() -> None:
         "fumbles_lost": 1.0,
     }
 
-    rookie = next(player for player in release["players"] if player["nflverse_player_id"] == "00-0042002")
+    rookie = next(
+        player
+        for player in release["players"]
+        if player["nflverse_player_id"] == "00-0042002"
+    )
     assert rookie["display_name"] == "Rookie Runner Jr."
     assert "Rookie Runner" in rookie["aliases"]
     assert rookie["prior_season_stats"] is None
