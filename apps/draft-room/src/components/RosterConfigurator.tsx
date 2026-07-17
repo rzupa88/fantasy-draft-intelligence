@@ -29,9 +29,10 @@ export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorP
 
   return (
     <fieldset className="roster-fieldset field-wide">
+      <legend className="sr-only">Roster configuration</legend>
       <div className="roster-heading">
         <div>
-          <legend>Roster configuration</legend>
+          <h3>Roster configuration</h3>
           <p>Draft rounds update automatically from the total number of roster slots.</p>
         </div>
         <button
