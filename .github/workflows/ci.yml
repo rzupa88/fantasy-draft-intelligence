@@ -24,16 +24,7 @@ jobs:
         run: ruff check .
 
       - name: Format check
-        run: |
-          set -o pipefail
-          black --check --diff . 2>&1 | tee black.log
-
-      - name: Upload format diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-format-diagnostics
-          path: black.log
+        run: black --check .
 
       - name: Test
         run: pytest
