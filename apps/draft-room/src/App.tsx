@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   correctPick,
   getPlayerById,
@@ -12,6 +12,7 @@ import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
   createDraftFromSetup,
+  createScoringSettings,
   type DraftSetup,
 } from "./draft-factory.js";
 import {
@@ -20,16 +21,35 @@ import {
   loadDraftRecovery,
   saveDraftRecovery,
 } from "./draft-storage.js";
+import {
+  buildUdkPlayerDataRelease,
+  parseUdkZip,
+  type UdkImportPackage,
+} from "./udk-importer.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
+  const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
   );
+
+  const udkBuild = useMemo(() => {
+    if (udkPackage === null) {
+      return null;
+    }
+    return buildUdkPlayerDataRelease(udkPackage, {
+      scoring: createScoringSettings(setup.scoringPreset),
+      adpTeamCount: setup.teamCount,
+      adpSource: setup.adpSource,
+      generatedAt: new Date().toISOString(),
+    });
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
 
   useEffect(() => {
     if (draftState === null) {
@@ -41,15 +61,48 @@ export function App() {
 
   function startDraft(): void {
     try {
-      const nextState = createDraftFromSetup(setup);
+      const release = udkBuild?.release;
+      if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
+        throw new RangeError(
+          `The imported UDK package contains ${release.players.length} players, but this draft requires ${
+            setup.teamCount * setup.rounds
+          } selections.`,
+        );
+      }
+      const nextState = createDraftFromSetup(setup, undefined, release);
       clearDraftRecovery();
       setRecoveredDraft(null);
       setDraftState(nextState);
       setErrorMessage(null);
-      setNotice("Draft created. Record the first selection from the player board.");
+      setNotice(
+        release === undefined
+          ? "Draft created with demonstration player data."
+          : `Draft created with the ${release.season} UDK release and ${release.players.length} players.`,
+      );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     }
+  }
+
+  async function importUdkPackage(file: File): Promise<void> {
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const parsed = parseUdkZip(bytes);
+      setUdkPackage(parsed);
+      setUdkFilename(file.name);
+      setErrorMessage(null);
+      setNotice(null);
+    } catch (error) {
+      setUdkPackage(null);
+      setUdkFilename(null);
+      setErrorMessage(toErrorMessage(error));
+    }
+  }
+
+  function clearUdkPackage(): void {
+    setUdkPackage(null);
+    setUdkFilename(null);
+    setErrorMessage(null);
   }
 
   function resumeDraft(): void {
@@ -176,6 +229,8 @@ export function App() {
       <RecoverySetupScreen
         setup={setup}
         recoveredDraft={recoveredDraft}
+        udkReport={udkBuild?.report ?? null}
+        udkFilename={udkFilename}
         errorMessage={errorMessage}
         onSetupChange={(nextSetup) => {
           setSetup(nextSetup);
@@ -185,6 +240,8 @@ export function App() {
         onResumeDraft={resumeDraft}
         onDiscardRecovery={discardRecovery}
         onImportDraft={importDraft}
+        onImportUdk={importUdkPackage}
+        onClearUdk={clearUdkPackage}
       />
     );
   }
