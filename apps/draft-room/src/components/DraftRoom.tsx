@@ -1,9 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  buildRosterAssignments,
-  getCurrentOrderSlot,
-  getPlayerById,
-} from "@fdi/draft-engine";
+import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
 import { recommendPlayers } from "@fdi/recommendation-engine";
 import type {
   DraftPick,
@@ -160,7 +156,9 @@ export function DraftRoom({
               <p className="eyebrow">
                 Round {currentSlot.round} · Pick {currentSlot.pickInRound}
               </p>
-              <h2>{isUserOnClock ? "You are on the clock" : `${currentTeam.name} is on the clock`}</h2>
+              <h2>
+                {isUserOnClock ? "You are on the clock" : `${currentTeam.name} is on the clock`}
+              </h2>
               <p>
                 {isUserOnClock
                   ? "Use the recommendation panel or player board to make your selection."
@@ -276,7 +274,10 @@ export function DraftRoom({
                       <Metric label="Value" value={recommendation.metrics.baseValue} />
                       <Metric label="VOR" value={recommendation.metrics.valueOverReplacement} />
                       <Metric label="Need" value={recommendation.metrics.rosterNeed} />
-                      <Metric label="Urgency" value={recommendation.metrics.expectedAvailability} />
+                      <Metric
+                        label="Urgency"
+                        value={recommendation.metrics.expectedAvailability}
+                      />
                     </div>
                     {isUserOnClock ? (
                       <button
@@ -353,7 +354,8 @@ export function DraftRoom({
                     <div>
                       <strong>{player?.display_name ?? pick.playerId}</strong>
                       <span>
-                        {player?.position ?? "—"} · {player?.nfl_team ?? "FA"} · Pick {pick.overallPick}
+                        {player?.position ?? "—"} · {player?.nfl_team ?? "FA"} · Pick{" "}
+                        {pick.overallPick}
                       </span>
                     </div>
                   </div>
@@ -425,7 +427,12 @@ function PlayerRow({ player, actionLabel, disabled, onDraft }: PlayerRowProps) {
         <span>Proj</span>
         <strong>{player.projected_points?.toFixed(1) ?? "—"}</strong>
       </div>
-      <button type="button" onClick={onDraft} disabled={disabled} aria-label={`${actionLabel}: ${player.display_name}`}>
+      <button
+        type="button"
+        onClick={onDraft}
+        disabled={disabled}
+        aria-label={`${actionLabel}: ${player.display_name}`}
+      >
         Draft
       </button>
     </article>
