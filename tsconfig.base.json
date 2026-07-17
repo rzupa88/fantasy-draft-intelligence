@@ -19,7 +19,8 @@
     "baseUrl": ".",
     "paths": {
       "@fdi/shared-types": ["packages/shared-types/src/index.ts"],
-      "@fdi/draft-engine": ["packages/draft-engine/src/index.ts"]
+      "@fdi/draft-engine": ["packages/draft-engine/src/index.ts"],
+      "@fdi/recommendation-engine": ["packages/recommendation-engine/src/index.ts"]
     }
   }
 }
