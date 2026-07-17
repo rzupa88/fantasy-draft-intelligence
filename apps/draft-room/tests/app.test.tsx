@@ -10,12 +10,13 @@ import {
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders the league setup experience", () => {
+  it("renders the league setup and recovery experience", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
-    expect(html).toContain("Start live draft");
-    expect(html).toContain("Offline fictional demo release");
+    expect(html).toContain("Start new draft");
+    expect(html).toContain("Import backup");
+    expect(html).toContain("Autosaved after every change");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
