@@ -3,8 +3,9 @@ import type { DraftState } from "@fdi/shared-types";
 
 export const DRAFT_RECOVERY_STORAGE_KEY = "fdi.draft-room.recovery.v1";
 
-export function loadDraftRecovery(): DraftState | null {
-  const storage = getBrowserStorage();
+type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export function loadDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): DraftState | null {
   if (storage === null) {
     return null;
   }
@@ -22,16 +23,18 @@ export function loadDraftRecovery(): DraftState | null {
   }
 }
 
-export function saveDraftRecovery(state: DraftState): void {
-  const storage = getBrowserStorage();
+export function saveDraftRecovery(
+  state: DraftState,
+  storage: DraftStorage | null = getBrowserStorage(),
+): void {
   if (storage === null) {
     return;
   }
   storage.setItem(DRAFT_RECOVERY_STORAGE_KEY, serializeDraftState(state));
 }
 
-export function clearDraftRecovery(): void {
-  getBrowserStorage()?.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+export function clearDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): void {
+  storage?.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
 }
 
 export async function importDraftFile(file: Pick<File, "text">): Promise<DraftState> {
