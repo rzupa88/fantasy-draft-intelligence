@@ -72,7 +72,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** Functional, recoverable, and roster-configurable browser application implemented
+**Status:** Functional, recoverable, roster-configurable, and UDK-enabled browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -90,7 +90,8 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 10. Draft import, autosave, and recovery — complete for the browser application
 11. Playwright end-to-end tests — baseline complete
 12. Custom roster editor — complete
-13. Production player-data release import — pending
+13. Fantasy Footballers UDK ZIP import — complete
+14. NFLverse identity and prior-year-stat enrichment — pending
 
 ### Current behavior
 
@@ -105,8 +106,12 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - League setup supports editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts.
 - Draft rounds and total selections are derived automatically from roster capacity.
 - Standard, no-kicker, no-defense, extra-flex, two-QB, and superflex structures are supported.
-- Playwright validates keyboard drafting, recovery, correction, undo, export, import, and custom roster setup in Chromium.
-- A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
+- A UDK ZIP is recognized and normalized entirely in the browser.
+- Andy, Jason, and Mike stat lines are rescored for Standard, Half PPR, or Full PPR and combined by median.
+- Average, Sleeper, ESPN, Yahoo, and Underdog ADP can be selected and converted to overall picks using league size.
+- Import coverage and unmatched rows are shown before the draft starts.
+- The UDK release replaces the fictional player pool while remaining local to the user's device.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, import, custom roster setup, and synthetic UDK ZIP upload in Chromium.
 
 ### Exit criteria
 
@@ -114,8 +119,9 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Common pick entry requires minimal interaction.
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
+- A fresh day-of-draft UDK package can replace the demonstration release without code changes.
 
-The interface and resilience exit criteria are covered. Remaining M4 work is replacing demonstration data with a validated production preseason release.
+The interface, resilience, roster, and UDK import exit criteria are covered. Remaining M4 data work is stable NFLverse identity matching and prior-year-stat enrichment.
 
 ## M5 — Local persistence and desktop release
 
@@ -168,6 +174,7 @@ The active build sequence is:
 6. Build the React/Vite draft-room shell against stable engine APIs.
 7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
 8. Add custom roster editing.
-9. Replace demonstration data with versioned preseason player-data releases.
-10. Expand evaluation with full mock drafts and historical player releases.
-11. Add SQLite autosave and Tauri desktop packaging.
+9. Add day-of-draft UDK ZIP import and normalization.
+10. Match UDK players to NFLverse identities and prior-year statistics.
+11. Expand evaluation with full mock drafts and historical player releases.
+12. Add SQLite autosave and Tauri desktop packaging.
