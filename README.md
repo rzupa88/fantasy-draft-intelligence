@@ -30,8 +30,8 @@ The repository includes:
 - versioned draft export/import
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
-- a React/Vite live draft-room shell
-- full-draft, recommendation, and interface regression tests
+- a React/Vite live draft room with local recovery
+- Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
 
@@ -42,12 +42,16 @@ The React interface currently supports:
 - manual entry for every team selection
 - automatic snake-order advancement
 - search and position filters
+- keyboard-first search, navigation, selection, undo, and export
 - live recommendations for the user roster
 - team-by-team roster tracking
-- undo of the latest selection
-- JSON draft export
+- undo and historical pick correction
+- autosave after every state change
+- automatic restoration after refresh or browser closure
+- JSON draft export and import
+- browser-tested recovery and backup workflows
 
-The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
+The next primary increments are broader roster customization, production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
 
 ## Target application
 
@@ -70,7 +74,7 @@ The initial tested format is a 12-team redraft snake league with configurable sc
 - **Draft and recommendation engines:** TypeScript
 - **Interface:** React and Vite
 - **Desktop packaging:** Tauri
-- **Local persistence:** SQLite
+- **Local persistence:** browser recovery now; SQLite for the desktop release
 - **Testing:** pytest, Vitest, Playwright
 
 See:
@@ -126,8 +130,10 @@ pytest
 npm run typecheck
 npm test
 npm run check
+npm run build
 npm run evaluate:recommendations
-npm run evaluate:recommendations:json
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## Current project structure
@@ -135,6 +141,7 @@ npm run evaluate:recommendations:json
 ```text
 apps/
   draft-room/            # React/Vite live draft interface
+e2e/                     # Playwright browser workflows
 packages/
   data/                  # Python ingestion and identity logic
   modeling/              # Python modeling package
@@ -153,5 +160,5 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** active
+- **M4 — Local draft-room interface:** functional and recoverable; customization remains
 - **M5 — Desktop packaging and release**
