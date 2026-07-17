@@ -21,6 +21,13 @@ __pycache__/
 /data/processed/*
 !/data/processed/.gitkeep
 
+# Private local imports
+/udk-imports/
+UDK Tools.zip
+UDK - *.csv
+UDK Position Rankings - *.csv
+*Fantasy Footballers Podcast.csv
+
 # Artifacts
 /artifacts/figures/*
 !/artifacts/figures/.gitkeep
