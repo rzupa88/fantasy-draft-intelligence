@@ -1,34 +1,70 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  correctPick,
   getPlayerById,
   makePick,
   serializeDraftState,
   undoLastPick,
 } from "@fdi/draft-engine";
 import type { DraftState } from "@fdi/shared-types";
-import { DraftRoom } from "./components/DraftRoom.js";
-import { SetupScreen } from "./components/SetupScreen.js";
+import { DraftWorkspace } from "./components/DraftWorkspace.js";
+import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
   createDraftFromSetup,
   type DraftSetup,
 } from "./draft-factory.js";
+import {
+  clearDraftRecovery,
+  importDraftFile,
+  loadDraftRecovery,
+  saveDraftRecovery,
+} from "./draft-storage.js";
 
 export function App() {
+  const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
-  const [draftState, setDraftState] = useState<DraftState | null>(null);
+  const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
+  const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    initialRecovery === null ? null : "Autosaved draft restored on this device.",
+  );
+
+  useEffect(() => {
+    if (draftState === null) {
+      return;
+    }
+    saveDraftRecovery(draftState);
+    setRecoveredDraft(draftState);
+  }, [draftState]);
 
   function startDraft(): void {
     try {
       const nextState = createDraftFromSetup(setup);
+      clearDraftRecovery();
+      setRecoveredDraft(null);
       setDraftState(nextState);
       setErrorMessage(null);
       setNotice("Draft created. Record the first selection from the player board.");
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     }
+  }
+
+  function resumeDraft(): void {
+    if (recoveredDraft === null) {
+      return;
+    }
+    setDraftState(recoveredDraft);
+    setErrorMessage(null);
+    setNotice("Autosaved draft resumed.");
+  }
+
+  function discardRecovery(): void {
+    clearDraftRecovery();
+    setRecoveredDraft(null);
+    setErrorMessage(null);
   }
 
   function draftPlayer(playerId: string): void {
@@ -65,6 +101,30 @@ export function App() {
     }
   }
 
+  function correctDraftPick(overallPick: number, replacementPlayerId: string): boolean {
+    if (draftState === null) {
+      return false;
+    }
+
+    try {
+      const previousPick = draftState.picks[overallPick - 1];
+      const previousPlayer =
+        previousPick === undefined ? null : getPlayerById(draftState, previousPick.playerId);
+      const replacementPlayer = getPlayerById(draftState, replacementPlayerId);
+      const nextState = correctPick(draftState, overallPick, replacementPlayerId);
+      setDraftState(nextState);
+      setNotice(
+        `Pick ${overallPick} corrected: ${previousPlayer?.display_name ?? "previous player"} replaced by ${
+          replacementPlayer?.display_name ?? replacementPlayerId
+        }.`,
+      );
+      return true;
+    } catch (error) {
+      setNotice(toErrorMessage(error));
+      return false;
+    }
+  }
+
   function exportDraft(): void {
     if (draftState === null) {
       return;
@@ -87,6 +147,24 @@ export function App() {
     }
   }
 
+  async function importDraft(file: File): Promise<boolean> {
+    try {
+      const nextState = await importDraftFile(file);
+      setDraftState(nextState);
+      setRecoveredDraft(nextState);
+      setErrorMessage(null);
+      setNotice(
+        `${nextState.settings.leagueName} imported with ${nextState.picks.length} recorded picks.`,
+      );
+      return true;
+    } catch (error) {
+      const message = toErrorMessage(error);
+      setErrorMessage(message);
+      setNotice(message);
+      return false;
+    }
+  }
+
   function exitDraft(): void {
     setDraftState(null);
     setNotice(null);
@@ -95,25 +173,31 @@ export function App() {
 
   if (draftState === null) {
     return (
-      <SetupScreen
+      <RecoverySetupScreen
         setup={setup}
+        recoveredDraft={recoveredDraft}
         errorMessage={errorMessage}
         onSetupChange={(nextSetup) => {
           setSetup(nextSetup);
           setErrorMessage(null);
         }}
         onStartDraft={startDraft}
+        onResumeDraft={resumeDraft}
+        onDiscardRecovery={discardRecovery}
+        onImportDraft={importDraft}
       />
     );
   }
 
   return (
-    <DraftRoom
+    <DraftWorkspace
       state={draftState}
       notice={notice}
       onDraftPlayer={draftPlayer}
       onUndo={undoPick}
+      onCorrectPick={correctDraftPick}
       onExport={exportDraft}
+      onImportDraft={importDraft}
       onExit={exitDraft}
     />
   );
