@@ -14,6 +14,7 @@ At any draft pick, identify which available player offers the best risk-adjusted
 - Recommendations must be explainable.
 - Cross-source player joins use `canonical_player_id`, never raw player names.
 - Draft state, recommendation logic, and the user interface remain independently testable.
+- Proprietary projection exports remain local and are never committed to the repository.
 
 ## Current foundation
 
@@ -31,6 +32,7 @@ The repository includes:
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
 - a React/Vite live draft room with local recovery
+- Fantasy Footballers UDK ZIP import and release normalization
 - Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
@@ -41,7 +43,11 @@ The React interface currently supports:
 - editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts
 - draft rounds derived automatically from roster capacity
 - standard, no-kicker, no-defense, extra-flex, two-QB, and superflex roster structures
-- an offline deterministic demo player release
+- one-step import of a Fantasy Footballers UDK ZIP package
+- UDK Andy, Jason, and Mike statistical projections recalculated for the selected scoring format
+- Average, Sleeper, ESPN, Yahoo, and Underdog ADP markets
+- UDK rankings, tiers, risk scores, upside scores, and bye weeks
+- an offline deterministic demo release when no UDK package is loaded
 - manual entry for every team selection
 - automatic snake-order advancement
 - search and position filters
@@ -52,9 +58,20 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery, backup, and custom-roster workflows
+- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
 
-The next primary increments are production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
+The next data increment is matching the UDK release to stable NFLverse player IDs and prior-year statistics. SQLite persistence and Tauri desktop packaging follow.
+
+## Draft-day UDK refresh
+
+1. Download fresh UDK CSV exports.
+2. Keep the exported folder structure and compress the files into one ZIP.
+3. Configure scoring, league size, roster slots, and the desired ADP market.
+4. Select **Import UDK ZIP**.
+5. Review the coverage report.
+6. Start the draft.
+
+All ZIP processing happens locally in the browser. See [`docs/udk-import.md`](docs/udk-import.md) for recognized files, projection math, ADP conversion, and privacy rules.
 
 ## Target application
 
@@ -89,6 +106,7 @@ See:
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
+- [`docs/udk-import.md`](docs/udk-import.md)
 
 ## Run the draft room
 
@@ -143,7 +161,7 @@ npm run test:e2e
 
 ```text
 apps/
-  draft-room/            # React/Vite live draft interface
+  draft-room/            # React/Vite live draft interface and UDK importer
 e2e/                     # Playwright browser workflows
 packages/
   data/                  # Python ingestion and identity logic
@@ -163,5 +181,5 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** functional, recoverable, and roster-configurable; production data remains
+- **M4 — Local draft-room interface:** functional, recoverable, roster-configurable, and UDK-enabled; NFLverse enrichment remains
 - **M5 — Desktop packaging and release**
