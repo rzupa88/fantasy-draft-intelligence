@@ -44,20 +44,18 @@ class NflverseHistoryConfig:
     output_path: Path
 
 
-def _first_existing_column(df: pl.DataFrame, candidates: list[str], *, required: bool = True) -> str | None:
+def _first_existing_column(
+    df: pl.DataFrame,
+    candidates: list[str],
+    *,
+    required: bool = True,
+) -> str | None:
     for column in candidates:
         if column in df.columns:
             return column
     if required:
         raise ValueError(f"None of the candidate columns exist: {candidates}")
     return None
-
-
-def _string_expr(df: pl.DataFrame, candidates: list[str], alias: str) -> pl.Expr:
-    column = _first_existing_column(df, candidates, required=False)
-    if column is None:
-        return pl.lit(None, dtype=pl.Utf8).alias(alias)
-    return pl.col(column).cast(pl.Utf8, strict=False).str.strip_chars().alias(alias)
 
 
 def _numeric_expr(df: pl.DataFrame, column: str) -> pl.Expr:
@@ -74,13 +72,26 @@ def _normalize_players(players: pl.DataFrame) -> pl.DataFrame:
     alias_columns = [column for column in PLAYER_NAME_CANDIDATES if column in players.columns]
     selected = players.select(
         [
-            pl.col(id_col).cast(pl.Utf8, strict=False).str.strip_chars().alias("nflverse_player_id"),
-            pl.col(name_col).cast(pl.Utf8, strict=False).str.strip_chars().alias("player_name"),
+            (
+                pl.col(id_col)
+                .cast(pl.Utf8, strict=False)
+                .str.strip_chars()
+                .alias("nflverse_player_id")
+            ),
+            (
+                pl.col(name_col)
+                .cast(pl.Utf8, strict=False)
+                .str.strip_chars()
+                .alias("player_name")
+            ),
             pl.col(position_col)
             .map_elements(normalize_position, return_dtype=pl.Utf8)
             .alias("position"),
             *[
-                pl.col(column).cast(pl.Utf8, strict=False).str.strip_chars().alias(f"alias_{index}")
+                pl.col(column)
+                .cast(pl.Utf8, strict=False)
+                .str.strip_chars()
+                .alias(f"alias_{index}")
                 for index, column in enumerate(alias_columns)
             ],
         ]
@@ -113,8 +124,18 @@ def _normalize_rosters(rosters: pl.DataFrame, roster_season: int) -> pl.DataFram
     return (
         filtered.select(
             [
-                pl.col(id_col).cast(pl.Utf8, strict=False).str.strip_chars().alias("nflverse_player_id"),
-                pl.col(name_col).cast(pl.Utf8, strict=False).str.strip_chars().alias("roster_name"),
+                (
+                    pl.col(id_col)
+                    .cast(pl.Utf8, strict=False)
+                    .str.strip_chars()
+                    .alias("nflverse_player_id")
+                ),
+                (
+                    pl.col(name_col)
+                    .cast(pl.Utf8, strict=False)
+                    .str.strip_chars()
+                    .alias("roster_name")
+                ),
                 pl.col(position_col)
                 .map_elements(normalize_position, return_dtype=pl.Utf8)
                 .alias("roster_position"),
@@ -163,7 +184,12 @@ def _aggregate_prior_stats(stats: pl.DataFrame, prior_season: int) -> pl.DataFra
     )
     prepared = working.select(
         [
-            pl.col(id_col).cast(pl.Utf8, strict=False).str.strip_chars().alias("nflverse_player_id"),
+            (
+                pl.col(id_col)
+                .cast(pl.Utf8, strict=False)
+                .str.strip_chars()
+                .alias("nflverse_player_id")
+            ),
             week_expr.alias("week"),
             pl.col(fantasy_points_col)
             .cast(pl.Float64, strict=False)
@@ -180,10 +206,12 @@ def _aggregate_prior_stats(stats: pl.DataFrame, prior_season: int) -> pl.DataFra
 
     prepared = prepared.with_columns(
         [
-            (
-                pl.col("fantasy_points_standard") + pl.col("receptions") * 0.5
-            ).alias("fantasy_points_half_ppr"),
-            pl.sum_horizontal([pl.col(column) for column in FUMBLE_COLUMNS]).alias("fumbles_lost"),
+            (pl.col("fantasy_points_standard") + pl.col("receptions") * 0.5).alias(
+                "fantasy_points_half_ppr"
+            ),
+            pl.sum_horizontal([pl.col(column) for column in FUMBLE_COLUMNS]).alias(
+                "fumbles_lost"
+            ),
         ]
     )
 
@@ -193,7 +221,10 @@ def _aggregate_prior_stats(stats: pl.DataFrame, prior_season: int) -> pl.DataFra
             pl.col("fantasy_points_standard").sum().alias("fantasy_points_standard"),
             pl.col("fantasy_points_half_ppr").sum().alias("fantasy_points_half_ppr"),
             pl.col("fantasy_points_ppr").sum().alias("fantasy_points_ppr"),
-            pl.col("fantasy_points_half_ppr").std(ddof=0).fill_null(0.0).alias("weekly_points_stddev_half_ppr"),
+            pl.col("fantasy_points_half_ppr")
+            .std(ddof=0)
+            .fill_null(0.0)
+            .alias("weekly_points_stddev_half_ppr"),
             *[pl.col(column).sum().alias(column) for column in SUM_COLUMNS],
             pl.col("fumbles_lost").sum().alias("fumbles_lost"),
         ]
@@ -201,9 +232,15 @@ def _aggregate_prior_stats(stats: pl.DataFrame, prior_season: int) -> pl.DataFra
 
     return aggregated.with_columns(
         [
-            (pl.col("fantasy_points_standard") / pl.col("games")).alias("points_per_game_standard"),
-            (pl.col("fantasy_points_half_ppr") / pl.col("games")).alias("points_per_game_half_ppr"),
-            (pl.col("fantasy_points_ppr") / pl.col("games")).alias("points_per_game_ppr"),
+            (pl.col("fantasy_points_standard") / pl.col("games")).alias(
+                "points_per_game_standard"
+            ),
+            (pl.col("fantasy_points_half_ppr") / pl.col("games")).alias(
+                "points_per_game_half_ppr"
+            ),
+            (pl.col("fantasy_points_ppr") / pl.col("games")).alias(
+                "points_per_game_ppr"
+            ),
         ]
     )
 
@@ -229,17 +266,9 @@ def build_nflverse_history_release(
     identities = identities.with_columns(
         [
             pl.coalesce([pl.col("player_name"), pl.col("roster_name")]).alias("display_name"),
-            pl.coalesce([pl.col("position"), pl.col("roster_position")]).alias("resolved_position"),
-            pl.concat_list(
-                [
-                    pl.col("aliases").fill_null(pl.lit([], dtype=pl.List(pl.Utf8))),
-                    pl.concat_list([pl.col("roster_name")]).list.drop_nulls(),
-                ]
-            )
-            .list.explode()
-            .drop_nulls()
-            .unique()
-            .alias("resolved_aliases"),
+            pl.coalesce([pl.col("position"), pl.col("roster_position")]).alias(
+                "resolved_position"
+            ),
         ]
     )
     identities = identities.filter(
@@ -274,9 +303,12 @@ def build_nflverse_history_release(
 
         aliases = [
             alias
-            for alias in (row.get("resolved_aliases") or [])
+            for alias in (row.get("aliases") or [])
             if isinstance(alias, str) and alias.strip()
         ]
+        roster_name = row.get("roster_name")
+        if isinstance(roster_name, str) and roster_name.strip():
+            aliases.append(roster_name.strip())
         display_name = str(row["display_name"]).strip()
         if display_name not in aliases:
             aliases.append(display_name)
@@ -306,7 +338,9 @@ def build_nflverse_history_release(
 
 
 def fetch_nflverse_history_inputs(
-    *, prior_season: int, roster_season: int
+    *,
+    prior_season: int,
+    roster_season: int,
 ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     players = nfl.load_players()
     rosters = nfl.load_rosters(seasons=[roster_season])
