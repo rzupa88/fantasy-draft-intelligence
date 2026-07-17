@@ -222,10 +222,20 @@ export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDa
     return left.canonical_player_id.localeCompare(right.canonical_player_id);
   });
 
-  const players: PlayerDataRecord[] = generated.map(({ marketScore: _marketScore, ...player }, index) => ({
-    ...player,
+  const players: PlayerDataRecord[] = generated.map((player, index) => ({
+    canonical_player_id: player.canonical_player_id,
+    display_name: player.display_name,
+    position: player.position,
+    nfl_team: player.nfl_team,
+    bye_week: player.bye_week,
     overall_rank: index + 1,
-    adp: round(index + 1 + ((index % 7) - 3) * 0.35),
+    position_rank: player.position_rank,
+    adp: round(Math.max(1, index + 1 + ((index % 7) - 3) * 0.35)),
+    projected_points: player.projected_points,
+    tier: player.tier,
+    risk_score: player.risk_score,
+    upside_score: player.upside_score,
+    availability_status: player.availability_status,
   }));
 
   return {
@@ -251,7 +261,9 @@ function buildDisplayName(
   const firstName = FIRST_NAMES[globalIndex % FIRST_NAMES.length]!;
   const lastName = LAST_NAMES[(globalIndex * 3 + positionIndex) % LAST_NAMES.length]!;
   const duplicateCycle = Math.floor(globalIndex / (FIRST_NAMES.length * LAST_NAMES.length));
-  return duplicateCycle === 0 ? `${firstName} ${lastName}` : `${firstName} ${lastName} ${duplicateCycle + 1}`;
+  return duplicateCycle === 0
+    ? `${firstName} ${lastName}`
+    : `${firstName} ${lastName} ${duplicateCycle + 1}`;
 }
 
 function round(value: number): number {
