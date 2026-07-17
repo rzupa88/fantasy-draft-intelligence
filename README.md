@@ -37,7 +37,10 @@ The repository includes:
 
 The React interface currently supports:
 
-- league name, team count, draft slot, rounds, and scoring setup
+- league name, team count, draft slot, and scoring setup
+- editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts
+- draft rounds derived automatically from roster capacity
+- standard, no-kicker, no-defense, extra-flex, two-QB, and superflex roster structures
 - an offline deterministic demo player release
 - manual entry for every team selection
 - automatic snake-order advancement
@@ -49,9 +52,9 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery and backup workflows
+- browser-tested recovery, backup, and custom-roster workflows
 
-The next primary increments are broader roster customization, production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
+The next primary increments are production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
 
 ## Target application
 
@@ -160,5 +163,5 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** functional and recoverable; customization remains
+- **M4 — Local draft-room interface:** functional, recoverable, and roster-configurable; production data remains
 - **M5 — Desktop packaging and release**
