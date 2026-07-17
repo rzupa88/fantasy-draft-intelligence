@@ -12,15 +12,15 @@ import {
   setRosterCount,
 } from "../src/draft-factory.js";
 
-
 describe("draft room application shell", () => {
-  it("renders league, UDK, recovery, and custom roster controls", () => {
+  it("renders league, UDK, NFLverse, recovery, and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
     expect(html).toContain("Import UDK ZIP");
+    expect(html).toContain("Import NFLverse history");
     expect(html).toContain("ADP market");
     expect(html).toContain("Roster configuration");
     expect(html).toContain("Superflex");
