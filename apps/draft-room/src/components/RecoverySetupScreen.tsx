@@ -7,11 +7,16 @@ import {
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import type {
+  NflverseEnrichmentReport,
+  NflverseHistoryRelease,
+} from "../nflverse-history.js";
 import {
   UDK_ADP_SOURCES,
   type UdkAdpSource,
   type UdkBuildReport,
 } from "../udk-importer.js";
+import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
 import { UdkImportCard } from "./UdkImportCard.js";
 
@@ -20,6 +25,9 @@ interface RecoverySetupScreenProps {
   recoveredDraft: DraftState | null;
   udkReport: UdkBuildReport | null;
   udkFilename: string | null;
+  history: NflverseHistoryRelease | null;
+  historyReport: NflverseEnrichmentReport | null;
+  historyFilename: string | null;
   errorMessage: string | null;
   onSetupChange: (setup: DraftSetup) => void;
   onStartDraft: () => void;
@@ -28,6 +36,8 @@ interface RecoverySetupScreenProps {
   onImportDraft: (file: File) => Promise<boolean>;
   onImportUdk: (file: File) => Promise<void>;
   onClearUdk: () => void;
+  onImportHistory: (file: File) => Promise<void>;
+  onClearHistory: () => void;
 }
 
 const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
@@ -43,6 +53,9 @@ export function RecoverySetupScreen({
   recoveredDraft,
   udkReport,
   udkFilename,
+  history,
+  historyReport,
+  historyFilename,
   errorMessage,
   onSetupChange,
   onStartDraft,
@@ -51,6 +64,8 @@ export function RecoverySetupScreen({
   onImportDraft,
   onImportUdk,
   onClearUdk,
+  onImportHistory,
+  onClearHistory,
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
@@ -69,6 +84,13 @@ export function RecoverySetupScreen({
     event.target.value = "";
   }
 
+  const sourceLabel =
+    udkReport === null
+      ? "Demonstration release"
+      : historyReport === null
+        ? `UDK ${udkReport.season}`
+        : `UDK ${udkReport.season} + NFLverse ${historyReport.priorSeason}`;
+
   return (
     <main className="setup-shell">
       <section className="setup-hero">
@@ -78,15 +100,15 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, load fresh UDK data, restore a saved draft, and run the
-          entire snake draft from one laptop. No platform login. No live sync dependency.
+          Configure the league and roster, load fresh UDK projections and NFLverse history, restore
+          a saved draft, and run the entire snake draft from one laptop.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
           <span>UDK projections</span>
+          <span>NFLverse history</span>
           <span>Custom rosters</span>
           <span>Automatic recovery</span>
-          <span>Live recommendations</span>
         </div>
       </section>
 
@@ -242,7 +264,7 @@ export function RecoverySetupScreen({
               ))}
             </select>
             <small>
-              UDK round-and-pick values are converted using this league's {setup.teamCount}-team
+              UDK round-and-pick values are converted using this league&apos;s {setup.teamCount}-team
               size.
             </small>
           </label>
@@ -254,6 +276,14 @@ export function RecoverySetupScreen({
             filename={udkFilename}
             onImport={onImportUdk}
             onClear={onClearUdk}
+          />
+
+          <NflverseHistoryCard
+            history={history}
+            report={historyReport}
+            filename={historyFilename}
+            onImport={onImportHistory}
+            onClear={onClearHistory}
           />
 
           <div className="setup-summary field-wide">
@@ -273,7 +303,7 @@ export function RecoverySetupScreen({
             </div>
             <div>
               <span>Player source</span>
-              <strong>{udkReport === null ? "Demonstration release" : `UDK ${udkReport.season}`}</strong>
+              <strong>{sourceLabel}</strong>
             </div>
           </div>
 
