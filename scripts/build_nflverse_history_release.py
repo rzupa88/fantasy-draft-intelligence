@@ -69,9 +69,7 @@ def main() -> None:
     write_nflverse_history_release(release, output)
 
     release_players = release["players"]
-    with_history = sum(
-        player["prior_season_stats"] is not None for player in release_players
-    )
+    with_history = sum(player["prior_season_stats"] is not None for player in release_players)
     with_current_team = sum(bool(player.get("current_team")) for player in release_players)
     print(
         f"NFLverse history release written: {output} | "
