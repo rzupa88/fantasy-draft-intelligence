@@ -1,10 +1,11 @@
 import { useRef, type ChangeEvent } from "react";
+import { zipSync } from "fflate";
 import type { UdkBuildReport } from "../udk-importer.js";
 
 interface UdkImportCardProps {
   report: UdkBuildReport | null;
   filename: string | null;
-  onImport: (files: File[]) => Promise<void>;
+  onImport: (file: File) => Promise<void>;
   onClear: () => void;
 }
 
@@ -13,8 +14,24 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const files = Array.from(event.target.files ?? []);
-    if (files.length > 0) {
-      await onImport(files);
+    if (files.length === 1 && /\.zip$/i.test(files[0]!.name)) {
+      await onImport(files[0]!);
+    } else if (files.length > 0) {
+      const archive: Record<string, Uint8Array> = {};
+      for (const file of files) {
+        if (!/\.(csv|pdf)$/i.test(file.name)) {
+          throw new TypeError(`${file.name} is not a supported UDK export.`);
+        }
+        const path = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
+        if (archive[path] !== undefined) {
+          throw new TypeError(`Two selected UDK files used the same path: ${path}`);
+        }
+        archive[path] = new Uint8Array(await file.arrayBuffer());
+      }
+      const bundled = new File([zipSync(archive, { level: 0 })], `udk-${files.length}-files.zip`, {
+        type: "application/zip",
+      });
+      await onImport(bundled);
     }
     event.target.value = "";
   }
