@@ -7,7 +7,9 @@ from pathlib import Path
 from packages.data.nflverse_history import (
     NflverseHistoryConfig,
     build_and_write_nflverse_history_release,
+    write_nflverse_history_release,
 )
+from packages.data.nflverse_release_filter import filter_to_draft_relevant_players
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,18 +43,23 @@ def main() -> None:
     output = args.output or Path(
         f"data/processed/nflverse_history_{args.prior_season}_{args.roster_season}.json"
     )
-    release = build_and_write_nflverse_history_release(
+    broad_release = build_and_write_nflverse_history_release(
         NflverseHistoryConfig(
             prior_season=args.prior_season,
             roster_season=args.roster_season,
             output_path=output,
         )
     )
+    release = filter_to_draft_relevant_players(broad_release)
+    write_nflverse_history_release(release, output)
+
     players = release["players"]
     with_history = sum(player["prior_season_stats"] is not None for player in players)
+    with_current_team = sum(bool(player.get("current_team")) for player in players)
     print(
         f"NFLverse history release written: {output} | "
-        f"players={len(players)} | prior_stats={with_history}"
+        f"players={len(players)} | prior_stats={with_history} | "
+        f"current_roster={with_current_team}"
     )
 
 
