@@ -19,6 +19,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .[dev]
 
+      - name: Capture Black formatting diff
+        run: |
+          black --diff \
+            packages/data/nflverse_release_filter.py \
+            scripts/build_nflverse_history_release.py \
+            tests/test_nflverse_release_filter.py \
+            > artifacts/black.diff || true
+
       - name: Build 2025/2026 NFLverse history release
         run: |
           python scripts/build_nflverse_history_release.py \
@@ -108,4 +116,5 @@ jobs:
           path: |
             artifacts/nflverse_history_2025_2026.json
             artifacts/unresolved_identities.json
+            artifacts/black.diff
           retention-days: 14
