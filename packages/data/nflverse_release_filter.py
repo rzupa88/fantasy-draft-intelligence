@@ -84,12 +84,8 @@ def repair_current_roster_identities(
             continue
 
         roster_id = _clean_text(row.get(id_column)) if id_column is not None else None
-        current_team = (
-            _clean_text(row.get(team_column)) if team_column is not None else None
-        )
-        roster_status = (
-            _clean_text(row.get(status_column)) if status_column is not None else None
-        )
+        current_team = _clean_text(row.get(team_column)) if team_column is not None else None
+        roster_status = _clean_text(row.get(status_column)) if status_column is not None else None
 
         if roster_id:
             player = release_by_id.get(roster_id)
@@ -229,17 +225,13 @@ def _add_candidate_keys(
 
 def _raw_players_by_id(players: pl.DataFrame) -> dict[str, dict[str, Any]]:
     id_column = _first_existing_column(players, ID_CANDIDATES)
-    name_columns = [
-        column for column in PLAYER_NAME_CANDIDATES if column in players.columns
-    ]
+    name_columns = [column for column in PLAYER_NAME_CANDIDATES if column in players.columns]
     selected = [id_column, *name_columns]
     result: dict[str, dict[str, Any]] = {}
     for row in players.select(selected).iter_rows(named=True):
         player_id = _clean_text(row.get(id_column))
         names = [
-            name
-            for column in name_columns
-            if (name := _clean_text(row.get(column))) is not None
+            name for column in name_columns if (name := _clean_text(row.get(column))) is not None
         ]
         if not player_id or not names:
             continue
