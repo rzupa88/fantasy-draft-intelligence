@@ -26,9 +26,12 @@ jobs:
             --roster-season 2026 \
             --output artifacts/nflverse_history_2025_2026.json
 
-      - name: Inspect unresolved UDK identities
+      - name: Capture unresolved UDK identities
         run: |
           python - <<'PY'
+          import json
+          from pathlib import Path
+
           import nflreadpy as nfl
 
           names = {
@@ -67,12 +70,16 @@ jobs:
                       rows.append(row)
               return rows
 
-          print('RAW_PLAYERS')
-          for row in matching_rows(players):
-              print(row)
-          print('RAW_2026_ROSTERS')
-          for row in matching_rows(rosters):
-              print(row)
+          payload = {
+              'players': matching_rows(players),
+              'rosters_2026': matching_rows(rosters),
+              'player_columns': players.columns,
+              'roster_columns': rosters.columns,
+          }
+          Path('artifacts/unresolved_identities.json').write_text(
+              json.dumps(payload, indent=2, default=str),
+              encoding='utf-8',
+          )
           PY
 
       - name: Summarize release
@@ -98,5 +105,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: nflverse-history-2025-2026
-          path: artifacts/nflverse_history_2025_2026.json
+          path: |
+            artifacts/nflverse_history_2025_2026.json
+            artifacts/unresolved_identities.json
           retention-days: 14
