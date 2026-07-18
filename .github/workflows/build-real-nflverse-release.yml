@@ -26,6 +26,55 @@ jobs:
             --roster-season 2026 \
             --output artifacts/nflverse_history_2025_2026.json
 
+      - name: Inspect unresolved UDK identities
+        run: |
+          python - <<'PY'
+          import nflreadpy as nfl
+
+          names = {
+              'Fernando Mendoza',
+              'Carson Beck',
+              'Travis Hunter',
+              'Marquise Brown',
+              'Brenen Thompson',
+          }
+          players = nfl.load_players()
+          rosters = nfl.load_rosters(seasons=[2026])
+
+          def matching_rows(frame):
+              columns = [
+                  column
+                  for column in (
+                      'gsis_id',
+                      'player_id',
+                      'nfl_id',
+                      'display_name',
+                      'full_name',
+                      'player_name',
+                      'football_name',
+                      'position',
+                      'position_group',
+                      'team',
+                      'team_abbr',
+                      'status',
+                  )
+                  if column in frame.columns
+              ]
+              rows = []
+              for row in frame.select(columns).iter_rows(named=True):
+                  searchable = ' '.join(str(value) for value in row.values() if value is not None).lower()
+                  if any(all(part.lower() in searchable for part in name.split()) for name in names):
+                      rows.append(row)
+              return rows
+
+          print('RAW_PLAYERS')
+          for row in matching_rows(players):
+              print(row)
+          print('RAW_2026_ROSTERS')
+          for row in matching_rows(rosters):
+              print(row)
+          PY
+
       - name: Summarize release
         run: |
           python - <<'PY'
