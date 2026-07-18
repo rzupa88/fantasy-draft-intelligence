@@ -1,0 +1,53 @@
+name: Build real NFLverse release
+
+on:
+  pull_request:
+
+jobs:
+  build-release:
+    if: github.head_ref == 'agent/m4-real-nflverse-release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Build 2025/2026 NFLverse history release
+        run: |
+          python scripts/build_nflverse_history_release.py \
+            --prior-season 2025 \
+            --roster-season 2026 \
+            --output artifacts/nflverse_history_2025_2026.json
+
+      - name: Summarize release
+        run: |
+          python - <<'PY'
+          import json
+          from collections import Counter
+          from pathlib import Path
+
+          path = Path('artifacts/nflverse_history_2025_2026.json')
+          release = json.loads(path.read_text(encoding='utf-8'))
+          players = release['players']
+          positions = Counter(player['position'] for player in players)
+          with_history = sum(player['prior_season_stats'] is not None for player in players)
+          active = sum(player.get('roster_status') == 'ACT' for player in players)
+          print(f"players={len(players)}")
+          print(f"with_history={with_history}")
+          print(f"without_history={len(players) - with_history}")
+          print(f"active={active}")
+          print(f"positions={dict(sorted(positions.items()))}")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nflverse-history-2025-2026
+          path: artifacts/nflverse_history_2025_2026.json
+          retention-days: 14
