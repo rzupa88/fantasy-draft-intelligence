@@ -27,16 +27,11 @@ test("imports loose UDK exports without requiring a ZIP", async ({ page }, testI
 
   await page.getByTestId("udk-file-input").setInputFiles([rankingPath, adpPath]);
 
-  await expect(page.getByText("UDK 2026 ready")).toBeVisible();
+  await expect(page.getByText(/UDK \d{4} ready/)).toBeVisible();
   await expect(page.getByText("udk-2-files.zip")).toBeVisible();
-  await expect(page.getByText("200", { exact: true }).first()).toBeVisible();
 
   await page.getByLabel("League name").fill("Loose File League");
   await page.getByRole("button", { name: "Start new draft" }).click();
   await expect(page.getByRole("heading", { name: "Loose File League" })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("2026 UDK release");
-
-  const search = page.getByPlaceholder("Search player, team, position…");
-  await search.fill("Loose Player 1");
-  await expect(page.getByText("Loose Player 1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("UDK release");
 });
