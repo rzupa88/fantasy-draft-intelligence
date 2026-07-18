@@ -18,14 +18,9 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
       await onImport(files[0]!);
     } else if (files.length > 0) {
       const archive: Record<string, Uint8Array> = {};
-      for (const file of files) {
-        if (!/\.(csv|pdf)$/i.test(file.name)) {
-          throw new TypeError(`${file.name} is not a supported UDK export.`);
-        }
-        const path = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
-        if (archive[path] !== undefined) {
-          throw new TypeError(`Two selected UDK files used the same path: ${path}`);
-        }
+      for (const [index, file] of files.entries()) {
+        const originalPath = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
+        const path = archive[originalPath] === undefined ? originalPath : `selected-${index + 1}/${file.name}`;
         archive[path] = new Uint8Array(await file.arrayBuffer());
       }
       const bundled = new File([zipSync(archive, { level: 0 })], `udk-${files.length}-files.zip`, {
