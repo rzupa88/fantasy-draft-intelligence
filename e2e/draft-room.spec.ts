@@ -57,3 +57,17 @@ test("exports a backup and imports it after clearing recovery", async ({ page })
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
   await expect(page.getByRole("status")).toContainText("imported with 1 recorded picks");
 });
+
+test("derives draft length from a custom superflex roster", async ({ page }) => {
+  await page.getByLabel("League name").fill("Custom Superflex League");
+  await page.getByLabel("Superflex roster slots").fill("1");
+  await page.getByLabel("Kicker roster slots").fill("0");
+  await page.getByLabel("Bench roster slots").fill("8");
+
+  await expect(page.getByText("17 rounds", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("204 total selections in this league.")).toBeVisible();
+
+  await page.getByRole("button", { name: "Start new draft" }).click();
+  await expect(page.getByRole("heading", { name: "Custom Superflex League" })).toBeVisible();
+  await expect(page.locator(".draft-progress-label")).toContainText("0 / 204 picks");
+});

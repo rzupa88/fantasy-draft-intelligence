@@ -1,12 +1,13 @@
 import { useRef, type ChangeEvent, type FormEvent } from "react";
 import type { DraftState } from "@fdi/shared-types";
 import {
-  ROUND_OPTIONS,
   SCORING_OPTIONS,
   TEAM_COUNT_OPTIONS,
+  getStarterCapacity,
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import { RosterConfigurator } from "./RosterConfigurator.js";
 
 interface RecoverySetupScreenProps {
   setup: DraftSetup;
@@ -31,6 +32,7 @@ export function RecoverySetupScreen({
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+  const starterCount = getStarterCapacity(setup.rosterCounts);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -54,12 +56,12 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league, restore a saved draft, and run the entire snake draft from one
-          laptop. No platform login. No live sync dependency.
+          Configure the league and roster, restore a saved draft, and run the entire snake draft
+          from one laptop. No platform login. No live sync dependency.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
-          <span>Manual pick entry</span>
+          <span>Custom rosters</span>
           <span>Automatic recovery</span>
           <span>Live recommendations</span>
           <span>Every roster tracked</span>
@@ -165,24 +167,11 @@ export function RecoverySetupScreen({
             </select>
           </label>
 
-          <label className="field">
-            <span>Rounds</span>
-            <select
-              value={setup.rounds}
-              onChange={(event) =>
-                onSetupChange({
-                  ...setup,
-                  rounds: Number(event.target.value),
-                })
-              }
-            >
-              {ROUND_OPTIONS.map((rounds) => (
-                <option key={rounds} value={rounds}>
-                  {rounds} rounds
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="field draft-length-field">
+            <span>Draft length</span>
+            <strong>{setup.rounds} rounds</strong>
+            <small>{setup.teamCount * setup.rounds} total picks</small>
+          </div>
 
           <fieldset className="scoring-fieldset field-wide">
             <legend>Scoring</legend>
@@ -213,14 +202,22 @@ export function RecoverySetupScreen({
             </div>
           </fieldset>
 
+          <RosterConfigurator setup={setup} onSetupChange={onSetupChange} />
+
           <div className="setup-summary field-wide">
             <div>
-              <span>Default roster</span>
-              <strong>1 QB · 2 RB · 2 WR · 1 TE · FLEX · K · DST</strong>
+              <span>Starting lineup</span>
+              <strong>{starterCount} active roster spots</strong>
             </div>
             <div>
               <span>Bench</span>
-              <strong>{setup.rounds - 9} spots</strong>
+              <strong>{setup.rosterCounts.BENCH} reserve spots</strong>
+            </div>
+            <div>
+              <span>Draft size</span>
+              <strong>
+                {setup.rounds} rounds · {setup.teamCount * setup.rounds} selections
+              </strong>
             </div>
             <div>
               <span>Recovery</span>
