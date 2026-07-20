@@ -36,7 +36,24 @@ The repository includes:
 - versioned draft export/import
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
-- full-draft and recommendation regression tests
+- a React/Vite live draft-room shell
+- full-draft, recommendation, and interface regression tests
+
+## Current draft-room capabilities
+
+The React interface currently supports:
+
+- league name, team count, draft slot, rounds, and scoring setup
+- an offline deterministic demo player release
+- manual entry for every team selection
+- automatic snake-order advancement
+- search and position filters
+- live recommendations for the user roster
+- team-by-team roster tracking
+- undo of the latest selection
+- JSON draft export
+
+The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
 
 ## Target application
 
@@ -72,6 +89,24 @@ See:
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 
+## Run the draft room
+
+Requires Node.js 22 and npm 10 or later.
+
+```bash
+npm install
+npm run dev
+```
+
+Vite serves the local app at `http://localhost:5173` by default. In GitHub Codespaces, open the forwarded port when prompted.
+
+Build the browser application:
+
+```bash
+npm run build
+npm run preview
+```
+
 ## Python setup
 
 Requires Python 3.11 or later.
@@ -91,22 +126,12 @@ python scripts/build_player_reference.py
 pytest
 ```
 
-## TypeScript setup
-
-Requires Node.js 22 and npm 10 or later.
-
-```bash
-npm install
-npm run check
-```
-
-Useful commands:
+## Validation commands
 
 ```bash
 npm run typecheck
 npm test
-npm run test:watch
-npm run build
+npm run check
 npm run evaluate:recommendations
 npm run evaluate:recommendations:json
 ```
@@ -114,6 +139,8 @@ npm run evaluate:recommendations:json
 ## Current project structure
 
 ```text
+apps/
+  draft-room/            # React/Vite live draft interface
 packages/
   data/                  # Python ingestion and identity logic
   modeling/              # Python modeling package
@@ -131,8 +158,8 @@ docs/                    # Product and technical documentation
 
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** evaluation in progress
-- **M4 — Local draft-room interface**
+- **M3 — Recommendation engine v1:** baseline and evaluation harness established
+- **M4 — Local draft-room interface:** active
 - **M5 — Desktop packaging and release**
 
 ## Quickstart and Useful Commands
@@ -142,20 +169,25 @@ Potentially useful commands and setup hints found in project files:
 ```text
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
-- full-draft and recommendation regression tests
+- full-draft, recommendation, and interface regression tests
+- undo of the latest selection
+The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 - **Testing:** pytest, Vitest, Playwright
+## Run the draft room
+npm install
+npm run dev
+Build the browser application:
+npm run build
+npm run preview
 pip install -e ".[dev]"
 Run the existing data pipeline and tests:
 python scripts/build_player_reference.py
 pytest
-npm install
-npm run check
 npm run typecheck
 npm test
-npm run test:watch
-npm run build
+npm run check
 npm run evaluate:recommendations
 npm run evaluate:recommendations:json
 shared-types/          # TypeScript contracts and runtime release validation
@@ -179,6 +211,20 @@ test:
 ```text
 ├── apps
 │   ├── api
+│   ├── draft-room
+│   │   ├── src
+│   │   │   ├── components
+│   │   │   ├── App.tsx
+│   │   │   ├── demo-data.ts
+│   │   │   ├── draft-factory.ts
+│   │   │   ├── main.tsx
+│   │   │   └── styles.css
+│   │   ├── tests
+│   │   │   └── app.test.tsx
+│   │   ├── index.html
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── vite.config.ts
 │   └── web
 ├── artifacts
 │   ├── figures
@@ -339,7 +385,24 @@ The repository includes:
 - versioned draft export/import
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
-- full-draft and recommendation regression tests
+- a React/Vite live draft-room shell
+- full-draft, recommendation, and interface regression tests
+
+## Current draft-room capabilities
+
+The React interface currently supports:
+
+- league name, team count, draft slot, rounds, and scoring setup
+- an offline deterministic demo player release
+- manual entry for every team selection
+- automatic snake-order advancement
+- search and position filters
+- live recommendations for the user roster
+- team-by-team roster tracking
+- undo of the latest selection
+- JSON draft export
+
+The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
 
 ## Target application
 
@@ -375,6 +438,24 @@ See:
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 
+## Run the draft room
+
+Requires Node.js 22 and npm 10 or later.
+
+```bash
+npm install
+npm run dev
+```
+
+Vite serves the local app at `http://localhost:5173` by default. In GitHub Codespaces, open the forwarded port when prompted.
+
+Build the browser application:
+
+```bash
+npm run build
+npm run preview
+```
+
 ## Python setup
 
 Requires Python 3.11 or later.
@@ -394,22 +475,12 @@ python scripts/build_player_reference.py
 pytest
 ```
 
-## TypeScript setup
-
-Requires Node.js 22 and npm 10 or later.
-
-```bash
-npm install
-npm run check
-```
-
-Useful commands:
+## Validation commands
 
 ```bash
 npm run typecheck
 npm test
-npm run test:watch
-npm run build
+npm run check
 npm run evaluate:recommendations
 npm run evaluate:recommendations:json
 ```
@@ -417,6 +488,8 @@ npm run evaluate:recommendations:json
 ## Current project structure
 
 ```text
+apps/
+  draft-room/            # React/Vite live draft interface
 packages/
   data/                  # Python ingestion and identity logic
   modeling/              # Python modeling package
@@ -434,8 +507,8 @@ docs/                    # Product and technical documentation
 
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** evaluation in progress
-- **M4 — Local draft-room interface**
+- **M3 — Recommendation engine v1:** baseline and evaluation harness established
+- **M4 — Local draft-room interface:** active
 - **M5 — Desktop packaging and release**
 ```
 
@@ -2065,30 +2138,43 @@ The baseline exit criteria are covered by the draft-engine, roster-allocation, p
 - Repeatable scenarios expose scoring behavior for tuning.
 - Recommendation behavior can be checked in CI before interface changes merge.
 
-Items 1 through 11 now have baseline implementations. The remaining calibration work is broader mock-draft and historical replay analysis using real preseason player releases. That work can continue alongside the interface because the scenario harness now protects the stable public API and core behavioral expectations.
+Items 1 through 11 have baseline implementations. Broader calibration with real preseason releases can continue without blocking interface work because the stable public API is protected by the evaluation harness.
 
 ## M4 — Local draft-room interface
+
+**Status:** First functional React/Vite shell implemented
 
 **Goal:** Make the engine practical during a real draft.
 
 ### Deliverables
 
-1. React and Vite application
-2. New-draft setup flow
-3. Player search and filters
-4. Manual pick entry
-5. Live draft board
-6. Team roster views
-7. Recommendation panel
-8. Undo and correction interface
-9. Keyboard-first workflow
-10. Playwright end-to-end tests
+1. React and Vite application — baseline complete
+2. New-draft setup flow — baseline complete
+3. Player search and filters — baseline complete
+4. Manual pick entry — baseline complete
+5. Live draft board and recent-pick feed — baseline complete
+6. Team roster views — baseline complete
+7. Recommendation panel — baseline complete
+8. Undo and correction interface — undo complete; correction pending
+9. Keyboard-first workflow — pending
+10. Player-data import and draft restore flow — pending
+11. Playwright end-to-end tests — pending
+
+### Current shell behavior
+
+- Setup creates a real deterministic draft state rather than mocked UI state.
+- Every manual selection advances the snake order through the draft engine.
+- Position-aware roster assignments are shown for every fantasy team.
+- Recommendations recalculate from the current user roster and remaining player pool.
+- The interface can export the engine's versioned JSON draft backup.
+- A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
 
 ### Exit criteria
 
 - A user can complete a draft without developer assistance.
 - Common pick entry requires minimal interaction.
 - Errors are recoverable and clearly explained.
+- A browser-level test completes a representative draft workflow.
 
 ## M5 — Local persistence and desktop release
 
@@ -2135,11 +2221,11 @@ The active build sequence is:
 3. Add versioned export and restoration.
 4. Implement Recommendation Engine v1.
 5. Add named recommendation scenarios, score snapshots, and weight comparisons.
-6. Build the React draft-room interface against stable engine APIs.
-7. Expand evaluation with full mock drafts and historical player releases.
-8. Add SQLite autosave and Tauri desktop packaging.
-
-The next primary product increment is the React draft-room shell and setup flow. Recommendation calibration remains test-driven through the evaluation harness rather than blocking all interface progress.
+6. Build the React/Vite draft-room shell against stable engine APIs.
+7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
+8. Replace demo data with versioned preseason app releases.
+9. Expand evaluation with full mock drafts and historical player releases.
+10. Add SQLite autosave and Tauri desktop packaging.
 ```
 
 ### `docs/testing-strategy.md`
@@ -2767,6 +2853,869 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
 """Modeling package."""
 ```
 
+### `apps/draft-room/package.json`
+
+```text
+{
+  "name": "@fdi/draft-room",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build:vite": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fdi/draft-engine": "0.1.0",
+    "@fdi/recommendation-engine": "0.1.0",
+    "@fdi/shared-types": "0.1.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.4"
+  }
+}
+```
+
+### `apps/draft-room/src/App.tsx`
+
+```text
+import { useState } from "react";
+import {
+  getPlayerById,
+  makePick,
+  serializeDraftState,
+  undoLastPick,
+} from "@fdi/draft-engine";
+import type { DraftState } from "@fdi/shared-types";
+import { DraftRoom } from "./components/DraftRoom.js";
+import { SetupScreen } from "./components/SetupScreen.js";
+import {
+  DEFAULT_DRAFT_SETUP,
+  createDraftFromSetup,
+  type DraftSetup,
+} from "./draft-factory.js";
+
+export function App() {
+  const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
+  const [draftState, setDraftState] = useState<DraftState | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function startDraft(): void {
+    try {
+      const nextState = createDraftFromSetup(setup);
+      setDraftState(nextState);
+      setErrorMessage(null);
+      setNotice("Draft created. Record the first selection from the player board.");
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    }
+  }
+
+  function draftPlayer(playerId: string): void {
+    if (draftState === null) {
+      return;
+    }
+
+    try {
+      const player = getPlayerById(draftState, playerId);
+      const currentPick = draftState.nextOverallPick;
+      const nextState = makePick(draftState, playerId);
+      setDraftState(nextState);
+      setNotice(
+        `${player?.display_name ?? playerId} selected at pick ${currentPick ?? "—"}.`,
+      );
+    } catch (error) {
+      setNotice(toErrorMessage(error));
+    }
+  }
+
+  function undoPick(): void {
+    if (draftState === null || draftState.picks.length === 0) {
+      return;
+    }
+
+    try {
+      const lastPick = draftState.picks[draftState.picks.length - 1]!;
+      const player = getPlayerById(draftState, lastPick.playerId);
+      const nextState = undoLastPick(draftState);
+      setDraftState(nextState);
+      setNotice(`${player?.display_name ?? lastPick.playerId} returned to the player pool.`);
+    } catch (error) {
+      setNotice(toErrorMessage(error));
+    }
+  }
+
+  function exportDraft(): void {
+    if (draftState === null) {
+      return;
+    }
+
+    try {
+      const json = serializeDraftState(draftState);
+      const blob = new Blob([json], { type: "application/json" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = `${slugify(draftState.settings.leagueName)}-draft.json`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(downloadUrl);
+      setNotice("Draft backup exported to your downloads folder.");
+    } catch (error) {
+      setNotice(toErrorMessage(error));
+    }
+  }
+
+  function exitDraft(): void {
+    setDraftState(null);
+    setNotice(null);
+    setErrorMessage(null);
+  }
+
+  if (draftState === null) {
+    return (
+      <SetupScreen
+        setup={setup}
+        errorMessage={errorMessage}
+        onSetupChange={(nextSetup) => {
+          setSetup(nextSetup);
+          setErrorMessage(null);
+        }}
+        onStartDraft={startDraft}
+      />
+    );
+  }
+
+  return (
+    <DraftRoom
+      state={draftState}
+      notice={notice}
+      onDraftPlayer={draftPlayer}
+      onUndo={undoPick}
+      onExport={exportDraft}
+      onExit={exitDraft}
+    />
+  );
+}
+
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "An unexpected draft-room error occurred.";
+}
+
+function slugify(va
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/DraftRoom.tsx`
+
+```text
+import { useMemo, useState } from "react";
+import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import type {
+  DraftPick,
+  DraftState,
+  PlayerDataRecord,
+  PlayerPosition,
+  RosterSlotType,
+} from "@fdi/shared-types";
+
+interface DraftRoomProps {
+  state: DraftState;
+  notice: string | null;
+  onDraftPlayer: (playerId: string) => void;
+  onUndo: () => void;
+  onExport: () => void;
+  onExit: () => void;
+}
+
+type PositionFilter = "ALL" | PlayerPosition;
+
+const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+
+const ROSTER_SLOT_ORDER: RosterSlotType[] = [
+  "QB",
+  "RB",
+  "WR",
+  "TE",
+  "FLEX",
+  "SUPERFLEX",
+  "K",
+  "DST",
+  "BENCH",
+];
+
+export function DraftRoom({
+  state,
+  notice,
+  onDraftPlayer,
+  onUndo,
+  onExport,
+  onExit,
+}: DraftRoomProps) {
+  const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
+  const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
+
+  const currentSlot = getCurrentOrderSlot(state);
+  const currentTeam =
+    currentSlot === null
+      ? null
+      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
+  const isUserOnClock = currentTeam?.isUser ?? false;
+  const rosters = useMemo(() => buildRosterAssignments(state), [state]);
+  const playersById = useMemo(
+    () =>
+      new Map(
+        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+      ),
+    [state.playerDataRelease],
+  );
+
+  const recommendationResult = useMemo(() => {
+    if (state.availablePlayerIds.length === 0) {
+      return null;
+    }
+    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
+  }, [state, userTeam.teamId]);
+
+  const filteredPlayers = useMemo(() => {
+    const available = new Set(state.availablePlayerIds);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return state.playerDataRelease.players
+      .filter((player) => available.has(player.canonical_player_id))
+      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
+      .filter((player) => {
+        if (normalizedQuery.length === 0) {
+          return true;
+        }
+        return [player.display_name, player.position, player.nfl_team ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort(compareAvailablePlayers)
+      .slice(0, 80);
+  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
+
+  const selectedTeam =
+    state.teams.find((team) => team.teamId === selectedTeamId) ?? userTeam;
+  const selectedRoster = [...(rosters[selectedTeam.teamId] ?? [])].sort(compareRosterPicks);
+  const recentPicks = [...state.picks].slice(-12).reverse();
+  const completedPicks = state.picks.length;
+  const totalPicks = state.order.length;
+  const completionPercent = Math.round((completedPicks / totalPicks) * 100);
+
+  return (
+    <main className="draft-room-shell">
+      <header className="draft-header">
+        <div className="draft-brand">
+          <div className="brand-mark brand-mark-small" aria-hidden="true">
+            FDI
+          </div>
+          <div>
+            <p className="eyebrow">Fantasy Draft Intelligence</p>
+            <h1>{state.settings.leagueName}</h1>
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/SetupScreen.tsx`
+
+```text
+import type { FormEvent } from "react";
+import {
+  ROUND_OPTIONS,
+  SCORING_OPTIONS,
+  TEAM_COUNT_OPTIONS,
+  type DraftSetup,
+  type SupportedScoringPreset,
+} from "../draft-factory.js";
+
+interface SetupScreenProps {
+  setup: DraftSetup;
+  errorMessage: string | null;
+  onSetupChange: (setup: DraftSetup) => void;
+  onStartDraft: () => void;
+}
+
+export function SetupScreen({
+  setup,
+  errorMessage,
+  onSetupChange,
+  onStartDraft,
+}: SetupScreenProps) {
+  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    onStartDraft();
+  }
+
+  return (
+    <main className="setup-shell">
+      <section className="setup-hero">
+        <div className="brand-mark" aria-hidden="true">
+          FDI
+        </div>
+        <p className="eyebrow">Local-first draft intelligence</p>
+        <h1>Build your draft room.</h1>
+        <p className="setup-lede">
+          Configure the league, load an offline player pool, and run the entire snake draft from
+          one laptop. No platform login. No live sync dependency.
+        </p>
+
+        <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>Manual pick entry</span>
+          <span>Live recommendations</span>
+          <span>Every roster tracked</span>
+          <span>Offline-safe engine</span>
+        </div>
+      </section>
+
+      <section className="setup-card" aria-labelledby="setup-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">New draft</p>
+            <h2 id="setup-title">League setup</h2>
+          </div>
+          <span className="alpha-badge">Interface alpha</span>
+        </div>
+
+        <form className="setup-form" onSubmit={handleSubmit}>
+          <label className="field field-wide">
+            <span>League name</span>
+            <input
+              value={setup.leagueName}
+              onChange={(event) =>
+                onSetupChange({
+                  ...setup,
+                  leagueName: event.target.value,
+                })
+              }
+              placeholder="Friday Night League"
+              autoComplete="off"
+            />
+          </label>
+
+          <label className="field">
+            <span>Teams</span>
+            <select
+              value={setup.teamCount}
+              onChange={(event) => {
+                const teamCount = Number(event.target.value);
+                onSetupChange({
+                  ...setup,
+                  teamCount,
+                  userDraftSlot: Math.min(setup.userDraftSlot, teamCount),
+                });
+              }}
+            >
+              {TEAM_COUNT_OPTIONS.map((teamCount) => (
+                <option key={teamCount} value={teamCount}>
+                  {teamCount} teams
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Your draft slot</span>
+            <select
+              value={setup.userDraftSlot}
+              onChange={(event) =>
+                onSetupChange({
+                  ...setup,
+                  userDraftSlot: Number(event.target.value),
+                })
+              }
+            >
+              {draftSlots.map((slot) => (
+                <option key={slot} value={slot}>
+                  Pick {slot}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/demo-data.ts`
+
+```text
+import type {
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+} from "@fdi/shared-types";
+
+interface GeneratedPlayer extends PlayerDataRecord {
+  marketScore: number;
+}
+
+interface PositionProfile {
+  position: PlayerPosition;
+  count: number;
+  projectionStart: number;
+  projectionStep: number;
+  marketStart: number;
+  marketStep: number;
+  tierSize: number;
+}
+
+const FIRST_NAMES = [
+  "Avery",
+  "Blake",
+  "Cameron",
+  "Drew",
+  "Eli",
+  "Finn",
+  "Grant",
+  "Hayden",
+  "Isaiah",
+  "Jordan",
+  "Kai",
+  "Logan",
+  "Micah",
+  "Nolan",
+  "Owen",
+  "Parker",
+  "Quinn",
+  "Riley",
+  "Sawyer",
+  "Theo",
+  "Victor",
+  "Wesley",
+  "Xavier",
+  "Zane",
+] as const;
+
+const LAST_NAMES = [
+  "Adams",
+  "Bennett",
+  "Carter",
+  "Davis",
+  "Ellis",
+  "Foster",
+  "Gibson",
+  "Hayes",
+  "Irving",
+  "Jackson",
+  "King",
+  "Lewis",
+  "Mitchell",
+  "Nelson",
+  "Owens",
+  "Porter",
+  "Reed",
+  "Simmons",
+  "Turner",
+  "Vaughn",
+  "Walker",
+  "Young",
+] as const;
+
+const NFL_TEAMS = [
+  "ARI",
+  "ATL",
+  "BAL",
+  "BUF",
+  "CAR",
+  "CHI",
+  "CIN",
+  "CLE",
+  "DAL",
+  "DEN",
+  "DET",
+  "GB",
+  "HOU",
+  "IND",
+  "JAX",
+  "KC",
+  "LAC",
+  "LAR",
+  "LV",
+  "MIA",
+  "MIN",
+  "NE",
+  "NO",
+  "NYG",
+  "NYJ",
+  "PHI",
+  "PIT",
+  "SEA",
+  "SF",
+  "TB",
+  "TEN",
+  "WAS",
+] as const;
+
+const POSITION_PROFILES: PositionProfile[] = [
+  {
+    position: "QB",
+    count: 48,
+    projectionStart: 310,
+    projectionStep: 3.1,
+    marketStart: 84,
+    marketStep: 1.1,
+    tierSize: 6,
+  },
+  {
+    position: "RB",
+    count: 96,
+    projectionStart: 265,
+    projectionStep: 1.65,
+    marketStart: 100,
+    marketStep: 1.15,
+    tierSize: 8,
+  },
+  {
+    position: "WR",
+    count: 110,
+    projectionStart: 258,
+    projectionStep: 1.35,
+    marketStart: 98,
+    marketStep: 1,
+    tierSize: 10,
+  },
+  {
+    position: "TE",
+    count: 48,
+    projectionStart: 215,
+    projectionStep: 2.05,
+    marketStart: 88,
+    marketStep: 1.4,
+    tierSize: 6,
+  },
+  {
+    position: "K",
+    count: 14,
+    projectionStart: 150,
+    projectionStep: 2,
+    marketStart: 25,
+    marketStep: 1.3,
+    tierSize: 7,
+  },
+  {
+    position: "DST",
+    count: 14,
+    projectionStart: 160,
+    projectionStep: 2.2,
+    marketStart: 28,
+    marketStep: 1.35,
+    tierSize: 7,
+  },
+];
+
+export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDataRelease {
+  const generated: GeneratedPlayer[] = [];
+
+  POSITION_PROFILES.forEach((profile, profileIndex) => {
+    for (let positionIndex = 0; positionIndex < profile.count; positionIndex += 1) {
+      const globalIndex = generated.length;
+      const team = NFL_TEAMS[(globalIndex + profileIndex * 3) % NFL_TEAMS.length]!;
+      const displayName = buildDisplayName(profile.position, positionIndex, globalIndex);
+      const marketScore =
+        profile.marketStart - profile.marketStep * positionIndex + ((positionIndex % 5) - 2) * 0.18;
+
+      generated.push({
+        canonical_player_id: `demo-${profile.position.toLowerCase()}-${positionIndex + 1}`,
+        display_name: displayName,
+        position: profile.position,
+        nfl_team: team,
+        bye_week: 5 + ((globalIndex + profileIndex) % 10),
+        overall_rank: null,
+        position_rank: positionIndex + 1,
+        adp: null,
+        projected_points: round(
+          Math.max(65, profile.projectionStart - profile.projectionStep * positionIndex),
+        ),
+        tier: Math.floor(positionIndex / profile.tierSize) + 1,
+        risk_score: 18 + ((globalIndex * 17 + profileIndex *
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/draft-factory.ts`
+
+```text
+import { createDraftState } from "@fdi/draft-engine";
+import type {
+  DraftState,
+  LeagueSettings,
+  RosterSlotRule,
+  ScoringPreset,
+  ScoringSettings,
+} from "@fdi/shared-types";
+import { createDemoPlayerDataRelease } from "./demo-data.js";
+
+export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
+
+export interface DraftSetup {
+  leagueName: string;
+  teamCount: number;
+  userDraftSlot: number;
+  rounds: number;
+  scoringPreset: SupportedScoringPreset;
+}
+
+export const DEFAULT_DRAFT_SETUP: DraftSetup = {
+  leagueName: "Friday Night League",
+  teamCount: 12,
+  userDraftSlot: 6,
+  rounds: 16,
+  scoringPreset: "half_ppr",
+};
+
+export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
+export const ROUND_OPTIONS = [14, 15, 16, 17, 18] as const;
+
+export const SCORING_OPTIONS: Array<{
+  value: SupportedScoringPreset;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "standard",
+    label: "Standard",
+    description: "No points per reception",
+  },
+  {
+    value: "half_ppr",
+    label: "Half PPR",
+    description: "0.5 points per reception",
+  },
+  {
+    value: "ppr",
+    label: "Full PPR",
+    description: "1 point per reception",
+  },
+];
+
+export function createDraftFromSetup(
+  setup: DraftSetup,
+  draftId = createDraftId(setup.leagueName),
+): DraftState {
+  validateDraftSetup(setup);
+  const settings = createLeagueSettings(setup);
+  const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
+    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
+  );
+
+  return createDraftState({
+    draftId,
+    settings,
+    teamNames,
+    playerDataRelease: createDemoPlayerDataRelease(setup.teamCount * setup.rounds + 40),
+  });
+}
+
+export function createLeagueSettings(setup: DraftSetup): LeagueSettings {
+  validateDraftSetup(setup);
+
+  return {
+    leagueName: setup.leagueName.trim(),
+    teamCount: setup.teamCount,
+    userDraftSlot: setup.userDraftSlot,
+    rounds: setup.rounds,
+    scoring: createScoringSettings(setup.scoringPreset),
+    rosterSlots: createRosterSlots(setup.rounds),
+  };
+}
+
+export function createRosterSlots(rounds: number): RosterSlotRule[] {
+  const requiredStarterSlots = 9;
+  if (!Number.isInteger(rounds) || rounds < requiredStarterSlots) {
+    throw new RangeError(`Draft rounds must be at least ${requiredStarterSlots}.`);
+  }
+
+  return [
+    { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+    { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+    { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+    { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+    { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+    { slot: "K", count: 1, eligiblePositions: ["K"] },
+    { slot: "DST", count: 1, eligiblePositions: ["DST"] },
+    {
+      slot: "BENCH",
+      count: rounds - requiredStarterSlots,
+      eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
+    },
+  ];
+}
+
+function createScoringSettings(preset: SupportedScoringPreset): ScoringSettings {
+  const reception = preset === "ppr" ? 1 : preset === "half_ppr" ? 0.5 : 0;
+
+  return {
+    preset,
+    passingYardsPerPoint: 25,
+    passingTouchdown: 4,
+    interception: -2,
+    rushingYardsPerPoint: 10,
+    rushingTouchdown: 6,
+    receivingYardsPerPoint: 10,
+    receivingTouchdown: 6,
+    reception,
+    fumbleLost: -2,
+  };
+}
+
+function validateDraftSetup(setup: DraftSetup): void {
+  if (setup.leagueName.trim().length === 0) {
+    throw new RangeError("League name is required.");
+  }
+  if (!TEAM_COUNT_OPTIO
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/main.tsx`
+
+```text
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./App.js";
+import "./styles.css";
+
+const rootElement = document.getElementById("root");
+if (rootElement === null) {
+  throw new Error("Draft room root element was not found.");
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+### `apps/draft-room/tests/app.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { makePick } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import { App } from "../src/App.js";
+import {
+  DEFAULT_DRAFT_SETUP,
+  createDraftFromSetup,
+  createRosterSlots,
+} from "../src/draft-factory.js";
+
+describe("draft room application shell", () => {
+  it("renders the league setup experience", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).toContain("Build your draft room.");
+    expect(html).toContain("Start live draft");
+    expect(html).toContain("Offline fictional demo release");
+  });
+
+  it("creates a complete engine-backed snake draft from setup", () => {
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "ui-test-draft");
+    const userTeam = state.teams.find((team) => team.isUser);
+
+    expect(state.order).toHaveLength(DEFAULT_DRAFT_SETUP.teamCount * DEFAULT_DRAFT_SETUP.rounds);
+    expect(state.playerPoolIds.length).toBeGreaterThan(state.order.length);
+    expect(userTeam?.draftSlot).toBe(DEFAULT_DRAFT_SETUP.userDraftSlot);
+    expect(state.status).toBe("not_started");
+  });
+
+  it("keeps roster capacity aligned with the selected round count", () => {
+    const rosterSlots = createRosterSlots(18);
+    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
+    const bench = rosterSlots.find((rule) => rule.slot === "BENCH");
+
+    expect(capacity).toBe(18);
+    expect(bench?.count).toBe(9);
+  });
+
+  it("connects manual selections to live recommendations", () => {
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recommendation-ui-test");
+    const draftedPlayerId = state.availablePlayerIds[0]!;
+    const nextState = makePick(state, draftedPlayerId);
+    const result = recommendPlayers(nextState, { limit: 5 });
+
+    expect(nextState.picks).toHaveLength(1);
+    expect(nextState.availablePlayerIds).not.toContain(draftedPlayerId);
+    expect(result.recommendations.map((item) => item.playerId)).not.toContain(draftedPlayerId);
+    expect(result.recommendations).toHaveLength(5);
+  });
+});
+```
+
+### `apps/draft-room/tsconfig.json`
+
+```text
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist-types",
+    "tsBuildInfoFile": "dist-types/.tsbuildinfo",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    { "path": "../../packages/shared-types" },
+    { "path": "../../packages/draft-engine" },
+    { "path": "../../packages/recommendation-engine" }
+  ]
+}
+```
+
+### `apps/draft-room/vite.config.ts`
+
+```text
+import { fileURLToPath, URL } from "node:url";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@fdi/shared-types": fileURLToPath(
+        new URL("../../packages/shared-types/src/index.ts", import.meta.url),
+      ),
+      "@fdi/draft-engine": fileURLToPath(
+        new URL("../../packages/draft-engine/src/index.ts", import.meta.url),
+      ),
+      "@fdi/recommendation-engine": fileURLToPath(
+        new URL("../../packages/recommendation-engine/src/index.ts", import.meta.url),
+      ),
+    },
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+  },
+});
+```
+
 ### `packages/data/constants.py`
 
 ```text
@@ -2803,803 +3752,696 @@ def read_parquet(path: str | Path) -> pd.DataFrame:
     return pd.read_parquet(path)
 ```
 
-### `packages/data/player_ids.py`
+## Fantasy Domain Logic Files
 
-```text
-from __future__ import annotations
-
-import re
-import unicodedata
-from collections.abc import Iterable
-
-import pandas as pd
-import polars as pl
-
-from packages.data.validation import assert_unique_key, require_columns
-
-CANONICAL_ID_COLUMN = "canonical_player_id"
-NORMALIZED_NAME_COLUMN = "normalized_player_name"
-ENTITY_TYPE_COLUMN = "entity_type"
-
-PLAYER_ENTITY = "player"
-DST_ENTITY = "dst"
-
-POSITION_NORMALIZATION_MAP: dict[str, str] = {
-    "QB": "QB",
-    "RB": "RB",
-    "WR": "WR",
-    "TE": "TE",
-    "K": "K",
-    "DST": "DST",
-    "DEF": "DST",
-    "D/ST": "DST",
-}
-
-_SUFFIX_PATTERN = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b", flags=re.IGNORECASE)
-_MULTI_SPACE_PATTERN = re.compile(r"\s+")
-_NON_WORD_SPACE_HYPHEN_SLASH_PATTERN = re.compile(r"[^a-z0-9\s\-/]")
-_DST_TOKEN_PATTERN = re.compile(r"\b(?:d\s*/\s*st|dst|defense|def)\b", flags=re.IGNORECASE)
-
-DST_ALIAS_MAP: dict[str, str] = {
-    "arizona cardinals": "arizona_cardinals",
-    "atlanta falcons": "atlanta_falcons",
-    "baltimore ravens": "baltimore_ravens",
-    "buffalo bills": "buffalo_bills",
-    "carolina panthers": "carolina_panthers",
-    "chicago bears": "chicago_bears",
-    "cincinnati bengals": "cincinnati_bengals",
-    "cleveland browns": "cleveland_browns",
-    "dallas cowboys": "dallas_cowboys",
-    "denver broncos": "denver_broncos",
-    "detroit lions": "detroit_lions",
-    "green bay packers": "green_bay_packers",
-    "houston texans": "houston_texans",
-    "indianapolis colts": "indianapolis_colts",
-    "jacksonville jaguars": "jacksonville_jaguars",
-    "kansas city chiefs": "kansas_city_chiefs",
-    "las vegas raiders": "las_vegas_raiders",
-    "los angeles chargers": "los_angeles_chargers",
-    "los angeles rams": "los_angeles_rams",
-    "miami dolphins": "miami_dolphins",
-    "minnesota vikings": "minnesota_vikings",
-    "new england patriots": "new_england_patriots",
-    "new orleans saints": "new_orleans_saints",
-    "new york giants": "new_york_giants",
-    "new york jets": "new_york_jets",
-    "philadelphia eagles": "philadelphia_eagles",
-    "pittsburgh steelers": "pittsburgh_steelers",
-    "san francisco 49ers": "san_francisco_49ers",
-    "seattle seahawks": "seattle_seahawks",
-    "tampa bay buccaneers": "tampa_bay_buccaneers",
-    "tennessee titans": "tennessee_titans",
-    "washington commanders": "washington_commanders",
-}
-
-DST_ABBR_MAP: dict[str, str] = {
-    "ARI": "arizona_cardinals",
-    "ATL": "atlanta_falcons",
-    "BAL": "baltimore_ravens",
-    "BUF": "buffalo_bills",
-    "CAR": "carolina_panthers",
-    "CHI": "chicago_bears",
-    "CIN": "cincinnati_bengals",
-    "CLE": "cleveland_browns",
-    "DAL": "dallas_cowboys",
-    "DEN": "denver_broncos",
-    "DET": "detroit_lions",
-    "GB": "green_bay_packers",
-    "HOU": "houston_texans",
-    "IND": "indianapolis_colts",
-    "JAX": "jacksonville_jaguars",
-    "KC": "kansas_city_chiefs",
-    "LV": "las_vegas_raiders",
-    "LAC": "los_angeles_chargers",
-    "LAR": "los_angeles_rams",
-    "MIA": "miami_dolphins",
-    "MIN": "minnesota_vikings",
-    "NE": "new_england_patriots",
-    "NO": "new_orleans_saints",
-    "NYG": "new_york_giants",
-    "NYJ": "new_york_jets",
-    "PHI": "philadelphia_eagles",
-    "PIT": "pittsburgh_steelers",
-    "SF": "san_francisco_49ers",
-    "SEA": "seattle_seahawks",
-    "TB": "tampa_bay_buccaneers",
-    "TEN": "tennessee_titans",
-    "WAS": "washington_commanders",
-}
-
-
-def normalize_position(value: object) -> str:
-    text = str(value).strip().upper()
-    return POSITION_NORMALIZA
-
-[TRUNCATED]
-```
-
-### `packages/data/warehouse/player_season.py`
-
-```text
-# packages/data/warehouse/player_season.py
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-
-from packages.data.constants import INTERMEDIATE_DATA_DIR
-from packages.data.io import write_parquet
-from packages.data.validation import assert_unique_key, require_columns
-
-PROCESSED_DATA_DIR = Path("data/processed")
-
-FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
-
-
-def _safe_mode(series: pd.Series):
-    non_null = series.dropna()
-    if non_null.empty:
-        return None
-    mode = non_null.mode()
-    if mode.empty:
-        return non_null.iloc[0]
-    return mode.iloc[0]
-
-
-def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
-    adp_df = adp_df.copy()
-
-    require_columns(
-        adp_df,
-        [
-            "season",
-            "canonical_player_id",
-            "position",
-            "adp_overall",
-        ],
-    )
-
-    adp_df = adp_df.sort_values(
-        ["season", "position", "adp_overall", "canonical_player_id"]
-    ).reset_index(drop=True)
-
-    adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
-
-    return adp_df
-
-
-def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
-    required = [
-        "season",
-        "canonical_player_id",
-        "player_name",
-        "normalized_player_name",
-        "position",
-        "team",
-    ]
-    require_columns(nflverse_df, required)
-
-    df = nflverse_df.copy()
-
-    # Expected weekly fantasy/stat columns may vary slightly across source versions.
-    # We only aggregate columns that actually exist.
-    sum_candidates = [
-        "fantasy_points_ppr",
-        "fantasy_points",
-        "completions",
-        "attempts",
-        "passing_yards",
-        "passing_tds",
-        "interceptions",
-        "carries",
-        "rushing_yards",
-        "rushing_tds",
-        "targets",
-        "receptions",
-        "receiving_yards",
-        "receiving_tds",
-    ]
-    sum_cols = [c for c in sum_candidates if c in df.columns]
-
-    if "week" in df.columns:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
-        )
-    else:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
-        )
-
-    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
-
-    agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
-
-    season_df = grouped.agg(agg_dict).reset_index()
-
-    identity_df = grouped.agg(
-        player_name=("player_name", _safe_mode),
-        normalized_player_name=("normalized_player_name", _safe_mode),
-        position=("position", _safe_mode),
-        team=("team", _safe_mode),
-    ).reset_index()
-
-    season_df = season_df.merge(
-        identity_df,
-        on=["season", "canonical_player_id"],
-        how="left",
-        validate="one_to_one",
-    )
-
-    season_df = season_df.merge(
-        games_played_series.reset_index(),
-        on=["season", "canonical_player_id"],
-        how="left",
-        validate="one_to_one",
-    )
-
-    if "fantasy_points_ppr" in season_df.columns:
-        season_df["fantasy_points_per_game"] = (
-            season_df["fantasy_points_ppr"] / season_df["games_played"]
-        ).round(2)
-    elif "fantasy_points" in season_df.columns:
-        season_df["fantasy_points_per_game"] = (
-            season_df["fantasy_points"] / season_df["games_played"]
-        ).round(2)
-    else:
-        season_df["fantasy_poi
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/package.json`
+### `apps/draft-room/package.json`
 
 ```text
 {
-  "name": "@fdi/draft-engine",
+  "name": "@fdi/draft-room",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+  "scripts": {
+    "dev": "vite",
+    "build:vite": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@fdi/shared-types": "0.1.0"
+    "@fdi/draft-engine": "0.1.0",
+    "@fdi/recommendation-engine": "0.1.0",
+    "@fdi/shared-types": "0.1.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "vite": "8.1.4"
   }
 }
 ```
 
-### `packages/draft-engine/src/errors.ts`
+### `apps/draft-room/src/App.tsx`
 
 ```text
-export type DraftEngineErrorCode =
-  | "INVALID_SETTINGS"
-  | "INVALID_PLAYER_POOL"
-  | "DRAFT_COMPLETE"
-  | "PLAYER_UNAVAILABLE"
-  | "ROSTER_INVALID"
-  | "NO_PICKS_TO_UNDO"
-  | "PICK_NOT_FOUND"
-  | "INVALID_DRAFT_EXPORT"
-  | "UNSUPPORTED_SCHEMA_VERSION";
-
-export class DraftEngineError extends Error {
-  readonly code: DraftEngineErrorCode;
-
-  constructor(code: DraftEngineErrorCode, message: string) {
-    super(message);
-    this.name = "DraftEngineError";
-    this.code = code;
-  }
-}
-```
-
-### `packages/draft-engine/src/index.ts`
-
-```text
-export { DraftEngineError, type DraftEngineErrorCode } from "./errors.js";
-export {
-  createDraftTeams,
-  generateSnakeDraftOrder,
-  validateLeagueSettings,
-} from "./order.js";
-export { deserializeDraftState, serializeDraftState } from "./serialization.js";
-export {
-  buildRosterAssignments,
-  buildRosters,
-  correctPick,
-  createDraftState,
-  getCurrentOrderSlot,
+import { useState } from "react";
+import {
   getPlayerById,
   makePick,
+  serializeDraftState,
   undoLastPick,
-  type CreateDraftStateInput,
-} from "./state.js";
-```
-
-### `packages/draft-engine/src/order.ts`
-
-```text
+} from "@fdi/draft-engine";
+import type { DraftState } from "@fdi/shared-types";
+import { DraftRoom } from "./components/DraftRoom.js";
+import { SetupScreen } from "./components/SetupScreen.js";
 import {
-  PLAYER_POSITIONS,
-  ROSTER_SLOT_TYPES,
-  type DraftOrderSlot,
-  type DraftTeam,
-  type LeagueSettings,
-  type PlayerPosition,
-  type RosterSlotType,
-} from "@fdi/shared-types";
-import { DraftEngineError } from "./errors.js";
+  DEFAULT_DRAFT_SETUP,
+  createDraftFromSetup,
+  type DraftSetup,
+} from "./draft-factory.js";
 
-export function validateLeagueSettings(settings: LeagueSettings): void {
-  if (!Number.isInteger(settings.teamCount) || settings.teamCount < 2 || settings.teamCount > 20) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "teamCount must be an integer between 2 and 20.",
-    );
+export function App() {
+  const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
+  const [draftState, setDraftState] = useState<DraftState | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function startDraft(): void {
+    try {
+      const nextState = createDraftFromSetup(setup);
+      setDraftState(nextState);
+      setErrorMessage(null);
+      setNotice("Draft created. Record the first selection from the player board.");
+    } catch (error) {
+      setErrorMessage(toErrorMessage(error));
+    }
   }
 
-  if (
-    !Number.isInteger(settings.userDraftSlot) ||
-    settings.userDraftSlot < 1 ||
-    settings.userDraftSlot > settings.teamCount
-  ) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "userDraftSlot must be within the configured team count.",
-    );
-  }
-
-  if (!Number.isInteger(settings.rounds) || settings.rounds < 1 || settings.rounds > 40) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "rounds must be an integer between 1 and 40.",
-    );
-  }
-
-  if (!Array.isArray(settings.rosterSlots) || settings.rosterSlots.length === 0) {
-    throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
-  }
-
-  let rosterCapacity = 0;
-  for (const rule of settings.rosterSlots) {
-    if (!ROSTER_SLOT_TYPES.includes(rule.slot as RosterSlotType)) {
-      throw new DraftEngineError("INVALID_SETTINGS", `Unsupported roster slot: ${String(rule.slot)}`);
+  function draftPlayer(playerId: string): void {
+    if (draftState === null) {
+      return;
     }
 
-    if (!Number.isInteger(rule.count) || rule.count < 0) {
-      throw new DraftEngineError(
-        "INVALID_SETTINGS",
-        `Roster slot ${rule.slot} must have a non-negative integer count.`,
+    try {
+      const player = getPlayerById(draftState, playerId);
+      const currentPick = draftState.nextOverallPick;
+      const nextState = makePick(draftState, playerId);
+      setDraftState(nextState);
+      setNotice(
+        `${player?.display_name ?? playerId} selected at pick ${currentPick ?? "—"}.`,
       );
+    } catch (error) {
+      setNotice(toErrorMessage(error));
+    }
+  }
+
+  function undoPick(): void {
+    if (draftState === null || draftState.picks.length === 0) {
+      return;
     }
 
-    if (!Array.isArray(rule.eligiblePositions)) {
-      throw new DraftEngineError(
-        "INVALID_SETTINGS",
-        `Roster slot ${rule.slot} must define eligible positions.`,
-      );
+    try {
+      const lastPick = draftState.picks[draftState.picks.length - 1]!;
+      const player = getPlayerById(draftState, lastPick.playerId);
+      const nextState = undoLastPick(draftState);
+      setDraftState(nextState);
+      setNotice(`${player?.display_name ?? lastPick.playerId} returned to the player pool.`);
+    } catch (error) {
+      setNotice(toErrorMessage(error));
+    }
+  }
+
+  function exportDraft(): void {
+    if (draftState === null) {
+      return;
     }
 
-    if (rule.count > 0 && rule.eligiblePositions.length === 0) {
-      throw new DraftEngineError(
-        "INVALID_SETTINGS",
-        `Roster slot ${rule.slot} must define eligible positions.`,
-      );
+    try {
+      const json = serializeDraftState(draftState);
+      const blob = new Blob([json], { type: "application/json" });
+      const downloadUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = downloadUrl;
+      anchor.download = `${slugify(draftState.settings.leagueName)}-draft.json`;
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(downloadUrl);
+      setNotice("Draft backup exported to your downloads folder.");
+    } catch (error) {
+      setNotice(toErrorMessage(error));
     }
-
-    const uniquePositions = new Set<PlayerPosition>();
-    for (const position of rule.eligiblePositions) {
-      if (!PLAYER_POSITIONS.includes(position as PlayerPosition)) {
-        throw new DraftEngineError(
-          "INVALID_SETTINGS",
-          `Roster slot ${rule.slot} contains unsupported position ${String(position)}.`,
-        );
-      }
-      if (uniquePositions.has(position)) {
-        throw new DraftEngineError(
-          "INVALID_SETTINGS",
-          `Roster slot ${rule.slot} contains duplicate eligible position ${position}.`,
-        );
-      }
-      uniquePositions.add(position);
-    }
-
-    rosterCapacity += rule.count;
   }
 
-  if (rosterCapacity !== settings.rounds) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      `Roster capacity (${rosterCapacity}) must equal configured rounds (${settings.rounds}).`,
-    );
+  function exitDraft(): void {
+    setDraftState(null);
+    setNotice(null);
+    setErrorMessage(null);
   }
-}
 
-export function createDraftTeams(settings: LeagueSettings, teamNames?: string[]): DraftTeam[] {
-  validateLeagueSettings(settings);
-
-  if (teamNames !== undefined && teamNames.length !== settings.teamCount) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "teamNames must contain one name for each configured team.",
+  if (draftState === null) {
+    return (
+      <SetupScreen
+        setup={setup}
+        errorMessage={errorMessage}
+        onSetupChange={(nextSetup) => {
+          setSetup(nextSetup);
+          setErrorMessage(null);
+        }}
+        onStartDraft={startDraft}
+      />
     );
   }
 
-  return Array.from({ length: settings.teamCount }, (_, index) => {
-    const draftSlot = index + 1;
-    const providedName = teamNames?.[index]?.trim();
-
-    return {
-      teamId: `team-${draftSlot}`,
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/src/serialization.ts`
-
-```text
-import {
-  DRAFT_EXPORT_SCHEMA_VERSION,
-  assertPlayerDataRelease,
-  isPlayerPosition,
-  isRosterSlotType,
-  type DraftExportEnvelope,
-  type DraftExportPayload,
-  type DraftState,
-  type DraftTeam,
-  type LeagueSettings,
-  type PlayerDataRelease,
-  type RosterSlotRule,
-  type ScoringSettings,
-} from "@fdi/shared-types";
-import { DraftEngineError } from "./errors.js";
-import { validateLeagueSettings } from "./order.js";
-import { createDraftState, makePick } from "./state.js";
-
-const SCORING_PRESETS = ["standard", "half_ppr", "ppr", "custom"] as const;
-const SCORING_NUMBER_FIELDS = [
-  "passingYardsPerPoint",
-  "passingTouchdown",
-  "interception",
-  "rushingYardsPerPoint",
-  "rushingTouchdown",
-  "receivingYardsPerPoint",
-  "receivingTouchdown",
-  "reception",
-  "fumbleLost",
-] as const;
-
-export function serializeDraftState(
-  state: DraftState,
-  exportedAt: string = new Date().toISOString(),
-): string {
-  assertIsoTimestamp(exportedAt, "exportedAt");
-
-  const payload = toExportPayload(state);
-  const restored = restoreDraftExportPayload(payload);
-  if (stateSignature(restored) !== stateSignature(state)) {
-    throw new DraftEngineError(
-      "INVALID_DRAFT_EXPORT",
-      "Draft state is internally inconsistent and cannot be exported safely.",
-    );
-  }
-
-  const envelope: DraftExportEnvelope = {
-    schema_version: DRAFT_EXPORT_SCHEMA_VERSION,
-    exported_at: exportedAt,
-    draft: payload,
-  };
-
-  return JSON.stringify(envelope, null, 2);
-}
-
-export function deserializeDraftState(serialized: string): DraftState {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(serialized);
-  } catch {
-    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export is not valid JSON.");
-  }
-
-  const envelope = parseDraftExportEnvelope(parsed);
-  return restoreDraftExportPayload(envelope.draft);
-}
-
-function restoreDraftExportPayload(payload: DraftExportPayload): DraftState {
-  let state: DraftState;
-  try {
-    state = createDraftState({
-      draftId: payload.draftId,
-      settings: payload.settings,
-      teams: payload.teams,
-      playerDataRelease: payload.playerDataRelease,
-    });
-
-    for (const playerId of payload.pickPlayerIds) {
-      state = makePick(state, playerId);
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Draft state could not be restored.";
-    throw new DraftEngineError("INVALID_DRAFT_EXPORT", `Draft export is invalid: ${message}`);
-  }
-
-  if (!Number.isInteger(payload.revision) || payload.revision < state.picks.length) {
-    throw new DraftEngineError(
-      "INVALID_DRAFT_EXPORT",
-      "Draft revision must be an integer at least as large as the current pick count.",
-    );
-  }
-
-  return { ...state, revision: payload.revision };
-}
-
-function toExportPayload(state: DraftState): DraftExportPayload {
-  return {
-    draftId: state.draftId,
-    settings: structuredClone(state.settings),
-    teams: state.teams.map((team) => ({ ...team })),
-    playerDataRelease: structuredClone(state.playerDataRelease),
-    pickPlayerIds: state.picks.map((pick) => pick.playerId),
-    revision: state.revision,
-  };
-}
-
-function parseDraftExportEnvelope(value: unknown): DraftExportEnvelope {
-  if (!isRecord(value)) {
-    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export must be an object.");
-  }
-
-  if (value.schema_version !== DRAFT_EXPORT_SCHEMA_VERSION) {
-    throw new DraftEngineError(
-      "UNSUPPORTED_SCHEMA_VERSION",
-      `Unsupported draft export schema version: ${String(value
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/src/state.ts`
-
-```text
-import {
-  assertPlayerDataRelease,
-  type DraftOrderSlot,
-  type DraftPick,
-  type DraftState,
-  type DraftStatus,
-  type DraftTeam,
-  type LeagueSettings,
-  type PlayerDataRecord,
-  type PlayerDataRelease,
-  type PlayerPosition,
-  type RosterSlotRule,
-  type RosterSlotType,
-} from "@fdi/shared-types";
-import { DraftEngineError } from "./errors.js";
-import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "./order.js";
-
-export interface CreateDraftStateInput {
-  draftId: string;
-  settings: LeagueSettings;
-  playerDataRelease: PlayerDataRelease;
-  teamNames?: string[];
-  teams?: DraftTeam[];
-}
-
-type PendingDraftPick = DraftOrderSlot & { playerId: string };
-
-interface ConcreteRosterSlot {
-  slot: RosterSlotType;
-  slotIndex: number;
-  eligiblePositions: PlayerPosition[];
-  ruleOrder: number;
-}
-
-export function createDraftState(input: CreateDraftStateInput): DraftState {
-  const draftId = input.draftId.trim();
-  if (draftId.length === 0) {
-    throw new DraftEngineError("INVALID_SETTINGS", "draftId must be a non-empty string.");
-  }
-
-  validateLeagueSettings(input.settings);
-  const playerDataRelease = normalizePlayerDataRelease(input.playerDataRelease);
-  const teams = input.teams ?? createDraftTeams(input.settings, input.teamNames);
-  const order = generateSnakeDraftOrder(input.settings, teams);
-  const playerPoolIds = playerDataRelease.players.map((player) => player.canonical_player_id);
-
-  if (playerPoolIds.length < order.length) {
-    throw new DraftEngineError(
-      "INVALID_PLAYER_POOL",
-      `The player pool contains ${playerPoolIds.length} players but the draft requires ${order.length} picks.`,
-    );
-  }
-
-  return {
-    draftId,
-    settings: structuredClone(input.settings),
-    teams: structuredClone(teams),
-    order,
-    playerDataRelease,
-    playerPoolIds,
-    availablePlayerIds: [...playerPoolIds],
-    picks: [],
-    nextOverallPick: 1,
-    status: "not_started",
-    revision: 0,
-  };
-}
-
-export function makePick(state: DraftState, playerId: string): DraftState {
-  assertStateShape(state);
-
-  if (state.nextOverallPick === null) {
-    throw new DraftEngineError("DRAFT_COMPLETE", "The draft is already complete.");
-  }
-
-  const normalizedPlayerId = playerId.trim();
-  if (!state.availablePlayerIds.includes(normalizedPlayerId)) {
-    throw new DraftEngineError(
-      "PLAYER_UNAVAILABLE",
-      `Player ${normalizedPlayerId || "<empty>"} is not available.`,
-    );
-  }
-
-  const orderSlot = state.order[state.nextOverallPick - 1];
-  if (orderSlot === undefined) {
-    throw new DraftEngineError("DRAFT_COMPLETE", "The draft order has no remaining picks.");
-  }
-
-  const pick: PendingDraftPick = { ...orderSlot, playerId: normalizedPlayerId };
-  return rebuildState(state, [...state.picks.map(toPendingPick), pick]);
-}
-
-export function undoLastPick(state: DraftState): DraftState {
-  assertStateShape(state);
-
-  if (state.picks.length === 0) {
-    throw new DraftEngineError("NO_PICKS_TO_UNDO", "There are no picks to undo.");
-  }
-
-  return rebuildState(state, state.picks.slice(0, -1).map(toPendingPick));
-}
-
-export function correctPick(
-  state: DraftState,
-  overallPick: number,
-  replacementPlayerId: string,
-): DraftState {
-  assertStateShape(state);
-
-  if (!Number.isInteger(overallPick) || overallPick < 1 || overallPick > state.picks.length) {
-    throw new DraftEngineError("PICK_NOT_FOUND", `Pick ${overallPick} has not been made.`);
-  }
-
-  const normalizedPlayerId = replacementPlayerId.trim();
-  const existingPi
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/tests/fixtures.ts`
-
-```text
-import type {
-  LeagueSettings,
-  PlayerDataRecord,
-  PlayerDataRelease,
-  PlayerPosition,
-  RosterSlotRule,
-} from "@fdi/shared-types";
-
-const ALL_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
-
-export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
-  const rounds = overrides.rounds ?? 16;
-  const rosterSlots = overrides.rosterSlots ?? defaultRosterSlots(rounds);
-
-  return {
-    leagueName: "Test League",
-    teamCount: 12,
-    userDraftSlot: 6,
-    rounds,
-    scoring: {
-      preset: "half_ppr",
-      passingYardsPerPoint: 25,
-      passingTouchdown: 4,
-      interception: -2,
-      rushingYardsPerPoint: 10,
-      rushingTouchdown: 6,
-      receivingYardsPerPoint: 10,
-      receivingTouchdown: 6,
-      reception: 0.5,
-      fumbleLost: -2,
-    },
-    rosterSlots,
-    ...overrides,
-  };
-}
-
-export function playerRecord(
-  canonicalPlayerId: string,
-  position: PlayerPosition,
-  displayName: string = canonicalPlayerId,
-): PlayerDataRecord {
-  return {
-    canonical_player_id: canonicalPlayerId,
-    display_name: displayName,
-    position,
-    nfl_team: "TST",
-    bye_week: 7,
-    overall_rank: null,
-    position_rank: null,
-    adp: null,
-    projected_points: null,
-    tier: null,
-    risk_score: null,
-    upside_score: null,
-    availability_status: "active",
-  };
-}
-
-export function playerDataRelease(players: PlayerDataRecord[]): PlayerDataRelease {
-  return {
-    schema_version: "1.0",
-    season: 2026,
-    release_id: "test-release-v1",
-    generated_at: "2026-07-16T12:00:00Z",
-    sources: ["test-fixture"],
-    players,
-  };
-}
-
-export function generatedPlayerRelease(
-  count: number,
-  positions: PlayerPosition[] = ALL_POSITIONS,
-): PlayerDataRelease {
-  return playerDataRelease(
-    Array.from({ length: count }, (_, index) =>
-      playerRecord(`player-${index + 1}`, positions[index % positions.length]!),
-    ),
+  return (
+    <DraftRoom
+      state={draftState}
+      notice={notice}
+      onDraftPlayer={draftPlayer}
+      onUndo={undoPick}
+      onExport={exportDraft}
+      onExit={exitDraft}
+    />
   );
 }
 
-export function fullDraftPlayerRelease(settings: LeagueSettings): PlayerDataRelease {
-  const standardRoundPositions: PlayerPosition[] = [
-    "QB",
-    "RB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "RB",
-    "K",
-    "DST",
-    "QB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "RB",
-    "WR",
-  ];
-
-  const requiredPlayers = settings.teamCount * settings.rounds;
-  const players = Array.from({ length: requiredPlayers + 20 }, (_, index) => {
-    const round = Math.floor(index / settings.teamCount);
-    const position = standardRoundPositions[round] ?? ALL_POSITIONS[index % ALL_POSITIONS.length]!;
-    return playerRecord(`player-${index + 1}`, position);
-  });
-  return playerDataRelease(players);
+function toErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "An unexpected draft-room error occurred.";
 }
 
-function defaultRosterSlots(rounds: number): RosterSlotRule[] {
-  if (rounds !== 16) {
-    return [{ slot: "BENCH", count: rounds, eligiblePositions: [...ALL_POSITIONS] }];
+function slugify(va
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/DraftRoom.tsx`
+
+```text
+import { useMemo, useState } from "react";
+import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import type {
+  DraftPick,
+  DraftState,
+  PlayerDataRecord,
+  PlayerPosition,
+  RosterSlotType,
+} from "@fdi/shared-types";
+
+interface DraftRoomProps {
+  state: DraftState;
+  notice: string | null;
+  onDraftPlayer: (playerId: string) => void;
+  onUndo: () => void;
+  onExport: () => void;
+  onExit: () => void;
+}
+
+type PositionFilter = "ALL" | PlayerPosition;
+
+const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+
+const ROSTER_SLOT_ORDER: RosterSlotType[] = [
+  "QB",
+  "RB",
+  "WR",
+  "TE",
+  "FLEX",
+  "SUPERFLEX",
+  "K",
+  "DST",
+  "BENCH",
+];
+
+export function DraftRoom({
+  state,
+  notice,
+  onDraftPlayer,
+  onUndo,
+  onExport,
+  onExit,
+}: DraftRoomProps) {
+  const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
+  const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
+
+  const currentSlot = getCurrentOrderSlot(state);
+  const currentTeam =
+    currentSlot === null
+      ? null
+      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
+  const isUserOnClock = currentTeam?.isUser ?? false;
+  const rosters = useMemo(() => buildRosterAssignments(state), [state]);
+  const playersById = useMemo(
+    () =>
+      new Map(
+        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+      ),
+    [state.playerDataRelease],
+  );
+
+  const recommendationResult = useMemo(() => {
+    if (state.availablePlayerIds.length === 0) {
+      return null;
+    }
+    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
+  }, [state, userTeam.teamId]);
+
+  const filteredPlayers = useMemo(() => {
+    const available = new Set(state.availablePlayerIds);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return state.playerDataRelease.players
+      .filter((player) => available.has(player.canonical_player_id))
+      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
+      .filter((player) => {
+        if (normalizedQuery.length === 0) {
+          return true;
+        }
+        return [player.display_name, player.position, player.nfl_team ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort(compareAvailablePlayers)
+      .slice(0, 80);
+  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
+
+  const selectedTeam =
+    state.teams.find((team) => team.teamId === selectedTeamId) ?? userTeam;
+  const selectedRoster = [...(rosters[selectedTeam.teamId] ?? [])].sort(compareRosterPicks);
+  const recentPicks = [...state.picks].slice(-12).reverse();
+  const completedPicks = state.picks.length;
+  const totalPicks = state.order.length;
+  const completionPercent = Math.round((completedPicks / totalPicks) * 100);
+
+  return (
+    <main className="draft-room-shell">
+      <header className="draft-header">
+        <div className="draft-brand">
+          <div className="brand-mark brand-mark-small" aria-hidden="true">
+            FDI
+          </div>
+          <div>
+            <p className="eyebrow">Fantasy Draft Intelligence</p>
+            <h1>{state.settings.leagueName}</h1>
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/SetupScreen.tsx`
+
+```text
+import type { FormEvent } from "react";
+import {
+  ROUND_OPTIONS,
+  SCORING_OPTIONS,
+  TEAM_COUNT_OPTIONS,
+  type DraftSetup,
+  type SupportedScoringPreset,
+} from "../draft-factory.js";
+
+interface SetupScreenProps {
+  setup: DraftSetup;
+  errorMessage: string | null;
+  onSetupChange: (setup: DraftSetup) => void;
+  onStartDraft: () => void;
+}
+
+export function SetupScreen({
+  setup,
+  errorMessage,
+  onSetupChange,
+  onStartDraft,
+}: SetupScreenProps) {
+  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    onStartDraft();
+  }
+
+  return (
+    <main className="setup-shell">
+      <section className="setup-hero">
+        <div className="brand-mark" aria-hidden="true">
+          FDI
+        </div>
+        <p className="eyebrow">Local-first draft intelligence</p>
+        <h1>Build your draft room.</h1>
+        <p className="setup-lede">
+          Configure the league, load an offline player pool, and run the entire snake draft from
+          one laptop. No platform login. No live sync dependency.
+        </p>
+
+        <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>Manual pick entry</span>
+          <span>Live recommendations</span>
+          <span>Every roster tracked</span>
+          <span>Offline-safe engine</span>
+        </div>
+      </section>
+
+      <section className="setup-card" aria-labelledby="setup-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">New draft</p>
+            <h2 id="setup-title">League setup</h2>
+          </div>
+          <span className="alpha-badge">Interface alpha</span>
+        </div>
+
+        <form className="setup-form" onSubmit={handleSubmit}>
+          <label className="field field-wide">
+            <span>League name</span>
+            <input
+              value={setup.leagueName}
+              onChange={(event) =>
+                onSetupChange({
+                  ...setup,
+                  leagueName: event.target.value,
+                })
+              }
+              placeholder="Friday Night League"
+              autoComplete="off"
+            />
+          </label>
+
+          <label className="field">
+            <span>Teams</span>
+            <select
+              value={setup.teamCount}
+              onChange={(event) => {
+                const teamCount = Number(event.target.value);
+                onSetupChange({
+                  ...setup,
+                  teamCount,
+                  userDraftSlot: Math.min(setup.userDraftSlot, teamCount),
+                });
+              }}
+            >
+              {TEAM_COUNT_OPTIONS.map((teamCount) => (
+                <option key={teamCount} value={teamCount}>
+                  {teamCount} teams
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Your draft slot</span>
+            <select
+              value={setup.userDraftSlot}
+              onChange={(event) =>
+                onSetupChange({
+                  ...setup,
+                  userDraftSlot: Number(event.target.value),
+                })
+              }
+            >
+              {draftSlots.map((slot) => (
+                <option key={slot} value={slot}>
+                  Pick {slot}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/demo-data.ts`
+
+```text
+import type {
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+} from "@fdi/shared-types";
+
+interface GeneratedPlayer extends PlayerDataRecord {
+  marketScore: number;
+}
+
+interface PositionProfile {
+  position: PlayerPosition;
+  count: number;
+  projectionStart: number;
+  projectionStep: number;
+  marketStart: number;
+  marketStep: number;
+  tierSize: number;
+}
+
+const FIRST_NAMES = [
+  "Avery",
+  "Blake",
+  "Cameron",
+  "Drew",
+  "Eli",
+  "Finn",
+  "Grant",
+  "Hayden",
+  "Isaiah",
+  "Jordan",
+  "Kai",
+  "Logan",
+  "Micah",
+  "Nolan",
+  "Owen",
+  "Parker",
+  "Quinn",
+  "Riley",
+  "Sawyer",
+  "Theo",
+  "Victor",
+  "Wesley",
+  "Xavier",
+  "Zane",
+] as const;
+
+const LAST_NAMES = [
+  "Adams",
+  "Bennett",
+  "Carter",
+  "Davis",
+  "Ellis",
+  "Foster",
+  "Gibson",
+  "Hayes",
+  "Irving",
+  "Jackson",
+  "King",
+  "Lewis",
+  "Mitchell",
+  "Nelson",
+  "Owens",
+  "Porter",
+  "Reed",
+  "Simmons",
+  "Turner",
+  "Vaughn",
+  "Walker",
+  "Young",
+] as const;
+
+const NFL_TEAMS = [
+  "ARI",
+  "ATL",
+  "BAL",
+  "BUF",
+  "CAR",
+  "CHI",
+  "CIN",
+  "CLE",
+  "DAL",
+  "DEN",
+  "DET",
+  "GB",
+  "HOU",
+  "IND",
+  "JAX",
+  "KC",
+  "LAC",
+  "LAR",
+  "LV",
+  "MIA",
+  "MIN",
+  "NE",
+  "NO",
+  "NYG",
+  "NYJ",
+  "PHI",
+  "PIT",
+  "SEA",
+  "SF",
+  "TB",
+  "TEN",
+  "WAS",
+] as const;
+
+const POSITION_PROFILES: PositionProfile[] = [
+  {
+    position: "QB",
+    count: 48,
+    projectionStart: 310,
+    projectionStep: 3.1,
+    marketStart: 84,
+    marketStep: 1.1,
+    tierSize: 6,
+  },
+  {
+    position: "RB",
+    count: 96,
+    projectionStart: 265,
+    projectionStep: 1.65,
+    marketStart: 100,
+    marketStep: 1.15,
+    tierSize: 8,
+  },
+  {
+    position: "WR",
+    count: 110,
+    projectionStart: 258,
+    projectionStep: 1.35,
+    marketStart: 98,
+    marketStep: 1,
+    tierSize: 10,
+  },
+  {
+    position: "TE",
+    count: 48,
+    projectionStart: 215,
+    projectionStep: 2.05,
+    marketStart: 88,
+    marketStep: 1.4,
+    tierSize: 6,
+  },
+  {
+    position: "K",
+    count: 14,
+    projectionStart: 150,
+    projectionStep: 2,
+    marketStart: 25,
+    marketStep: 1.3,
+    tierSize: 7,
+  },
+  {
+    position: "DST",
+    count: 14,
+    projectionStart: 160,
+    projectionStep: 2.2,
+    marketStart: 28,
+    marketStep: 1.35,
+    tierSize: 7,
+  },
+];
+
+export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDataRelease {
+  const generated: GeneratedPlayer[] = [];
+
+  POSITION_PROFILES.forEach((profile, profileIndex) => {
+    for (let positionIndex = 0; positionIndex < profile.count; positionIndex += 1) {
+      const globalIndex = generated.length;
+      const team = NFL_TEAMS[(globalIndex + profileIndex * 3) % NFL_TEAMS.length]!;
+      const displayName = buildDisplayName(profile.position, positionIndex, globalIndex);
+      const marketScore =
+        profile.marketStart - profile.marketStep * positionIndex + ((positionIndex % 5) - 2) * 0.18;
+
+      generated.push({
+        canonical_player_id: `demo-${profile.position.toLowerCase()}-${positionIndex + 1}`,
+        display_name: displayName,
+        position: profile.position,
+        nfl_team: team,
+        bye_week: 5 + ((globalIndex + profileIndex) % 10),
+        overall_rank: null,
+        position_rank: positionIndex + 1,
+        adp: null,
+        projected_points: round(
+          Math.max(65, profile.projectionStart - profile.projectionStep * positionIndex),
+        ),
+        tier: Math.floor(positionIndex / profile.tierSize) + 1,
+        risk_score: 18 + ((globalIndex * 17 + profileIndex *
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/draft-factory.ts`
+
+```text
+import { createDraftState } from "@fdi/draft-engine";
+import type {
+  DraftState,
+  LeagueSettings,
+  RosterSlotRule,
+  ScoringPreset,
+  ScoringSettings,
+} from "@fdi/shared-types";
+import { createDemoPlayerDataRelease } from "./demo-data.js";
+
+export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
+
+export interface DraftSetup {
+  leagueName: string;
+  teamCount: number;
+  userDraftSlot: number;
+  rounds: number;
+  scoringPreset: SupportedScoringPreset;
+}
+
+export const DEFAULT_DRAFT_SETUP: DraftSetup = {
+  leagueName: "Friday Night League",
+  teamCount: 12,
+  userDraftSlot: 6,
+  rounds: 16,
+  scoringPreset: "half_ppr",
+};
+
+export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
+export const ROUND_OPTIONS = [14, 15, 16, 17, 18] as const;
+
+export const SCORING_OPTIONS: Array<{
+  value: SupportedScoringPreset;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "standard",
+    label: "Standard",
+    description: "No points per reception",
+  },
+  {
+    value: "half_ppr",
+    label: "Half PPR",
+    description: "0.5 points per reception",
+  },
+  {
+    value: "ppr",
+    label: "Full PPR",
+    description: "1 point per reception",
+  },
+];
+
+export function createDraftFromSetup(
+  setup: DraftSetup,
+  draftId = createDraftId(setup.leagueName),
+): DraftState {
+  validateDraftSetup(setup);
+  const settings = createLeagueSettings(setup);
+  const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
+    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
+  );
+
+  return createDraftState({
+    draftId,
+    settings,
+    teamNames,
+    playerDataRelease: createDemoPlayerDataRelease(setup.teamCount * setup.rounds + 40),
+  });
+}
+
+export function createLeagueSettings(setup: DraftSetup): LeagueSettings {
+  validateDraftSetup(setup);
+
+  return {
+    leagueName: setup.leagueName.trim(),
+    teamCount: setup.teamCount,
+    userDraftSlot: setup.userDraftSlot,
+    rounds: setup.rounds,
+    scoring: createScoringSettings(setup.scoringPreset),
+    rosterSlots: createRosterSlots(setup.rounds),
+  };
+}
+
+export function createRosterSlots(rounds: number): RosterSlotRule[] {
+  const requiredStarterSlots = 9;
+  if (!Number.isInteger(rounds) || rounds < requiredStarterSlots) {
+    throw new RangeError(`Draft rounds must be at least ${requiredStarterSlots}.`);
   }
 
   return [
@@ -3610,54 +4452,170 @@ function defaultRosterSlots(rounds: number): RosterSlotRule[] {
     { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
     { slot: "K", count: 1, eligiblePositions: ["K"] },
     { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-    { slot: "BENCH", count: 7, eligiblePositions: [...ALL_POSITIONS] },
+    {
+      slot: "BENCH",
+      count: rounds - requiredStarterSlots,
+      eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
+    },
   ];
 }
+
+function createScoringSettings(preset: SupportedScoringPreset): ScoringSettings {
+  const reception = preset === "ppr" ? 1 : preset === "half_ppr" ? 0.5 : 0;
+
+  return {
+    preset,
+    passingYardsPerPoint: 25,
+    passingTouchdown: 4,
+    interception: -2,
+    rushingYardsPerPoint: 10,
+    rushingTouchdown: 6,
+    receivingYardsPerPoint: 10,
+    receivingTouchdown: 6,
+    reception,
+    fumbleLost: -2,
+  };
+}
+
+function validateDraftSetup(setup: DraftSetup): void {
+  if (setup.leagueName.trim().length === 0) {
+    throw new RangeError("League name is required.");
+  }
+  if (!TEAM_COUNT_OPTIO
+
+[TRUNCATED]
 ```
 
-### `packages/draft-engine/tests/order.test.ts`
+### `apps/draft-room/src/main.tsx`
 
 ```text
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { App } from "./App.js";
+import "./styles.css";
+
+const rootElement = document.getElementById("root");
+if (rootElement === null) {
+  throw new Error("Draft room root element was not found.");
+}
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
+```
+
+### `apps/draft-room/tests/app.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "@fdi/draft-engine";
-import { leagueSettings } from "./fixtures.js";
+import { makePick } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import { App } from "../src/App.js";
+import {
+  DEFAULT_DRAFT_SETUP,
+  createDraftFromSetup,
+  createRosterSlots,
+} from "../src/draft-factory.js";
 
-describe("snake draft order", () => {
-  it("reverses team order in even rounds", () => {
-    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 });
-    const order = generateSnakeDraftOrder(settings);
+describe("draft room application shell", () => {
+  it("renders the league setup experience", () => {
+    const html = renderToStaticMarkup(<App />);
 
-    expect(order.map((slot) => slot.draftSlot)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]);
-    expect(order.map((slot) => slot.overallPick)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    expect(html).toContain("Build your draft room.");
+    expect(html).toContain("Start live draft");
+    expect(html).toContain("Offline fictional demo release");
   });
 
-  it("identifies the configured user team", () => {
-    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 3, rounds: 2 });
-    const teams = createDraftTeams(settings, ["A", "B", "Ryan", "D"]);
+  it("creates a complete engine-backed snake draft from setup", () => {
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "ui-test-draft");
+    const userTeam = state.teams.find((team) => team.isUser);
 
-    expect(teams.filter((team) => team.isUser)).toEqual([
-      { teamId: "team-3", name: "Ryan", draftSlot: 3, isUser: true },
-    ]);
+    expect(state.order).toHaveLength(DEFAULT_DRAFT_SETUP.teamCount * DEFAULT_DRAFT_SETUP.rounds);
+    expect(state.playerPoolIds.length).toBeGreaterThan(state.order.length);
+    expect(userTeam?.draftSlot).toBe(DEFAULT_DRAFT_SETUP.userDraftSlot);
+    expect(state.status).toBe("not_started");
   });
 
-  it("rejects a user draft slot outside the league", () => {
-    const settings = leagueSettings({ teamCount: 10, userDraftSlot: 11 });
+  it("keeps roster capacity aligned with the selected round count", () => {
+    const rosterSlots = createRosterSlots(18);
+    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
+    const bench = rosterSlots.find((rule) => rule.slot === "BENCH");
 
-    expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
+    expect(capacity).toBe(18);
+    expect(bench?.count).toBe(9);
   });
 
-  it("requires roster capacity to equal the configured rounds", () => {
-    const settings = leagueSettings({
-      rounds: 3,
-      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
-    });
+  it("connects manual selections to live recommendations", () => {
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recommendation-ui-test");
+    const draftedPlayerId = state.availablePlayerIds[0]!;
+    const nextState = makePick(state, draftedPlayerId);
+    const result = recommendPlayers(nextState, { limit: 5 });
 
-    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
+    expect(nextState.picks).toHaveLength(1);
+    expect(nextState.availablePlayerIds).not.toContain(draftedPlayerId);
+    expect(result.recommendations.map((item) => item.playerId)).not.toContain(draftedPlayerId);
+    expect(result.recommendations).toHaveLength(5);
   });
 });
 ```
 
-## Fantasy Domain Logic Files
+### `apps/draft-room/tsconfig.json`
+
+```text
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist-types",
+    "tsBuildInfoFile": "dist-types/.tsbuildinfo",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    { "path": "../../packages/shared-types" },
+    { "path": "../../packages/draft-engine" },
+    { "path": "../../packages/recommendation-engine" }
+  ]
+}
+```
+
+### `apps/draft-room/vite.config.ts`
+
+```text
+import { fileURLToPath, URL } from "node:url";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@fdi/shared-types": fileURLToPath(
+        new URL("../../packages/shared-types/src/index.ts", import.meta.url),
+      ),
+      "@fdi/draft-engine": fileURLToPath(
+        new URL("../../packages/draft-engine/src/index.ts", import.meta.url),
+      ),
+      "@fdi/recommendation-engine": fileURLToPath(
+        new URL("../../packages/recommendation-engine/src/index.ts", import.meta.url),
+      ),
+    },
+  },
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 4173,
+  },
+});
+```
 
 ### `packages/data/ingest/adp.py`
 
@@ -3905,823 +4863,6 @@ def normalize_position(value: object) -> str:
     return POSITION_NORMALIZA
 
 [TRUNCATED]
-```
-
-### `packages/data/warehouse/player_season.py`
-
-```text
-# packages/data/warehouse/player_season.py
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-
-from packages.data.constants import INTERMEDIATE_DATA_DIR
-from packages.data.io import write_parquet
-from packages.data.validation import assert_unique_key, require_columns
-
-PROCESSED_DATA_DIR = Path("data/processed")
-
-FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
-
-
-def _safe_mode(series: pd.Series):
-    non_null = series.dropna()
-    if non_null.empty:
-        return None
-    mode = non_null.mode()
-    if mode.empty:
-        return non_null.iloc[0]
-    return mode.iloc[0]
-
-
-def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
-    adp_df = adp_df.copy()
-
-    require_columns(
-        adp_df,
-        [
-            "season",
-            "canonical_player_id",
-            "position",
-            "adp_overall",
-        ],
-    )
-
-    adp_df = adp_df.sort_values(
-        ["season", "position", "adp_overall", "canonical_player_id"]
-    ).reset_index(drop=True)
-
-    adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
-
-    return adp_df
-
-
-def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
-    required = [
-        "season",
-        "canonical_player_id",
-        "player_name",
-        "normalized_player_name",
-        "position",
-        "team",
-    ]
-    require_columns(nflverse_df, required)
-
-    df = nflverse_df.copy()
-
-    # Expected weekly fantasy/stat columns may vary slightly across source versions.
-    # We only aggregate columns that actually exist.
-    sum_candidates = [
-        "fantasy_points_ppr",
-        "fantasy_points",
-        "completions",
-        "attempts",
-        "passing_yards",
-        "passing_tds",
-        "interceptions",
-        "carries",
-        "rushing_yards",
-        "rushing_tds",
-        "targets",
-        "receptions",
-        "receiving_yards",
-        "receiving_tds",
-    ]
-    sum_cols = [c for c in sum_candidates if c in df.columns]
-
-    if "week" in df.columns:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
-        )
-    else:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
-        )
-
-    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
-
-    agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
-
-    season_df = grouped.agg(agg_dict).reset_index()
-
-    identity_df = grouped.agg(
-        player_name=("player_name", _safe_mode),
-        normalized_player_name=("normalized_player_name", _safe_mode),
-        position=("position", _safe_mode),
-        team=("team", _safe_mode),
-    ).reset_index()
-
-    season_df = season_df.merge(
-        identity_df,
-        on=["season", "canonical_player_id"],
-        how="left",
-        validate="one_to_one",
-    )
-
-    season_df = season_df.merge(
-        games_played_series.reset_index(),
-        on=["season", "canonical_player_id"],
-        how="left",
-        validate="one_to_one",
-    )
-
-    if "fantasy_points_ppr" in season_df.columns:
-        season_df["fantasy_points_per_game"] = (
-            season_df["fantasy_points_ppr"] / season_df["games_played"]
-        ).round(2)
-    elif "fantasy_points" in season_df.columns:
-        season_df["fantasy_points_per_game"] = (
-            season_df["fantasy_points"] / season_df["games_played"]
-        ).round(2)
-    else:
-        season_df["fantasy_poi
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/package.json`
-
-```text
-{
-  "name": "@fdi/draft-engine",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "dependencies": {
-    "@fdi/shared-types": "0.1.0"
-  }
-}
-```
-
-### `packages/draft-engine/src/errors.ts`
-
-```text
-export type DraftEngineErrorCode =
-  | "INVALID_SETTINGS"
-  | "INVALID_PLAYER_POOL"
-  | "DRAFT_COMPLETE"
-  | "PLAYER_UNAVAILABLE"
-  | "ROSTER_INVALID"
-  | "NO_PICKS_TO_UNDO"
-  | "PICK_NOT_FOUND"
-  | "INVALID_DRAFT_EXPORT"
-  | "UNSUPPORTED_SCHEMA_VERSION";
-
-export class DraftEngineError extends Error {
-  readonly code: DraftEngineErrorCode;
-
-  constructor(code: DraftEngineErrorCode, message: string) {
-    super(message);
-    this.name = "DraftEngineError";
-    this.code = code;
-  }
-}
-```
-
-### `packages/draft-engine/src/index.ts`
-
-```text
-export { DraftEngineError, type DraftEngineErrorCode } from "./errors.js";
-export {
-  createDraftTeams,
-  generateSnakeDraftOrder,
-  validateLeagueSettings,
-} from "./order.js";
-export { deserializeDraftState, serializeDraftState } from "./serialization.js";
-export {
-  buildRosterAssignments,
-  buildRosters,
-  correctPick,
-  createDraftState,
-  getCurrentOrderSlot,
-  getPlayerById,
-  makePick,
-  undoLastPick,
-  type CreateDraftStateInput,
-} from "./state.js";
-```
-
-### `packages/draft-engine/src/order.ts`
-
-```text
-import {
-  PLAYER_POSITIONS,
-  ROSTER_SLOT_TYPES,
-  type DraftOrderSlot,
-  type DraftTeam,
-  type LeagueSettings,
-  type PlayerPosition,
-  type RosterSlotType,
-} from "@fdi/shared-types";
-import { DraftEngineError } from "./errors.js";
-
-export function validateLeagueSettings(settings: LeagueSettings): void {
-  if (!Number.isInteger(settings.teamCount) || settings.teamCount < 2 || settings.teamCount > 20) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "teamCount must be an integer between 2 and 20.",
-    );
-  }
-
-  if (
-    !Number.isInteger(settings.userDraftSlot) ||
-    settings.userDraftSlot < 1 ||
-    settings.userDraftSlot > settings.teamCount
-  ) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "userDraftSlot must be within the configured team count.",
-    );
-  }
-
-  if (!Number.isInteger(settings.rounds) || settings.rounds < 1 || settings.rounds > 40) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "rounds must be an integer between 1 and 40.",
-    );
-  }
-
-  if (!Array.isArray(settings.rosterSlots) || settings.rosterSlots.length === 0) {
-    throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
-  }
-
-  let rosterCapacity = 0;
-  for (const rule of settings.rosterSlots) {
-    if (!ROSTER_SLOT_TYPES.includes(rule.slot as RosterSlotType)) {
-      throw new DraftEngineError("INVALID_SETTINGS", `Unsupported roster slot: ${String(rule.slot)}`);
-    }
-
-    if (!Number.isInteger(rule.count) || rule.count < 0) {
-      throw new DraftEngineError(
-        "INVALID_SETTINGS",
-        `Roster slot ${rule.slot} must have a non-negative integer count.`,
-      );
-    }
-
-    if (!Array.isArray(rule.eligiblePositions)) {
-      throw new DraftEngineError(
-        "INVALID_SETTINGS",
-        `Roster slot ${rule.slot} must define eligible positions.`,
-      );
-    }
-
-    if (rule.count > 0 && rule.eligiblePositions.length === 0) {
-      throw new DraftEngineError(
-        "INVALID_SETTINGS",
-        `Roster slot ${rule.slot} must define eligible positions.`,
-      );
-    }
-
-    const uniquePositions = new Set<PlayerPosition>();
-    for (const position of rule.eligiblePositions) {
-      if (!PLAYER_POSITIONS.includes(position as PlayerPosition)) {
-        throw new DraftEngineError(
-          "INVALID_SETTINGS",
-          `Roster slot ${rule.slot} contains unsupported position ${String(position)}.`,
-        );
-      }
-      if (uniquePositions.has(position)) {
-        throw new DraftEngineError(
-          "INVALID_SETTINGS",
-          `Roster slot ${rule.slot} contains duplicate eligible position ${position}.`,
-        );
-      }
-      uniquePositions.add(position);
-    }
-
-    rosterCapacity += rule.count;
-  }
-
-  if (rosterCapacity !== settings.rounds) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      `Roster capacity (${rosterCapacity}) must equal configured rounds (${settings.rounds}).`,
-    );
-  }
-}
-
-export function createDraftTeams(settings: LeagueSettings, teamNames?: string[]): DraftTeam[] {
-  validateLeagueSettings(settings);
-
-  if (teamNames !== undefined && teamNames.length !== settings.teamCount) {
-    throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "teamNames must contain one name for each configured team.",
-    );
-  }
-
-  return Array.from({ length: settings.teamCount }, (_, index) => {
-    const draftSlot = index + 1;
-    const providedName = teamNames?.[index]?.trim();
-
-    return {
-      teamId: `team-${draftSlot}`,
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/src/serialization.ts`
-
-```text
-import {
-  DRAFT_EXPORT_SCHEMA_VERSION,
-  assertPlayerDataRelease,
-  isPlayerPosition,
-  isRosterSlotType,
-  type DraftExportEnvelope,
-  type DraftExportPayload,
-  type DraftState,
-  type DraftTeam,
-  type LeagueSettings,
-  type PlayerDataRelease,
-  type RosterSlotRule,
-  type ScoringSettings,
-} from "@fdi/shared-types";
-import { DraftEngineError } from "./errors.js";
-import { validateLeagueSettings } from "./order.js";
-import { createDraftState, makePick } from "./state.js";
-
-const SCORING_PRESETS = ["standard", "half_ppr", "ppr", "custom"] as const;
-const SCORING_NUMBER_FIELDS = [
-  "passingYardsPerPoint",
-  "passingTouchdown",
-  "interception",
-  "rushingYardsPerPoint",
-  "rushingTouchdown",
-  "receivingYardsPerPoint",
-  "receivingTouchdown",
-  "reception",
-  "fumbleLost",
-] as const;
-
-export function serializeDraftState(
-  state: DraftState,
-  exportedAt: string = new Date().toISOString(),
-): string {
-  assertIsoTimestamp(exportedAt, "exportedAt");
-
-  const payload = toExportPayload(state);
-  const restored = restoreDraftExportPayload(payload);
-  if (stateSignature(restored) !== stateSignature(state)) {
-    throw new DraftEngineError(
-      "INVALID_DRAFT_EXPORT",
-      "Draft state is internally inconsistent and cannot be exported safely.",
-    );
-  }
-
-  const envelope: DraftExportEnvelope = {
-    schema_version: DRAFT_EXPORT_SCHEMA_VERSION,
-    exported_at: exportedAt,
-    draft: payload,
-  };
-
-  return JSON.stringify(envelope, null, 2);
-}
-
-export function deserializeDraftState(serialized: string): DraftState {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(serialized);
-  } catch {
-    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export is not valid JSON.");
-  }
-
-  const envelope = parseDraftExportEnvelope(parsed);
-  return restoreDraftExportPayload(envelope.draft);
-}
-
-function restoreDraftExportPayload(payload: DraftExportPayload): DraftState {
-  let state: DraftState;
-  try {
-    state = createDraftState({
-      draftId: payload.draftId,
-      settings: payload.settings,
-      teams: payload.teams,
-      playerDataRelease: payload.playerDataRelease,
-    });
-
-    for (const playerId of payload.pickPlayerIds) {
-      state = makePick(state, playerId);
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Draft state could not be restored.";
-    throw new DraftEngineError("INVALID_DRAFT_EXPORT", `Draft export is invalid: ${message}`);
-  }
-
-  if (!Number.isInteger(payload.revision) || payload.revision < state.picks.length) {
-    throw new DraftEngineError(
-      "INVALID_DRAFT_EXPORT",
-      "Draft revision must be an integer at least as large as the current pick count.",
-    );
-  }
-
-  return { ...state, revision: payload.revision };
-}
-
-function toExportPayload(state: DraftState): DraftExportPayload {
-  return {
-    draftId: state.draftId,
-    settings: structuredClone(state.settings),
-    teams: state.teams.map((team) => ({ ...team })),
-    playerDataRelease: structuredClone(state.playerDataRelease),
-    pickPlayerIds: state.picks.map((pick) => pick.playerId),
-    revision: state.revision,
-  };
-}
-
-function parseDraftExportEnvelope(value: unknown): DraftExportEnvelope {
-  if (!isRecord(value)) {
-    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export must be an object.");
-  }
-
-  if (value.schema_version !== DRAFT_EXPORT_SCHEMA_VERSION) {
-    throw new DraftEngineError(
-      "UNSUPPORTED_SCHEMA_VERSION",
-      `Unsupported draft export schema version: ${String(value
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/src/state.ts`
-
-```text
-import {
-  assertPlayerDataRelease,
-  type DraftOrderSlot,
-  type DraftPick,
-  type DraftState,
-  type DraftStatus,
-  type DraftTeam,
-  type LeagueSettings,
-  type PlayerDataRecord,
-  type PlayerDataRelease,
-  type PlayerPosition,
-  type RosterSlotRule,
-  type RosterSlotType,
-} from "@fdi/shared-types";
-import { DraftEngineError } from "./errors.js";
-import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "./order.js";
-
-export interface CreateDraftStateInput {
-  draftId: string;
-  settings: LeagueSettings;
-  playerDataRelease: PlayerDataRelease;
-  teamNames?: string[];
-  teams?: DraftTeam[];
-}
-
-type PendingDraftPick = DraftOrderSlot & { playerId: string };
-
-interface ConcreteRosterSlot {
-  slot: RosterSlotType;
-  slotIndex: number;
-  eligiblePositions: PlayerPosition[];
-  ruleOrder: number;
-}
-
-export function createDraftState(input: CreateDraftStateInput): DraftState {
-  const draftId = input.draftId.trim();
-  if (draftId.length === 0) {
-    throw new DraftEngineError("INVALID_SETTINGS", "draftId must be a non-empty string.");
-  }
-
-  validateLeagueSettings(input.settings);
-  const playerDataRelease = normalizePlayerDataRelease(input.playerDataRelease);
-  const teams = input.teams ?? createDraftTeams(input.settings, input.teamNames);
-  const order = generateSnakeDraftOrder(input.settings, teams);
-  const playerPoolIds = playerDataRelease.players.map((player) => player.canonical_player_id);
-
-  if (playerPoolIds.length < order.length) {
-    throw new DraftEngineError(
-      "INVALID_PLAYER_POOL",
-      `The player pool contains ${playerPoolIds.length} players but the draft requires ${order.length} picks.`,
-    );
-  }
-
-  return {
-    draftId,
-    settings: structuredClone(input.settings),
-    teams: structuredClone(teams),
-    order,
-    playerDataRelease,
-    playerPoolIds,
-    availablePlayerIds: [...playerPoolIds],
-    picks: [],
-    nextOverallPick: 1,
-    status: "not_started",
-    revision: 0,
-  };
-}
-
-export function makePick(state: DraftState, playerId: string): DraftState {
-  assertStateShape(state);
-
-  if (state.nextOverallPick === null) {
-    throw new DraftEngineError("DRAFT_COMPLETE", "The draft is already complete.");
-  }
-
-  const normalizedPlayerId = playerId.trim();
-  if (!state.availablePlayerIds.includes(normalizedPlayerId)) {
-    throw new DraftEngineError(
-      "PLAYER_UNAVAILABLE",
-      `Player ${normalizedPlayerId || "<empty>"} is not available.`,
-    );
-  }
-
-  const orderSlot = state.order[state.nextOverallPick - 1];
-  if (orderSlot === undefined) {
-    throw new DraftEngineError("DRAFT_COMPLETE", "The draft order has no remaining picks.");
-  }
-
-  const pick: PendingDraftPick = { ...orderSlot, playerId: normalizedPlayerId };
-  return rebuildState(state, [...state.picks.map(toPendingPick), pick]);
-}
-
-export function undoLastPick(state: DraftState): DraftState {
-  assertStateShape(state);
-
-  if (state.picks.length === 0) {
-    throw new DraftEngineError("NO_PICKS_TO_UNDO", "There are no picks to undo.");
-  }
-
-  return rebuildState(state, state.picks.slice(0, -1).map(toPendingPick));
-}
-
-export function correctPick(
-  state: DraftState,
-  overallPick: number,
-  replacementPlayerId: string,
-): DraftState {
-  assertStateShape(state);
-
-  if (!Number.isInteger(overallPick) || overallPick < 1 || overallPick > state.picks.length) {
-    throw new DraftEngineError("PICK_NOT_FOUND", `Pick ${overallPick} has not been made.`);
-  }
-
-  const normalizedPlayerId = replacementPlayerId.trim();
-  const existingPi
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/tests/fixtures.ts`
-
-```text
-import type {
-  LeagueSettings,
-  PlayerDataRecord,
-  PlayerDataRelease,
-  PlayerPosition,
-  RosterSlotRule,
-} from "@fdi/shared-types";
-
-const ALL_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
-
-export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
-  const rounds = overrides.rounds ?? 16;
-  const rosterSlots = overrides.rosterSlots ?? defaultRosterSlots(rounds);
-
-  return {
-    leagueName: "Test League",
-    teamCount: 12,
-    userDraftSlot: 6,
-    rounds,
-    scoring: {
-      preset: "half_ppr",
-      passingYardsPerPoint: 25,
-      passingTouchdown: 4,
-      interception: -2,
-      rushingYardsPerPoint: 10,
-      rushingTouchdown: 6,
-      receivingYardsPerPoint: 10,
-      receivingTouchdown: 6,
-      reception: 0.5,
-      fumbleLost: -2,
-    },
-    rosterSlots,
-    ...overrides,
-  };
-}
-
-export function playerRecord(
-  canonicalPlayerId: string,
-  position: PlayerPosition,
-  displayName: string = canonicalPlayerId,
-): PlayerDataRecord {
-  return {
-    canonical_player_id: canonicalPlayerId,
-    display_name: displayName,
-    position,
-    nfl_team: "TST",
-    bye_week: 7,
-    overall_rank: null,
-    position_rank: null,
-    adp: null,
-    projected_points: null,
-    tier: null,
-    risk_score: null,
-    upside_score: null,
-    availability_status: "active",
-  };
-}
-
-export function playerDataRelease(players: PlayerDataRecord[]): PlayerDataRelease {
-  return {
-    schema_version: "1.0",
-    season: 2026,
-    release_id: "test-release-v1",
-    generated_at: "2026-07-16T12:00:00Z",
-    sources: ["test-fixture"],
-    players,
-  };
-}
-
-export function generatedPlayerRelease(
-  count: number,
-  positions: PlayerPosition[] = ALL_POSITIONS,
-): PlayerDataRelease {
-  return playerDataRelease(
-    Array.from({ length: count }, (_, index) =>
-      playerRecord(`player-${index + 1}`, positions[index % positions.length]!),
-    ),
-  );
-}
-
-export function fullDraftPlayerRelease(settings: LeagueSettings): PlayerDataRelease {
-  const standardRoundPositions: PlayerPosition[] = [
-    "QB",
-    "RB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "RB",
-    "K",
-    "DST",
-    "QB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "RB",
-    "WR",
-  ];
-
-  const requiredPlayers = settings.teamCount * settings.rounds;
-  const players = Array.from({ length: requiredPlayers + 20 }, (_, index) => {
-    const round = Math.floor(index / settings.teamCount);
-    const position = standardRoundPositions[round] ?? ALL_POSITIONS[index % ALL_POSITIONS.length]!;
-    return playerRecord(`player-${index + 1}`, position);
-  });
-  return playerDataRelease(players);
-}
-
-function defaultRosterSlots(rounds: number): RosterSlotRule[] {
-  if (rounds !== 16) {
-    return [{ slot: "BENCH", count: rounds, eligiblePositions: [...ALL_POSITIONS] }];
-  }
-
-  return [
-    { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-    { slot: "RB", count: 2, eligiblePositions: ["RB"] },
-    { slot: "WR", count: 2, eligiblePositions: ["WR"] },
-    { slot: "TE", count: 1, eligiblePositions: ["TE"] },
-    { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-    { slot: "K", count: 1, eligiblePositions: ["K"] },
-    { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-    { slot: "BENCH", count: 7, eligiblePositions: [...ALL_POSITIONS] },
-  ];
-}
-```
-
-### `packages/draft-engine/tests/order.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "@fdi/draft-engine";
-import { leagueSettings } from "./fixtures.js";
-
-describe("snake draft order", () => {
-  it("reverses team order in even rounds", () => {
-    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 });
-    const order = generateSnakeDraftOrder(settings);
-
-    expect(order.map((slot) => slot.draftSlot)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]);
-    expect(order.map((slot) => slot.overallPick)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-  });
-
-  it("identifies the configured user team", () => {
-    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 3, rounds: 2 });
-    const teams = createDraftTeams(settings, ["A", "B", "Ryan", "D"]);
-
-    expect(teams.filter((team) => team.isUser)).toEqual([
-      { teamId: "team-3", name: "Ryan", draftSlot: 3, isUser: true },
-    ]);
-  });
-
-  it("rejects a user draft slot outside the league", () => {
-    const settings = leagueSettings({ teamCount: 10, userDraftSlot: 11 });
-
-    expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
-  });
-
-  it("requires roster capacity to equal the configured rounds", () => {
-    const settings = leagueSettings({
-      rounds: 3,
-      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
-    });
-
-    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
-  });
-});
-```
-
-### `packages/draft-engine/tests/serialization.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import {
-  correctPick,
-  createDraftState,
-  deserializeDraftState,
-  makePick,
-  serializeDraftState,
-  undoLastPick,
-} from "@fdi/draft-engine";
-import { generatedPlayerRelease, leagueSettings } from "./fixtures.js";
-
-function draftWithHistory() {
-  let state = createDraftState({
-    draftId: "export-test",
-    settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-    playerDataRelease: generatedPlayerRelease(12),
-  });
-  state = makePick(state, "player-1");
-  state = makePick(state, "player-2");
-  state = makePick(state, "player-3");
-  state = correctPick(state, 1, "player-4");
-  return undoLastPick(state);
-}
-
-describe("draft export and import", () => {
-  it("round-trips a draft through a versioned JSON export", () => {
-    const state = draftWithHistory();
-    const serialized = serializeDraftState(state, "2026-07-16T15:30:00Z");
-    const restored = deserializeDraftState(serialized);
-
-    expect(restored).toEqual(state);
-    expect(restored.revision).toBeGreaterThan(restored.picks.length);
-  });
-
-  it("stores only source inputs and pick IDs in the export payload", () => {
-    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
-    const envelope = JSON.parse(serialized) as Record<string, unknown>;
-    const draft = envelope.draft as Record<string, unknown>;
-
-    expect(envelope.schema_version).toBe("1.0");
-    expect(draft.pickPlayerIds).toEqual(["player-4", "player-2"]);
-    expect(draft).not.toHaveProperty("availablePlayerIds");
-    expect(draft).not.toHaveProperty("order");
-    expect(draft).not.toHaveProperty("status");
-  });
-
-  it("rejects malformed JSON", () => {
-    expect(() => deserializeDraftState("{broken-json")).toThrow(/not valid JSON/);
-  });
-
-  it("rejects unsupported schema versions", () => {
-    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
-    const envelope = JSON.parse(serialized) as Record<string, unknown>;
-    envelope.schema_version = "2.0";
-
-    expect(() => deserializeDraftState(JSON.stringify(envelope))).toThrow(/Unsupported/);
-  });
-
-  it("rejects a tampered export containing duplicate picks", () => {
-    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
-    const envelope = JSON.parse(serialized) as { draft: { pickPlayerIds: string[] } };
-    envelope.draft.pickPlayerIds = ["player-4", "player-4"];
-
-    expect(() => deserializeDraftState(JSON.stringify(envelope))).toThrow(/not available/);
-  });
-
-  it("refuses to serialize an internally inconsistent state", () => {
-    const state = draftWithHistory();
-    const tampered = { ...state, availablePlayerIds: [...state.availablePlayerIds, "player-4"] };
-
-    expect(() => serializeDraftState(tampered)).toThrow(/internally inconsistent/);
-  });
-});
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -5252,6 +5393,202 @@ def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
         ingest_nflverse_weekly_players(config)
 ```
 
+### `apps/draft-room/src/demo-data.ts`
+
+```text
+import type {
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+} from "@fdi/shared-types";
+
+interface GeneratedPlayer extends PlayerDataRecord {
+  marketScore: number;
+}
+
+interface PositionProfile {
+  position: PlayerPosition;
+  count: number;
+  projectionStart: number;
+  projectionStep: number;
+  marketStart: number;
+  marketStep: number;
+  tierSize: number;
+}
+
+const FIRST_NAMES = [
+  "Avery",
+  "Blake",
+  "Cameron",
+  "Drew",
+  "Eli",
+  "Finn",
+  "Grant",
+  "Hayden",
+  "Isaiah",
+  "Jordan",
+  "Kai",
+  "Logan",
+  "Micah",
+  "Nolan",
+  "Owen",
+  "Parker",
+  "Quinn",
+  "Riley",
+  "Sawyer",
+  "Theo",
+  "Victor",
+  "Wesley",
+  "Xavier",
+  "Zane",
+] as const;
+
+const LAST_NAMES = [
+  "Adams",
+  "Bennett",
+  "Carter",
+  "Davis",
+  "Ellis",
+  "Foster",
+  "Gibson",
+  "Hayes",
+  "Irving",
+  "Jackson",
+  "King",
+  "Lewis",
+  "Mitchell",
+  "Nelson",
+  "Owens",
+  "Porter",
+  "Reed",
+  "Simmons",
+  "Turner",
+  "Vaughn",
+  "Walker",
+  "Young",
+] as const;
+
+const NFL_TEAMS = [
+  "ARI",
+  "ATL",
+  "BAL",
+  "BUF",
+  "CAR",
+  "CHI",
+  "CIN",
+  "CLE",
+  "DAL",
+  "DEN",
+  "DET",
+  "GB",
+  "HOU",
+  "IND",
+  "JAX",
+  "KC",
+  "LAC",
+  "LAR",
+  "LV",
+  "MIA",
+  "MIN",
+  "NE",
+  "NO",
+  "NYG",
+  "NYJ",
+  "PHI",
+  "PIT",
+  "SEA",
+  "SF",
+  "TB",
+  "TEN",
+  "WAS",
+] as const;
+
+const POSITION_PROFILES: PositionProfile[] = [
+  {
+    position: "QB",
+    count: 48,
+    projectionStart: 310,
+    projectionStep: 3.1,
+    marketStart: 84,
+    marketStep: 1.1,
+    tierSize: 6,
+  },
+  {
+    position: "RB",
+    count: 96,
+    projectionStart: 265,
+    projectionStep: 1.65,
+    marketStart: 100,
+    marketStep: 1.15,
+    tierSize: 8,
+  },
+  {
+    position: "WR",
+    count: 110,
+    projectionStart: 258,
+    projectionStep: 1.35,
+    marketStart: 98,
+    marketStep: 1,
+    tierSize: 10,
+  },
+  {
+    position: "TE",
+    count: 48,
+    projectionStart: 215,
+    projectionStep: 2.05,
+    marketStart: 88,
+    marketStep: 1.4,
+    tierSize: 6,
+  },
+  {
+    position: "K",
+    count: 14,
+    projectionStart: 150,
+    projectionStep: 2,
+    marketStart: 25,
+    marketStep: 1.3,
+    tierSize: 7,
+  },
+  {
+    position: "DST",
+    count: 14,
+    projectionStart: 160,
+    projectionStep: 2.2,
+    marketStart: 28,
+    marketStep: 1.35,
+    tierSize: 7,
+  },
+];
+
+export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDataRelease {
+  const generated: GeneratedPlayer[] = [];
+
+  POSITION_PROFILES.forEach((profile, profileIndex) => {
+    for (let positionIndex = 0; positionIndex < profile.count; positionIndex += 1) {
+      const globalIndex = generated.length;
+      const team = NFL_TEAMS[(globalIndex + profileIndex * 3) % NFL_TEAMS.length]!;
+      const displayName = buildDisplayName(profile.position, positionIndex, globalIndex);
+      const marketScore =
+        profile.marketStart - profile.marketStep * positionIndex + ((positionIndex % 5) - 2) * 0.18;
+
+      generated.push({
+        canonical_player_id: `demo-${profile.position.toLowerCase()}-${positionIndex + 1}`,
+        display_name: displayName,
+        position: profile.position,
+        nfl_team: team,
+        bye_week: 5 + ((globalIndex + profileIndex) % 10),
+        overall_rank: null,
+        position_rank: positionIndex + 1,
+        adp: null,
+        projected_points: round(
+          Math.max(65, profile.projectionStart - profile.projectionStep * positionIndex),
+        ),
+        tier: Math.floor(positionIndex / profile.tierSize) + 1,
+        risk_score: 18 + ((globalIndex * 17 + profileIndex *
+
+[TRUNCATED]
+```
+
 ### `packages/data/__init__.py`
 
 ```text
@@ -5436,140 +5773,6 @@ def assert_unique_key(df: pd.DataFrame, key_columns: Sequence[str]) -> None:
         )
 ```
 
-### `packages/data/warehouse/player_season.py`
-
-```text
-# packages/data/warehouse/player_season.py
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-
-from packages.data.constants import INTERMEDIATE_DATA_DIR
-from packages.data.io import write_parquet
-from packages.data.validation import assert_unique_key, require_columns
-
-PROCESSED_DATA_DIR = Path("data/processed")
-
-FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
-
-
-def _safe_mode(series: pd.Series):
-    non_null = series.dropna()
-    if non_null.empty:
-        return None
-    mode = non_null.mode()
-    if mode.empty:
-        return non_null.iloc[0]
-    return mode.iloc[0]
-
-
-def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
-    adp_df = adp_df.copy()
-
-    require_columns(
-        adp_df,
-        [
-            "season",
-            "canonical_player_id",
-            "position",
-            "adp_overall",
-        ],
-    )
-
-    adp_df = adp_df.sort_values(
-        ["season", "position", "adp_overall", "canonical_player_id"]
-    ).reset_index(drop=True)
-
-    adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
-
-    return adp_df
-
-
-def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
-    required = [
-        "season",
-        "canonical_player_id",
-        "player_name",
-        "normalized_player_name",
-        "position",
-        "team",
-    ]
-    require_columns(nflverse_df, required)
-
-    df = nflverse_df.copy()
-
-    # Expected weekly fantasy/stat columns may vary slightly across source versions.
-    # We only aggregate columns that actually exist.
-    sum_candidates = [
-        "fantasy_points_ppr",
-        "fantasy_points",
-        "completions",
-        "attempts",
-        "passing_yards",
-        "passing_tds",
-        "interceptions",
-        "carries",
-        "rushing_yards",
-        "rushing_tds",
-        "targets",
-        "receptions",
-        "receiving_yards",
-        "receiving_tds",
-    ]
-    sum_cols = [c for c in sum_candidates if c in df.columns]
-
-    if "week" in df.columns:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
-        )
-    else:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
-        )
-
-    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
-
-    agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
-
-    season_df = grouped.agg(agg_dict).reset_index()
-
-    identity_df = grouped.agg(
-        player_name=("player_name", _safe_mode),
-        normalized_player_name=("normalized_player_name", _safe_mode),
-        position=("position", _safe_mode),
-        team=("team", _safe_mode),
-    ).reset_index()
-
-    season_df = season_df.merge(
-        identity_df,
-        on=["season", "canonical_player_id"],
-        how="left",
-        validate="one_to_one",
-    )
-
-    season_df = season_df.merge(
-        games_played_series.reset_index(),
-        on=["season", "canonical_player_id"],
-        how="left",
-        validate="one_to_one",
-    )
-
-    if "fantasy_points_ppr" in season_df.columns:
-        season_df["fantasy_points_per_game"] = (
-            season_df["fantasy_points_ppr"] / season_df["games_played"]
-        ).round(2)
-    elif "fantasy_points" in season_df.columns:
-        season_df["fantasy_points_per_game"] = (
-            season_df["fantasy_points"] / season_df["games_played"]
-        ).round(2)
-    else:
-        season_df["fantasy_poi
-
-[TRUNCATED]
-```
-
 ## Testing and Quality Signals
 
 ### `tests/test_smoke.py`
@@ -5636,6 +5839,62 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
     df = pd.DataFrame({"season": [2024, 2024], "player": ["x", "x"]})
     with pytest.raises(ValidationError):
         assert_unique_key(df, ["season", "player"])
+```
+
+### `apps/draft-room/tests/app.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { makePick } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import { App } from "../src/App.js";
+import {
+  DEFAULT_DRAFT_SETUP,
+  createDraftFromSetup,
+  createRosterSlots,
+} from "../src/draft-factory.js";
+
+describe("draft room application shell", () => {
+  it("renders the league setup experience", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).toContain("Build your draft room.");
+    expect(html).toContain("Start live draft");
+    expect(html).toContain("Offline fictional demo release");
+  });
+
+  it("creates a complete engine-backed snake draft from setup", () => {
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "ui-test-draft");
+    const userTeam = state.teams.find((team) => team.isUser);
+
+    expect(state.order).toHaveLength(DEFAULT_DRAFT_SETUP.teamCount * DEFAULT_DRAFT_SETUP.rounds);
+    expect(state.playerPoolIds.length).toBeGreaterThan(state.order.length);
+    expect(userTeam?.draftSlot).toBe(DEFAULT_DRAFT_SETUP.userDraftSlot);
+    expect(state.status).toBe("not_started");
+  });
+
+  it("keeps roster capacity aligned with the selected round count", () => {
+    const rosterSlots = createRosterSlots(18);
+    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
+    const bench = rosterSlots.find((rule) => rule.slot === "BENCH");
+
+    expect(capacity).toBe(18);
+    expect(bench?.count).toBe(9);
+  });
+
+  it("connects manual selections to live recommendations", () => {
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recommendation-ui-test");
+    const draftedPlayerId = state.availablePlayerIds[0]!;
+    const nextState = makePick(state, draftedPlayerId);
+    const result = recommendPlayers(nextState, { limit: 5 });
+
+    expect(nextState.picks).toHaveLength(1);
+    expect(nextState.availablePlayerIds).not.toContain(draftedPlayerId);
+    expect(result.recommendations.map((item) => item.playerId)).not.toContain(draftedPlayerId);
+    expect(result.recommendations).toHaveLength(5);
+  });
+});
 ```
 
 ### `packages/draft-engine/tests/fixtures.ts`
@@ -6408,98 +6667,6 @@ def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
 def test_ingest_historical_adp_writes_raw_and_in
 
 [TRUNCATED]
-```
-
-### `tests/data/ingest/test_nflverse.py`
-
-```text
-from __future__ import annotations
-
-from pathlib import Path
-
-import polars as pl
-import pytest
-
-from packages.data.ingest.nflverse import (
-    REQUIRED_OUTPUT_COLUMNS,
-    NflverseIngestConfig,
-    ingest_nflverse_weekly_players,
-)
-
-
-@pytest.fixture
-def sample_raw_df() -> pl.DataFrame:
-    return pl.DataFrame(
-        {
-            "season": [2023, 2023, 2024],
-            "week": [1, 2, 1],
-            "player_display_name": ["Christian McCaffrey", "Tyreek Hill", "Josh Allen"],
-            "recent_team": ["SF", "MIA", "BUF"],
-            "position": ["RB", "WR", "QB"],
-            "fantasy_points": [24.6, 31.2, 27.8],
-            "extra_col": [1, 2, 3],
-        }
-    )
-
-
-def test_ingest_nflverse_weekly_players_writes_outputs(
-    monkeypatch,
-    tmp_path: Path,
-    sample_raw_df: pl.DataFrame,
-) -> None:
-
-    from packages.data.ingest import nflverse as nflverse_module
-
-    def fake_load_player_stats(seasons, summary_level):
-        assert seasons == [2023, 2024]
-        assert summary_level == "week"
-        return sample_raw_df
-
-    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
-
-    config = NflverseIngestConfig(
-        years=[2023, 2024],
-        raw_dir=tmp_path / "raw",
-        intermediate_dir=tmp_path / "intermediate",
-    )
-
-    df = ingest_nflverse_weekly_players(config)
-
-    assert df.height == 3
-    assert df.columns == REQUIRED_OUTPUT_COLUMNS
-    assert sorted(df["season"].unique().to_list()) == [2023, 2024]
-
-    raw_files = list((tmp_path / "raw").glob("*.parquet"))
-    intermediate_files = list((tmp_path / "intermediate").glob("*.parquet"))
-
-    assert len(raw_files) == 1
-    assert len(intermediate_files) == 1
-
-
-def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
-    from packages.data.ingest import nflverse as nflverse_module
-
-    bad_df = pl.DataFrame(
-        {
-            "season": [2023],
-            "week": [1],
-            "position": ["RB"],
-        }
-    )
-
-    def fake_load_player_stats(seasons, summary_level):
-        return bad_df
-
-    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
-
-    config = NflverseIngestConfig(
-        years=[2023],
-        raw_dir=tmp_path / "raw",
-        intermediate_dir=tmp_path / "intermediate",
-    )
-
-    with pytest.raises(ValueError):
-        ingest_nflverse_weekly_players(config)
 ```
 
 ## Open Implementation Notes
