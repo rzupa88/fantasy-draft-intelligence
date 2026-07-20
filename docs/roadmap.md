@@ -41,7 +41,7 @@ The baseline exit criteria are covered by the draft-engine, roster-allocation, p
 
 ## M3 — Recommendation engine v1
 
-**Status:** Baseline scoring implementation in progress
+**Status:** Baseline scoring and evaluation harness implemented
 
 **Goal:** Return explainable recommendations after every pick.
 
@@ -57,16 +57,18 @@ The baseline exit criteria are covered by the draft-engine, roster-allocation, p
 8. Expected-availability estimate
 9. Risk and upside inputs
 10. Recommendation explanations
-11. Historical and simulated evaluation harness
+11. Named scenario and weight-comparison evaluation harness
+12. Larger mock-draft and historical replay evaluation
 
 ### Exit criteria
 
 - Recommendations change logically with roster and draft state.
 - Every recommendation has a structured explanation.
 - Engine output is deterministic for fixed inputs.
-- Repeatable mock-draft scenarios expose scoring behavior for tuning.
+- Repeatable scenarios expose scoring behavior for tuning.
+- Recommendation behavior can be checked in CI before interface changes merge.
 
-The baseline engine now covers items 1 through 10. The remaining M3 work is the repeatable simulation and evaluation harness used to tune weights before the graphical interface depends on them.
+Items 1 through 11 now have baseline implementations. The remaining calibration work is broader mock-draft and historical replay analysis using real preseason player releases. That work can continue alongside the interface because the scenario harness now protects the stable public API and core behavioral expectations.
 
 ## M4 — Local draft-room interface
 
@@ -124,7 +126,7 @@ After v1.0:
 - best ball
 - automated mock opponents
 - Monte Carlo availability modeling
-- strategy profiles
+- user-facing strategy profiles
 - draft replay and post-draft grading
 
 ## Implementation order
@@ -135,8 +137,9 @@ The active build sequence is:
 2. Enforce position-aware roster legality.
 3. Add versioned export and restoration.
 4. Implement Recommendation Engine v1.
-5. Add repeatable recommendation simulation and evaluation fixtures.
+5. Add named recommendation scenarios, score snapshots, and weight comparisons.
 6. Build the React draft-room interface against stable engine APIs.
-7. Add SQLite autosave and Tauri desktop packaging.
+7. Expand evaluation with full mock drafts and historical player releases.
+8. Add SQLite autosave and Tauri desktop packaging.
 
-Interface implementation begins only after the recommendation evaluation harness demonstrates stable, explainable behavior across representative draft scenarios.
+The next primary product increment is the React draft-room shell and setup flow. Recommendation calibration remains test-driven through the evaluation harness rather than blocking all interface progress.

@@ -9,6 +9,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./evaluation": {
+      "types": "./dist/evaluation.d.ts",
+      "import": "./dist/evaluation.js"
+    },
+    "./benchmarks": {
+      "types": "./dist/benchmarks.d.ts",
+      "import": "./dist/benchmarks.js"
     }
   },
   "dependencies": {

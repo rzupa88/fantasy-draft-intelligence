@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   python:
@@ -44,3 +43,6 @@ jobs:
 
       - name: Typecheck and test
         run: npm run check
+
+      - name: Evaluate recommendation behavior
+        run: npm run evaluate:recommendations

@@ -29,6 +29,7 @@ The repository includes:
 - position-aware roster allocation
 - versioned draft export/import
 - a deterministic explainable recommendation engine
+- named recommendation scenarios and weight-comparison reports
 - full-draft and recommendation regression tests
 
 ## Target application
@@ -63,6 +64,7 @@ See:
 - [`docs/draft-engine.md`](docs/draft-engine.md)
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
+- [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 
 ## Python setup
 
@@ -99,6 +101,8 @@ npm run typecheck
 npm test
 npm run test:watch
 npm run build
+npm run evaluate:recommendations
+npm run evaluate:recommendations:json
 ```
 
 ## Current project structure
@@ -110,8 +114,8 @@ packages/
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
-  recommendation-engine/ # Explainable TypeScript recommendation scoring
-scripts/                 # Python pipeline entrypoints
+  recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
+scripts/                 # Data entrypoints and recommendation evaluation command
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
 docs/                    # Product and technical documentation
@@ -121,6 +125,6 @@ docs/                    # Product and technical documentation
 
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** in progress
+- **M3 — Recommendation engine v1:** evaluation in progress
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
