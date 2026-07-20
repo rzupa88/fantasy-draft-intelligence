@@ -1,4 +1,12 @@
-import type { DraftOrderSlot, DraftTeam, LeagueSettings } from "@fdi/shared-types";
+import {
+  PLAYER_POSITIONS,
+  ROSTER_SLOT_TYPES,
+  type DraftOrderSlot,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerPosition,
+  type RosterSlotType,
+} from "@fdi/shared-types";
 import { DraftEngineError } from "./errors.js";
 
 export function validateLeagueSettings(settings: LeagueSettings): void {
@@ -27,15 +35,27 @@ export function validateLeagueSettings(settings: LeagueSettings): void {
     );
   }
 
-  if (settings.rosterSlots.length === 0) {
+  if (!Array.isArray(settings.rosterSlots) || settings.rosterSlots.length === 0) {
     throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
   }
 
+  let rosterCapacity = 0;
   for (const rule of settings.rosterSlots) {
+    if (!ROSTER_SLOT_TYPES.includes(rule.slot as RosterSlotType)) {
+      throw new DraftEngineError("INVALID_SETTINGS", `Unsupported roster slot: ${String(rule.slot)}`);
+    }
+
     if (!Number.isInteger(rule.count) || rule.count < 0) {
       throw new DraftEngineError(
         "INVALID_SETTINGS",
         `Roster slot ${rule.slot} must have a non-negative integer count.`,
+      );
+    }
+
+    if (!Array.isArray(rule.eligiblePositions)) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must define eligible positions.`,
       );
     }
 
@@ -45,6 +65,32 @@ export function validateLeagueSettings(settings: LeagueSettings): void {
         `Roster slot ${rule.slot} must define eligible positions.`,
       );
     }
+
+    const uniquePositions = new Set<PlayerPosition>();
+    for (const position of rule.eligiblePositions) {
+      if (!PLAYER_POSITIONS.includes(position as PlayerPosition)) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          `Roster slot ${rule.slot} contains unsupported position ${String(position)}.`,
+        );
+      }
+      if (uniquePositions.has(position)) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          `Roster slot ${rule.slot} contains duplicate eligible position ${position}.`,
+        );
+      }
+      uniquePositions.add(position);
+    }
+
+    rosterCapacity += rule.count;
+  }
+
+  if (rosterCapacity !== settings.rounds) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      `Roster capacity (${rosterCapacity}) must equal configured rounds (${settings.rounds}).`,
+    );
   }
 }
 
@@ -108,8 +154,12 @@ function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
 
   const teamIds = new Set<string>();
   const draftSlots = new Set<number>();
+  let userTeamCount = 0;
 
   for (const team of teams) {
+    if (typeof team.teamId !== "string" || team.teamId.trim().length === 0) {
+      throw new DraftEngineError("INVALID_SETTINGS", "Each team must have a non-empty teamId.");
+    }
     if (teamIds.has(team.teamId)) {
       throw new DraftEngineError("INVALID_SETTINGS", `Duplicate teamId: ${team.teamId}`);
     }
@@ -124,8 +174,27 @@ function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
         "Each team must have one unique draft slot within the league size.",
       );
     }
+    if (typeof team.name !== "string" || team.name.trim().length === 0) {
+      throw new DraftEngineError("INVALID_SETTINGS", "Each team must have a non-empty name.");
+    }
+    if (typeof team.isUser !== "boolean") {
+      throw new DraftEngineError("INVALID_SETTINGS", "Each team must define isUser.");
+    }
+    if (team.isUser) {
+      userTeamCount += 1;
+      if (team.draftSlot !== settings.userDraftSlot) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          "The user team must occupy the configured userDraftSlot.",
+        );
+      }
+    }
 
     teamIds.add(team.teamId);
     draftSlots.add(team.draftSlot);
+  }
+
+  if (userTeamCount !== 1) {
+    throw new DraftEngineError("INVALID_SETTINGS", "Exactly one team must be marked as the user team.");
   }
 }
