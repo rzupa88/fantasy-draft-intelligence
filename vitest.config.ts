@@ -10,6 +10,9 @@ export default defineConfig({
       "@fdi/draft-engine": fileURLToPath(
         new URL("./packages/draft-engine/src/index.ts", import.meta.url),
       ),
+      "@fdi/recommendation-engine": fileURLToPath(
+        new URL("./packages/recommendation-engine/src/index.ts", import.meta.url),
+      ),
     },
   },
   test: {

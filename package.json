@@ -1,11 +1,12 @@
 {
   "name": "fantasy-draft-intelligence",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/shared-types",
-    "packages/draft-engine"
+    "packages/draft-engine",
+    "packages/recommendation-engine"
   ],
   "scripts": {
     "build": "tsc -b",
