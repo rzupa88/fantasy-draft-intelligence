@@ -4,255 +4,128 @@ This file is auto-generated to give ChatGPT a compact, practical understanding o
 
 ## Project Summary
 
-Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
-
-```md
 # Fantasy Draft Intelligence
 
-A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
+A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 
----
+## Product goal
 
-## Purpose
+At any draft pick, identify which available player offers the best risk-adjusted value relative to market price, positional scarcity, expected availability, and roster needs.
 
-This project aims to identify when the fantasy football market is mispricing players relative to expected outcomes.
+## Core principles
 
-The product is built around four layers:
+- The live draft experience must work without an internet connection.
+- Git is the operating system for the project.
+- ADP is an input, not the answer.
+- Recommendations must be explainable.
+- Cross-source player joins use `canonical_player_id`, never raw player names.
+- Draft state, recommendation logic, and the user interface remain independently testable.
 
-1. **Data collection and normalization**
-2. **Feature engineering and research**
-3. **Predictive modeling and value scoring**
-4. **Draft decision support**
+## Current foundation
 
----
+The repository currently includes the first historical data foundation:
 
-## Core Question
+- nflverse weekly data ingestion
+- historical ADP ingestion
+- canonical player ID normalization
+- cross-source player reference data
+- Parquet-based intermediate datasets
+- validation and unit tests
 
-At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
+## Target application
 
----
+The completed product will be a locally installed desktop application with:
 
-## Principles
+- manual pick entry
+- configurable snake-draft settings
+- live roster and available-player tracking
+- dynamic player recommendations
+- undo and pick correction
+- local autosave and recovery
+- draft export and import
+- no required network connection during the draft
 
-- ADP is the baseline, not the answer
-- Narratives must become variables
-- Opportunity matters more than story
-- Everything should be reproducible
-- Git is the operating system for the project
+The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 
----
+## Architecture direction
 
-## Tech Stack
+- **Data preparation:** Python, Polars/Pandas, DuckDB, Parquet
+- **Draft and recommendation engines:** TypeScript
+- **Interface:** React and Vite
+- **Desktop packaging:** Tauri
+- **Local persistence:** SQLite
+- **Testing:** pytest, Vitest, Playwright
 
-- Python
-- GitHub Codespaces
-- Pandas / Polars
-- DuckDB / Parquet
-- scikit-learn
-- pytest
-- ruff
-- black
+See:
 
----
+- [`docs/product-requirements.md`](docs/product-requirements.md)
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/roadmap.md`](docs/roadmap.md)
 
-## Data Architecture (M1 Foundation)
+## Python setup
 
-The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
-
-### Pipeline Flow
-
-```
-
-raw source data
-↓
-normalized source tables (ADP, nflverse, etc.)
-↓
-canonical player ID enrichment
-↓
-player reference table (cross-source mapping)
-
-```
-
-### Key Concepts
-
-**Canonical Player ID**
-- Stable identifier used across all datasets
-- Generated via normalization logic in `packages/data/player_ids.py`
-- Handles:
-  - suffixes (Jr., Sr., III)
-  - punctuation
-  - casing / whitespace
-  - common naming inconsistencies
-  - DST naming standardization
-
-**Player Reference Table**
-- Located at:
-```
-
-data/intermediate/player_reference_<years>.parquet
-
-```
-- Built from all normalized sources
-- Serves as the **join layer across datasets**
-
-**Join Rule (Important)**
-> All cross-source joins should use `canonical_player_id`, not raw `player_name`.
-
----
-
-## Current Data Outputs
-
-After running ingestion + reference build:
-
-```
-
-data/intermediate/
-├── adp_historical_2023_2024.parquet
-├── nflverse_player_weekly_2023_2024.parquet
-└── player_reference_2023_2024.parquet
-
-````
-
----
-
-## Initial Milestone
-
-### **M1: Core Historical Warehouse for Pilot Seasons**
-
-This milestone includes:
-
-- repo setup
-- Codespaces environment
-- source inventory
-- nflverse ingestion
-- ADP ingestion
-- canonical player ID layer
-- player reference mapping
-- data validation and tests
-
----
-
-## Quick Start
-
-### 1. Open in Codespaces
-Open the repository in GitHub Codespaces.
-
----
-
-### 2. Install dependencies
-
-This should happen automatically in the devcontainer. If needed:
+Requires Python 3.11 or later.
 
 ```bash
-pip install -e .[dev]
-````
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+```
 
----
-
-### 3. Run Data Pipeline
-
-#### Ingest ADP
+## Existing data pipeline
 
 ```bash
 python scripts/ingest_adp.py
-```
-
-#### Ingest nflverse
-
-```bash
 python scripts/ingest_nflverse.py
-```
-
-#### Build Player Reference Table
-
-```bash
 python scripts/build_player_reference.py
-```
-
----
-
-### 4. Run Tests
-
-```bash
 pytest
 ```
 
----
+## Current project structure
 
-## Project Structure
-
-```
+```text
 packages/
   data/
-    ingest/              # source ingestion (ADP, nflverse)
-    player_ids.py        # canonical ID logic
-    io.py                # read/write utilities
-    validation.py        # data validation helpers
-
+    ingest/
+    player_ids.py
+    io.py
+    validation.py
 scripts/
-  ingest_*.py            # ingestion entrypoints
+  ingest_adp.py
+  ingest_nflverse.py
   build_player_reference.py
-
 data/
-  raw/                   # source snapshots
-  intermediate/          # normalized + canonical outputs
-
+  raw/
+  intermediate/
 tests/
-  data/                  # ingestion + ID tests
+  data/
+docs/
 ```
 
----
+## Milestones
 
-## Development Notes
-
-* Canonical ID logic is **code-first**, not notebook-based
-* All intermediate datasets are written as **Parquet**
-* Validation includes:
-
-  * required columns
-  * uniqueness constraints
-* Tests cover:
-
-  * normalization edge cases
-  * cross-source join stability
-
----
-
-## Next Steps
-
-* Expand player identity resolution (aliases, edge cases)
-* Add additional data sources (injuries, depth charts, projections)
-* Build feature engineering layer
-* Develop baseline predictive models
-* Implement draft decision engine
-
-```
-```
+- **M1 — Historical data foundation:** established
+- **M2 — Offline draft engine foundation:** current
+- **M3 — Recommendation engine v1**
+- **M4 — Local draft-room interface**
+- **M5 — Desktop packaging and release**
 
 ## Quickstart and Useful Commands
 
 Potentially useful commands and setup hints found in project files:
 
 ```text
-- pytest
-After running ingestion + reference build:
-- data validation and tests
-## Quick Start
-### 2. Install dependencies
-This should happen automatically in the devcontainer. If needed:
-pip install -e .[dev]
-### 3. Run Data Pipeline
-#### Build Player Reference Table
+A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
+- Draft state, recommendation logic, and the user interface remain independently testable.
+- validation and unit tests
+The completed product will be a locally installed desktop application with:
+The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
+- **Testing:** pytest, Vitest, Playwright
+pip install -e ".[dev]"
 python scripts/build_player_reference.py
-### 4. Run Tests
 pytest
 build_player_reference.py
 tests/
-data/                  # ingestion + ID tests
-## Development Notes
-* Tests cover:
-* Build feature engineering layer
-* Develop baseline predictive models
 [build-system]
 build-backend = "setuptools.build_meta"
 dev = [
@@ -262,6 +135,7 @@ dev = [
 testpaths = ["tests"]
 .PHONY: install lint format test bootstrap ingest-nflverse ingest-adp validate
 install:
+pip install -e .[dev]
 lint:
 test:
 ```
@@ -291,8 +165,18 @@ test:
 │   │   └── README.md
 │   ├── runbooks
 │   │   └── README.md
+│   ├── architecture.md
+│   ├── data-contract.md
+│   ├── decision-log.md
+│   ├── local-development.md
+│   ├── m2-backlog.md
 │   ├── MASTER_PROJECT_PLAN.md
-│   └── SOURCE_INVENTORY.md
+│   ├── product-requirements.md
+│   ├── release-criteria.md
+│   ├── repository-audit.md
+│   ├── roadmap.md
+│   ├── SOURCE_INVENTORY.md
+│   └── testing-strategy.md
 ├── notebooks
 │   ├── exploratory
 │   ├── modeling
@@ -348,230 +232,111 @@ test:
 ### `README.md`
 
 ```text
-Absolutely — here it is cleanly formatted in Markdown for direct copy/paste:
-
-```md
 # Fantasy Draft Intelligence
 
-A Git-first fantasy football draft intelligence platform built in GitHub Codespaces.
+A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 
----
+## Product goal
 
-## Purpose
+At any draft pick, identify which available player offers the best risk-adjusted value relative to market price, positional scarcity, expected availability, and roster needs.
 
-This project aims to identify when the fantasy football market is mispricing players relative to expected outcomes.
+## Core principles
 
-The product is built around four layers:
+- The live draft experience must work without an internet connection.
+- Git is the operating system for the project.
+- ADP is an input, not the answer.
+- Recommendations must be explainable.
+- Cross-source player joins use `canonical_player_id`, never raw player names.
+- Draft state, recommendation logic, and the user interface remain independently testable.
 
-1. **Data collection and normalization**
-2. **Feature engineering and research**
-3. **Predictive modeling and value scoring**
-4. **Draft decision support**
+## Current foundation
 
----
+The repository currently includes the first historical data foundation:
 
-## Core Question
+- nflverse weekly data ingestion
+- historical ADP ingestion
+- canonical player ID normalization
+- cross-source player reference data
+- Parquet-based intermediate datasets
+- validation and unit tests
 
-At a given draft pick, which available player offers the best risk-adjusted value relative to market price and roster needs?
+## Target application
 
----
+The completed product will be a locally installed desktop application with:
 
-## Principles
+- manual pick entry
+- configurable snake-draft settings
+- live roster and available-player tracking
+- dynamic player recommendations
+- undo and pick correction
+- local autosave and recovery
+- draft export and import
+- no required network connection during the draft
 
-- ADP is the baseline, not the answer
-- Narratives must become variables
-- Opportunity matters more than story
-- Everything should be reproducible
-- Git is the operating system for the project
+The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 
----
+## Architecture direction
 
-## Tech Stack
+- **Data preparation:** Python, Polars/Pandas, DuckDB, Parquet
+- **Draft and recommendation engines:** TypeScript
+- **Interface:** React and Vite
+- **Desktop packaging:** Tauri
+- **Local persistence:** SQLite
+- **Testing:** pytest, Vitest, Playwright
 
-- Python
-- GitHub Codespaces
-- Pandas / Polars
-- DuckDB / Parquet
-- scikit-learn
-- pytest
-- ruff
-- black
+See:
 
----
+- [`docs/product-requirements.md`](docs/product-requirements.md)
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/roadmap.md`](docs/roadmap.md)
 
-## Data Architecture (M1 Foundation)
+## Python setup
 
-The project uses a layered data pipeline designed for reproducibility and stable cross-source joins.
-
-### Pipeline Flow
-
-```
-
-raw source data
-↓
-normalized source tables (ADP, nflverse, etc.)
-↓
-canonical player ID enrichment
-↓
-player reference table (cross-source mapping)
-
-```
-
-### Key Concepts
-
-**Canonical Player ID**
-- Stable identifier used across all datasets
-- Generated via normalization logic in `packages/data/player_ids.py`
-- Handles:
-  - suffixes (Jr., Sr., III)
-  - punctuation
-  - casing / whitespace
-  - common naming inconsistencies
-  - DST naming standardization
-
-**Player Reference Table**
-- Located at:
-```
-
-data/intermediate/player_reference_<years>.parquet
-
-```
-- Built from all normalized sources
-- Serves as the **join layer across datasets**
-
-**Join Rule (Important)**
-> All cross-source joins should use `canonical_player_id`, not raw `player_name`.
-
----
-
-## Current Data Outputs
-
-After running ingestion + reference build:
-
-```
-
-data/intermediate/
-├── adp_historical_2023_2024.parquet
-├── nflverse_player_weekly_2023_2024.parquet
-└── player_reference_2023_2024.parquet
-
-````
-
----
-
-## Initial Milestone
-
-### **M1: Core Historical Warehouse for Pilot Seasons**
-
-This milestone includes:
-
-- repo setup
-- Codespaces environment
-- source inventory
-- nflverse ingestion
-- ADP ingestion
-- canonical player ID layer
-- player reference mapping
-- data validation and tests
-
----
-
-## Quick Start
-
-### 1. Open in Codespaces
-Open the repository in GitHub Codespaces.
-
----
-
-### 2. Install dependencies
-
-This should happen automatically in the devcontainer. If needed:
+Requires Python 3.11 or later.
 
 ```bash
-pip install -e .[dev]
-````
+python -m venv .venv
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+```
 
----
-
-### 3. Run Data Pipeline
-
-#### Ingest ADP
+## Existing data pipeline
 
 ```bash
 python scripts/ingest_adp.py
-```
-
-#### Ingest nflverse
-
-```bash
 python scripts/ingest_nflverse.py
-```
-
-#### Build Player Reference Table
-
-```bash
 python scripts/build_player_reference.py
-```
-
----
-
-### 4. Run Tests
-
-```bash
 pytest
 ```
 
----
+## Current project structure
 
-## Project Structure
-
-```
+```text
 packages/
   data/
-    ingest/              # source ingestion (ADP, nflverse)
-    player_ids.py        # canonical ID logic
-    io.py                # read/write utilities
-    validation.py        # data validation helpers
-
+    ingest/
+    player_ids.py
+    io.py
+    validation.py
 scripts/
-  ingest_*.py            # ingestion entrypoints
+  ingest_adp.py
+  ingest_nflverse.py
   build_player_reference.py
-
 data/
-  raw/                   # source snapshots
-  intermediate/          # normalized + canonical outputs
-
+  raw/
+  intermediate/
 tests/
-  data/                  # ingestion + ID tests
+  data/
+docs/
 ```
 
----
+## Milestones
 
-## Development Notes
-
-* Canonical ID logic is **code-first**, not notebook-based
-* All intermediate datasets are written as **Parquet**
-* Validation includes:
-
-  * required columns
-  * uniqueness constraints
-* Tests cover:
-
-  * normalization edge cases
-  * cross-source join stability
-
----
-
-## Next Steps
-
-* Expand player identity resolution (aliases, edge cases)
-* Add additional data sources (injuries, depth charts, projections)
-* Build feature engineering layer
-* Develop baseline predictive models
-* Implement draft decision engine
-
-```
-```
+- **M1 — Historical data foundation:** established
+- **M2 — Offline draft engine foundation:** current
+- **M3 — Recommendation engine v1**
+- **M4 — Local draft-room interface**
+- **M5 — Desktop packaging and release**
 ```
 
 ### `pyproject.toml`
@@ -584,36 +349,35 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fantasy-draft-intelligence"
 version = "0.1.0"
-description = "Git-first fantasy football draft intelligence platform"
+description = "Local-first fantasy football draft intelligence platform"
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [
   { name = "Ryan Zupa" }
 ]
 dependencies = [
-  "pandas>=2.2.0",
-  "pyarrow>=16.0.0",
-  "duckdb>=1.0.0",
-  "requests>=2.32.0",
   "beautifulsoup4>=4.12.0",
+  "duckdb>=1.0.0",
   "lxml>=5.2.0",
-  "pydantic>=2.7.0",
-  "scikit-learn>=1.5.0",
-  "pyyaml>=6.0.1",
-  "typer>=0.12.3",
-  "rich>=13.7.1",
   "nflreadpy>=0.1.0",
+  "pandas>=2.2.0",
   "polars>=1.0.0",
-  "pyarrow>=15.0.0"
+  "pyarrow>=16.0.0",
+  "pydantic>=2.7.0",
+  "pyyaml>=6.0.1",
+  "requests>=2.32.0",
+  "rich>=13.7.1",
+  "scikit-learn>=1.5.0",
+  "typer>=0.12.3"
 ]
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.2.0",
-  "ruff>=0.5.0",
   "black>=24.4.2",
+  "ipykernel>=6.29.4",
   "jupyter>=1.0.0",
-  "ipykernel>=6.29.4"
+  "pytest>=8.2.0",
+  "ruff>=0.5.0"
 ]
 
 [tool.setuptools]
@@ -723,6 +487,173 @@ Why was this chosen over alternatives?
 ## Follow-Up Actions
 - [ ]
 - [ ]
+```
+
+### `docs/architecture.md`
+
+```text
+# Architecture Decision Record
+
+## Delivery model
+
+Fantasy Draft Intelligence will be developed in Git and released as a locally installed desktop application. The production draft workflow must not depend on a hosted server or live connection to a fantasy platform.
+
+## System boundaries
+
+### 1. Data preparation
+
+**Technology:** Python, Polars/Pandas, DuckDB, Parquet
+
+Responsibilities:
+
+- ingest historical and preseason sources
+- normalize names, teams, and positions
+- maintain canonical player identity
+- calculate reusable features
+- validate records
+- publish a compact, versioned app-ready dataset
+
+The existing Python pipeline remains the source of truth for football data preparation.
+
+### 2. Draft engine
+
+**Technology:** TypeScript package with no interface dependency
+
+Responsibilities:
+
+- league settings
+- snake-order generation
+- pick sequencing
+- roster assignment
+- available-player tracking
+- undo and correction
+- state validation
+- serializable draft state
+
+The engine must be deterministic. Given the same settings and pick history, it must produce the same draft state.
+
+### 3. Recommendation engine
+
+**Technology:** TypeScript package with no interface dependency
+
+Responsibilities:
+
+- base player valuation
+- value over replacement
+- tier urgency
+- positional scarcity
+- roster need
+- ADP value
+- expected availability
+- risk and upside adjustments
+- human-readable recommendation reasons
+
+The recommendation engine accepts draft state, league settings, and the player dataset. It must not read directly from UI state or storage.
+
+### 4. Desktop interface
+
+**Technology:** React, TypeScript, Vite
+
+Responsibilities:
+
+- draft setup
+- player search and filters
+- manual pick entry
+- live draft board
+- roster views
+- recommendation display
+- error handling
+- export and restoration controls
+
+### 5. Desktop shell and persistence
+
+**Technology:** Tauri and SQLite
+
+Responsibilities:
+
+- native desktop packaging
+- local database access
+- atomic saves and migrations
+- file-based import and export
+- application data directories
+- Windows installer creation
+
+## Repository direction
+
+The current Python repository will evolve into a monorepo without discarding the existing data foundation.
+
+```text
+apps/
+  desktop/                 # React/Vite/Tauri application
+packages/
+  data/                    # existing Python data package
+  draft-engine/            # TypeScript domain logic
+  recommendation-engine/   # TypeScript decision logic
+  shared-types/            # shared TypeScript schemas
+data/
+  raw/
+  intermediate/
+  releases/                # versioned app-ready datasets
+docs/
+scripts/
+tests/
+```
+
+The structure will be introduced incrementally. Empty scaffolding should not replace working code merely to match the target diagram.
+
+## Data contracts
+
+### Canonical identity
+
+All cross-source joins use `canonical_player_id`. Raw player names are display fields, not keys.
+
+### Player data release
+
+Each player-data release must include:
+
+- schema version
+- season
+- generated timestamp
+- source metadata
+- player records
+- validation summary
+
+The desktop application must reject incompatible schema versions with a clear error.
+
+### Draft state
+
+Draft state must be serializable and versioned. At minimum it contains:
+
+- state schema version
+- draft ID
+- league settings
+- ordered fantasy teams
+- ordered pick slots
+- pick history
+- current pick index
+- created and updated timestamps
+- selected player-data release
+
+Derived values such as available players should be reproducible from the stored settings and pick history whenever practical.
+
+## Offline rules
+
+- No network call may be required to create, run, save, restore, or finish a draft.
+- Data updates occur before draft day through explicit scripts or imported release files.
+- The application must remain usable when network interfaces are disabled.
+- Remote analytics and telemetry are excluded from MVP.
+
+## Testing strategy
+
+- `pytest`: Python ingestion, normalization, and release generation
+- `Vitest`: draft and recommendation engines
+- `Playwright`: complete draft-room workflows
+- fixture drafts: deterministic twelve-team simulations
+- packaging smoke test: launch installed application and complete offline save/restore
+
+## Decision rationale
+
+Tauri provides a native application with a smaller footprint than an Electron-based alternative while allowing the interface and domain logic to remain in TypeScript. SQLite offers durable local persistence and explicit migrations. Separating data preparation from live draft logic prevents Python or internet dependencies from leaking into the packaged draft experience.
 ```
 
 ### `docs/architecture/README.md`
@@ -1045,6 +976,683 @@ Raw `player_name` values are not reliable due to:
 - alias handling (nicknames, alternate spellings)
 - DST normalization edge cases
 - whether coaching data should be fully manual for MVP
+```
+
+### `docs/data-contract.md`
+
+```text
+# Player Data Release Contract
+
+## Purpose
+
+The Python pipeline publishes versioned player data for the desktop application. The live application consumes the release locally and does not scrape or refresh data during a draft.
+
+## Release envelope
+
+Each release must include:
+
+```json
+{
+  "schema_version": "1.0",
+  "season": 2026,
+  "release_id": "2026-preseason-v1",
+  "generated_at": "ISO-8601 timestamp",
+  "sources": [],
+  "players": []
+}
+```
+
+## Required player fields
+
+- `canonical_player_id`
+- `display_name`
+- `position`
+- `nfl_team`
+- `bye_week`
+- `overall_rank`
+- `position_rank`
+- `adp`
+- `projected_points`
+- `tier`
+- `risk_score`
+- `upside_score`
+- `availability_status`
+
+Fields may be nullable where a source does not provide a value, but identity, name, and position are required for every draftable player.
+
+## Validation rules
+
+- `canonical_player_id` is unique within a release.
+- Position values come from a controlled enum.
+- Numeric ranks and ADP values are positive when present.
+- Tier values are positive integers when present.
+- The release ID uniquely identifies immutable content.
+- The desktop application rejects an unsupported major schema version.
+
+## Identity rule
+
+Raw player names must never be used as cross-source join keys. All source mappings resolve to `canonical_player_id` before a player enters the release.
+
+## Storage direction
+
+Parquet remains appropriate for intermediate and research datasets. The final desktop-consumable release may be JSON, compressed JSON, or imported into SQLite. The selected format must preserve the same versioned contract.
+```
+
+### `docs/decision-log.md`
+
+```text
+# Decision Log
+
+## 2026-07-16 — Local desktop delivery
+
+**Decision:** Release the finished product as a locally installed laptop application rather than a hosted service.
+
+**Consequences:**
+
+- The live draft requires no remote server.
+- Draft state is stored locally.
+- The application must be tested with networking disabled.
+- A packaged user does not need development tools.
+
+## 2026-07-16 — Preserve the Python data foundation
+
+**Decision:** Keep the existing Python ingestion and normalization work and add the live application incrementally.
+
+**Consequences:**
+
+- Python prepares versioned player-data releases.
+- Python is not required during a packaged live draft.
+- Existing canonical player IDs remain the cross-source identity key.
+
+## 2026-07-16 — TypeScript domain engines
+
+**Decision:** Implement draft-state and recommendation logic as interface-independent TypeScript packages.
+
+**Consequences:**
+
+- Logic can run in the desktop application without a Python process.
+- Engines can be unit-tested separately from React and Tauri.
+- Shared schemas reduce mismatch between interface and domain behavior.
+
+## 2026-07-16 — React, Vite, Tauri, and SQLite
+
+**Decision:** Use React/Vite for the interface, Tauri for native packaging, and SQLite for durable local persistence.
+
+**Consequences:**
+
+- The project retains web-development speed while producing a desktop installer.
+- Draft saves use explicit database migrations and local backup/export.
+- Tauri and Rust tooling are introduced only after the draft engine is stable.
+
+## 2026-07-16 — Draft engine before interface
+
+**Decision:** Do not build the visual draft room until a deterministic draft engine can complete simulated drafts.
+
+**Consequences:**
+
+- Snake ordering, picks, rosters, undo, correction, and serialization are verified before UI complexity is added.
+- The first feature milestone is test-driven domain logic rather than mockups.
+```
+
+### `docs/local-development.md`
+
+```text
+# Local Development Contract
+
+The project is developed in Git and the finished application runs locally on a laptop.
+
+## Current Python foundation
+
+```bash
+python -m venv .venv
+```
+
+Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+pytest
+ruff check .
+black --check .
+```
+
+macOS or Linux:
+
+```bash
+source .venv/bin/activate
+pip install -e ".[dev]"
+pytest
+ruff check .
+black --check .
+```
+
+## Target root commands
+
+As the TypeScript and desktop workspaces are introduced, the repository will provide root commands for:
+
+```text
+npm run setup
+npm run test
+npm run lint
+npm run build
+npm run dev
+npm run package
+npm run data:update
+npm run data:validate
+```
+
+The commands must be implemented before they are advertised as operational in the root README.
+
+## Packaged-user rule
+
+Development commands are for contributors only. The released Windows application must launch through an installer-created shortcut and must not require Git, Python, Node, Rust, or a terminal on the user's machine.
+```
+
+### `docs/m2-backlog.md`
+
+```text
+# M2 Backlog: Offline Draft Engine Foundation
+
+## Epic 1 — TypeScript workspace
+
+- Add root Node workspace configuration.
+- Add TypeScript, ESLint, formatting, and Vitest configuration.
+- Add `packages/shared-types`.
+- Add `packages/draft-engine`.
+- Document local development commands.
+
+**Acceptance:** TypeScript builds and a sample unit test passes from the repository root.
+
+## Epic 2 — League configuration
+
+- Define team-count constraints.
+- Define scoring format metadata.
+- Define roster-slot and FLEX eligibility schemas.
+- Validate rounds against total roster capacity.
+- Add twelve-team default fixture.
+
+**Acceptance:** Invalid league settings return structured validation errors.
+
+## Epic 3 — Draft order
+
+- Generate ordered snake-draft pick slots.
+- Expose round, pick-in-round, overall pick, and fantasy team.
+- Support configurable team count and rounds.
+- Add boundary tests at every round reversal.
+
+**Acceptance:** Known fixtures produce the exact expected order.
+
+## Epic 4 — Draft state
+
+- Define versioned draft-state schema.
+- Create a new draft from settings and ordered teams.
+- Apply a valid pick.
+- Reject duplicate players and out-of-sequence picks.
+- Derive current pick and team on the clock.
+- Derive drafted and available player IDs.
+
+**Acceptance:** State transitions are deterministic and immutable.
+
+## Epic 5 — Rosters
+
+- Assign drafted players to fantasy teams.
+- Track position counts.
+- Determine open starter and bench slots.
+- Validate player position against configured slots.
+- Support FLEX eligibility.
+
+**Acceptance:** Every fixture roster matches its pick history.
+
+## Epic 6 — Recovery tools
+
+- Undo the last pick.
+- Correct a historical pick by replaying later state.
+- Serialize draft state.
+- Restore serialized state.
+- Reject unsupported schema versions.
+
+**Acceptance:** Save/restore and undo/correction preserve a valid draft.
+
+## Epic 7 — Simulation suite
+
+- Add a complete twelve-team player fixture.
+- Run a complete automated snake draft.
+- Test multiple draft slots.
+- Test duplicate, invalid, undo, correction, and restore scenarios.
+
+**Acceptance:** Repeated simulations produce no state divergence.
+
+## Definition of done
+
+M2 is complete only when:
+
+- all draft-engine unit tests pass;
+- formatting and lint checks pass;
+- a full draft simulation completes;
+- domain packages have no React, Tauri, database, or network dependency;
+- README commands match the actual workspace commands.
+```
+
+### `docs/product-requirements.md`
+
+```text
+# Product Requirements: Offline Draft Assistant
+
+## Status
+
+Baseline specification for Milestone 2.
+
+## Problem
+
+Fantasy managers drafting in person or on an unsupported platform often rely on static rankings, spreadsheets, or a second online draft room. Those tools do not fully account for the live player pool, roster construction, positional runs, tier drops, or the probability that a player will survive to the manager's next selection.
+
+## Product objective
+
+Build a desktop application that helps one user manage and optimize a fantasy football redraft while every selection is entered manually. The live draft must remain fully functional without internet access.
+
+## Initial target
+
+- Redraft leagues
+- Snake draft
+- Twelve teams as the primary tested configuration
+- Configurable team count
+- Standard, half-PPR, full-PPR, and custom scoring inputs
+- Configurable roster and bench positions
+- QB, RB, WR, TE, FLEX, K, and DST
+- One local user operating the draft board
+
+## Core workflow
+
+### Before the draft
+
+1. Create or restore a draft.
+2. Select league size, draft slot, scoring, roster settings, and rounds.
+3. Load a versioned player-data package.
+4. Review the generated draft order and settings.
+
+### During the draft
+
+1. Enter each selected player and fantasy team.
+2. Advance the snake draft order automatically.
+3. Update all rosters and the available-player pool.
+4. Recalculate recommendations after each pick.
+5. Undo or correct entry mistakes without corrupting draft state.
+6. Autosave locally after every state change.
+
+### After the draft
+
+1. Review the completed board and every roster.
+2. Review the user's roster analysis.
+3. Export the draft to a local file.
+4. Reopen the draft later.
+
+## MVP functional requirements
+
+### Draft configuration
+
+- Team count
+- User draft position
+- Snake-order generation
+- Scoring configuration
+- Starting-position configuration
+- FLEX eligibility
+- Bench size
+- Number of rounds
+
+### Player pool
+
+Each app-ready player record must support:
+
+- canonical player ID
+- name
+- NFL team
+- position
+- bye week
+- overall rank
+- positional rank
+- ADP
+- projection
+- tier
+- risk indicator
+- upside indicator
+- injury or availability status when supplied
+
+### Draft state
+
+- Current round and overall pick
+- Team on the clock
+- Ordered pick history
+- Team rosters
+- Available and drafted player status
+- Undo last pick
+- Correct an earlier pick
+- Duplicate-pick prevention
+- Roster validation
+
+### Recommendation output
+
+Display a ranked shortlist with:
+
+- recommendation score
+- primary reason
+- tier and tier-drop context
+- roster-fit context
+- positional scarcity
+- ADP value
+- expected availability at the user's next pick
+- risk and upside summary
+- alternatives
+
+### Persistence
+
+- Local autosave after every pick
+- Recovery after application closure
+- Local draft export and import
+- No cloud account
+- No required remote database
+
+## Non-functional requirements
+
+- The installed application must work in airplane mode.
+- A normal user must not need Python, Node, Git, or a terminal to run the packaged release.
+- Search and pick entry must remain responsive with the full player pool.
+- Core engines must be deterministic and unit-testable independently of the UI.
+- Player datasets must be versioned and replaceable without rebuilding recommendation logic.
+- A failed or interrupted save must not silently destroy the previous valid draft state.
+
+## Explicitly outside MVP
+
+- Sleeper, Yahoo, ESPN, or NFL platform synchronization
+- Auction drafts
+- Dynasty and keeper valuation
+- Best ball
+- IDP
+- Online multiplayer
+- AI chat
+- Draft-day data scraping
+- Paid data dependencies
+
+## MVP acceptance criteria
+
+The milestone is complete when:
+
+1. A twelve-team draft can run from first pick through the final round.
+2. No drafted player remains available.
+3. Every pick appears on the correct roster and board position.
+4. Undo and correction restore a valid state.
+5. Closing and reopening the application restores the draft.
+6. Recommendations update after every selection.
+7. Recommendation explanations identify why the player is valuable now.
+8. The packaged application completes a draft without network access.
+```
+
+### `docs/release-criteria.md`
+
+```text
+# Release Criteria
+
+## M2 draft-engine release gate
+
+- TypeScript packages build from a clean checkout.
+- Unit tests cover snake order, picks, rosters, undo, correction, and serialization.
+- A complete twelve-team draft simulation passes.
+- Domain logic has no network, UI, or database dependency.
+
+## v1.0 desktop release gate
+
+- Windows installer builds successfully.
+- Application launches without Python, Node, Git, or a terminal.
+- A complete draft can be conducted with networking disabled.
+- Autosave survives application closure and relaunch.
+- Exported drafts can be imported into a clean installation.
+- Duplicate and invalid picks cannot silently corrupt state.
+- Player-data schema incompatibility produces a clear error.
+- User documentation matches the released workflow.
+```
+
+### `docs/repository-audit.md`
+
+```text
+# Repository Baseline Audit
+
+## Scope
+
+This audit records the initial state observed before building the offline draft application.
+
+## Confirmed strengths
+
+- Existing Python package configuration targets Python 3.11 or later.
+- Historical data tooling already uses Pandas, Polars, DuckDB, Parquet, nflreadpy, and scikit-learn.
+- The repository defines a canonical player ID layer.
+- Cross-source player joins are intended to use `canonical_player_id`.
+- Existing scripts cover ADP ingestion, nflverse ingestion, and player-reference construction.
+- pytest, Ruff, and Black are already configured.
+- The repository is private and the owner has full administrative and write permission.
+
+## Baseline issues corrected in this branch
+
+- The README contained conversational wrapper text and nested Markdown code fences.
+- `pyarrow` was declared twice with different minimum versions.
+- The existing README described a Codespaces-first research platform but did not define the local desktop delivery model.
+- Product scope, offline rules, system boundaries, and milestone acceptance criteria were not recorded in repository documentation.
+
+## Known audit limitations
+
+The connected GitHub interface allowed direct inspection and editing of known repository paths but did not provide a complete recursive file-tree listing in this session. Runtime validation was also unavailable because the execution environment could not clone GitHub and did not include the GitHub CLI.
+
+Accordingly, this branch makes only low-risk documentation and dependency-cleanup changes. Functional source-code changes will begin after the next implementation branch inspects the relevant files directly and adds executable draft-engine tests.
+
+## Next audit actions
+
+Before changing the Python data pipeline:
+
+1. Inspect every module under `packages/data`.
+2. Inspect every current test under `tests/data`.
+3. Run the existing ingestion and test commands in an environment with repository checkout access.
+4. Record current test counts and failures.
+5. Confirm whether generated data files are intentionally tracked or ignored.
+6. Add a CI workflow that reproduces the validated local commands.
+
+## Baseline conclusion
+
+The existing data foundation should be retained. The project should evolve incrementally into a monorepo, beginning with a separately testable TypeScript draft engine rather than restructuring or replacing the working Python pipeline.
+```
+
+### `docs/roadmap.md`
+
+```text
+# Implementation Roadmap
+
+## M1 — Historical data foundation
+
+**Status:** Existing foundation
+
+- nflverse ingestion
+- historical ADP ingestion
+- canonical player IDs
+- player reference table
+- Parquet outputs
+- validation tests
+
+## M2 — Offline draft engine foundation
+
+**Goal:** Establish the domain model and run a complete draft without a graphical interface.
+
+### Deliverables
+
+1. Repository baseline and documentation
+2. TypeScript workspace and shared schemas
+3. League-settings model
+4. Snake-order generator
+5. Draft-state reducer
+6. Pick validation and duplicate prevention
+7. Roster construction and open-slot calculations
+8. Undo and historical pick correction
+9. State serialization and fixtures
+10. Complete twelve-team simulation tests
+
+### Exit criteria
+
+- A deterministic automated test completes an entire draft.
+- Every roster and pick slot is correct.
+- Undo and correction leave the state valid.
+- State can be serialized and restored without information loss.
+
+## M3 — Recommendation engine v1
+
+**Goal:** Return explainable recommendations after every pick.
+
+### Deliverables
+
+1. App-ready player data release schema
+2. Replacement-level calculations
+3. Base value and VOR
+4. Positional tiers and tier urgency
+5. Roster-need scoring
+6. Positional scarcity scoring
+7. ADP value
+8. Expected-availability estimate
+9. Risk and upside inputs
+10. Recommendation explanations
+11. Historical and simulated evaluation harness
+
+### Exit criteria
+
+- Recommendations change logically with roster and draft state.
+- Every recommendation has a structured explanation.
+- Engine output is deterministic for fixed inputs.
+
+## M4 — Local draft-room interface
+
+**Goal:** Make the engine practical during a real draft.
+
+### Deliverables
+
+1. React and Vite application
+2. New-draft setup flow
+3. Player search and filters
+4. Manual pick entry
+5. Live draft board
+6. Team roster views
+7. Recommendation panel
+8. Undo and correction interface
+9. Keyboard-first workflow
+10. Playwright end-to-end tests
+
+### Exit criteria
+
+- A user can complete a draft without developer assistance.
+- Common pick entry requires minimal interaction.
+- Errors are recoverable and clearly explained.
+
+## M5 — Local persistence and desktop release
+
+**Goal:** Deliver a normal Windows laptop application that works offline.
+
+### Deliverables
+
+1. Tauri desktop shell
+2. SQLite database and migrations
+3. Autosave after each state change
+4. Draft recovery
+5. JSON export and import
+6. Versioned player-data imports
+7. Offline verification
+8. Windows installer build
+9. User guide and release checklist
+
+### Exit criteria
+
+- The application installs and launches without development tools.
+- A complete draft works in airplane mode.
+- Closing and reopening restores the latest valid state.
+
+## Deferred roadmap
+
+After v1.0:
+
+- superflex and two-quarterback formats
+- tight-end premium
+- auction drafts
+- dynasty and keeper logic
+- best ball
+- automated mock opponents
+- Monte Carlo availability modeling
+- strategy profiles
+- draft replay and post-draft grading
+
+## Implementation order
+
+The next build sequence is:
+
+1. Define TypeScript domain schemas.
+2. Implement snake-order generation.
+3. Implement immutable draft-state transitions.
+4. Add roster validation.
+5. Add undo and correction.
+6. Add full-draft fixtures and tests.
+7. Define the app-ready player-data contract.
+8. Begin recommendation engine v1.
+
+No interface implementation should begin until the draft engine can complete deterministic simulated drafts.
+```
+
+### `docs/testing-strategy.md`
+
+```text
+# Testing Strategy
+
+## Python data layer
+
+- ingestion fixtures
+- canonical identity edge cases
+- required-column validation
+- uniqueness constraints
+- app-ready release schema validation
+
+## TypeScript draft engine
+
+- snake-order boundaries
+- pick sequencing
+- duplicate rejection
+- roster assignment
+- FLEX eligibility
+- undo and correction
+- serialization round trips
+- unsupported schema versions
+
+## Recommendation engine
+
+- deterministic scores for fixed inputs
+- roster-need response
+- tier-drop response
+- positional-run response
+- ADP value response
+- explanation completeness
+
+## Interface
+
+- new-draft setup
+- keyboard player search
+- pick entry
+- undo and correction
+- roster and board updates
+- save and restore
+- import and export
+
+## Desktop release
+
+- clean installation
+- launch without development tools
+- airplane-mode complete draft
+- forced close and recovery
+- corrupted import handling
+- player-data schema incompatibility
+
+## Required fixture
+
+A stable twelve-team, multi-round draft fixture will serve as the primary regression scenario across the draft engine, recommendation engine, interface, persistence, and desktop package.
 ```
 
 ## Important Source Files
