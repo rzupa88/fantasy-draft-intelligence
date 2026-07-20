@@ -43,7 +43,10 @@ The repository includes:
 
 The React interface currently supports:
 
-- league name, team count, draft slot, rounds, and scoring setup
+- league name, team count, draft slot, and scoring setup
+- editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts
+- draft rounds derived automatically from roster capacity
+- standard, no-kicker, no-defense, extra-flex, two-QB, and superflex roster structures
 - an offline deterministic demo player release
 - manual entry for every team selection
 - automatic snake-order advancement
@@ -55,9 +58,9 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery and backup workflows
+- browser-tested recovery, backup, and custom-roster workflows
 
-The next primary increments are broader roster customization, production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
+The next primary increments are production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
 
 ## Target application
 
@@ -166,7 +169,7 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** functional and recoverable; customization remains
+- **M4 — Local draft-room interface:** functional, recoverable, and roster-configurable; production data remains
 - **M5 — Desktop packaging and release**
 
 ## Quickstart and Useful Commands
@@ -177,7 +180,7 @@ Potentially useful commands and setup hints found in project files:
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
 - Vitest and Playwright regression coverage
-- browser-tested recovery and backup workflows
+- browser-tested recovery, backup, and custom-roster workflows
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 - **Testing:** pytest, Vitest, Playwright
@@ -227,6 +230,7 @@ test:
 │   │   │   ├── draft-storage.ts
 │   │   │   ├── main.tsx
 │   │   │   ├── recovery.css
+│   │   │   ├── roster-config.css
 │   │   │   └── styles.css
 │   │   ├── tests
 │   │   │   ├── app.test.tsx
@@ -405,7 +409,10 @@ The repository includes:
 
 The React interface currently supports:
 
-- league name, team count, draft slot, rounds, and scoring setup
+- league name, team count, draft slot, and scoring setup
+- editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts
+- draft rounds derived automatically from roster capacity
+- standard, no-kicker, no-defense, extra-flex, two-QB, and superflex roster structures
 - an offline deterministic demo player release
 - manual entry for every team selection
 - automatic snake-order advancement
@@ -417,9 +424,9 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery and backup workflows
+- browser-tested recovery, backup, and custom-roster workflows
 
-The next primary increments are broader roster customization, production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
+The next primary increments are production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
 
 ## Target application
 
@@ -517,15 +524,7 @@ packages/
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
   recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
-scripts/                 # Data entrypoints and recommendation evaluation command
-data/                    # Raw, intermediate, and processed data
-tests/                   # Python tests
-docs/                    # Product and technical documentation
-```
-
-## Milestones
-
--
+scripts/                 # Data entrypoints and recommendation evaluation comma
 
 [TRUNCATED]
 ```
@@ -2160,7 +2159,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** Functional recoverable browser application implemented
+**Status:** Functional, recoverable, and roster-configurable browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -2177,7 +2176,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 9. Keyboard-first workflow — baseline complete
 10. Draft import, autosave, and recovery — complete for the browser application
 11. Playwright end-to-end tests — baseline complete
-12. Custom roster editor — pending
+12. Custom roster editor — complete
 13. Production player-data release import — pending
 
 ### Current behavior
@@ -2190,7 +2189,10 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - The interface autosaves after every state change and restores the latest valid draft after a reload.
 - Versioned JSON backups can be exported, cleared from local recovery, and imported again.
 - Keyboard shortcuts support search, player navigation, drafting, undo, export, and latest-pick correction.
-- Playwright validates keyboard drafting, recovery, correction, undo, export, and import in Chromium.
+- League setup supports editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts.
+- Draft rounds and total selections are derived automatically from roster capacity.
+- Standard, no-kicker, no-defense, extra-flex, two-QB, and superflex structures are supported.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, import, and custom roster setup in Chromium.
 - A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
 
 ### Exit criteria
@@ -2200,7 +2202,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
 
-The baseline exit criteria are now covered. Remaining M4 work is customization and replacing demonstration data with a production preseason release.
+The interface and resilience exit criteria are covered. Remaining M4 work is replacing demonstration data with a validated production preseason release.
 
 ## M5 — Local persistence and desktop release
 
@@ -2232,8 +2234,7 @@ Browser storage has already validated the autosave/recovery behavior and state b
 
 After v1.0:
 
-- superflex and two-quarterback formats
-- tight-end premium
+- tight-end premium and fully custom scoring
 - auction drafts
 - dynasty and keeper logic
 - best ball
@@ -2253,9 +2254,10 @@ The active build sequence is:
 5. Add named recommendation scenarios, score snapshots, and weight comparisons.
 6. Build the React/Vite draft-room shell against stable engine APIs.
 7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
-8. Add custom roster editing and versioned preseason player-data releases.
-9. Expand evaluation with full mock drafts and historical player releases.
-10. Add SQLite autosave and Tauri desktop packaging.
+8. Add custom roster editing.
+9. Replace demonstration data with versioned preseason player-data releases.
+10. Expand evaluation with full mock drafts and historical player releases.
+11. Add SQLite autosave and Tauri desktop packaging.
 ```
 
 ### `docs/testing-strategy.md`
@@ -3367,12 +3369,13 @@ export function DraftWorkspace({
 import { useRef, type ChangeEvent, type FormEvent } from "react";
 import type { DraftState } from "@fdi/shared-types";
 import {
-  ROUND_OPTIONS,
   SCORING_OPTIONS,
   TEAM_COUNT_OPTIONS,
+  getStarterCapacity,
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import { RosterConfigurator } from "./RosterConfigurator.js";
 
 interface RecoverySetupScreenProps {
   setup: DraftSetup;
@@ -3397,6 +3400,7 @@ export function RecoverySetupScreen({
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+  const starterCount = getStarterCapacity(setup.rosterCounts);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -3420,12 +3424,12 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league, restore a saved draft, and run the entire snake draft from one
-          laptop. No platform login. No live sync dependency.
+          Configure the league and roster, restore a saved draft, and run the entire snake draft
+          from one laptop. No platform login. No live sync dependency.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
-          <span>Manual pick entry</span>
+          <span>Custom rosters</span>
           <span>Automatic recovery</span>
           <span>Live recommendations</span>
           <span>Every roster tracked</span>
@@ -3466,9 +3470,114 @@ export function RecoverySetupScreen({
             </div>
             <div className="recovery-actions">
               <button className="primary-button" type="button" onClick={onResumeDraft}>
-                Resume draft
-              </button>
-              <button className="ghost-button" type="button" onClick={onDiscardRecovery}>
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/RosterConfigurator.tsx`
+
+```text
+import type { RosterSlotType } from "@fdi/shared-types";
+import {
+  ROSTER_SLOT_OPTIONS,
+  getRosterCapacity,
+  getStarterCapacity,
+  resetRosterCounts,
+  setRosterCount,
+  type DraftSetup,
+} from "../draft-factory.js";
+
+interface RosterConfiguratorProps {
+  setup: DraftSetup;
+  onSetupChange: (setup: DraftSetup) => void;
+}
+
+export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorProps) {
+  const totalSlots = getRosterCapacity(setup.rosterCounts);
+  const starterSlots = getStarterCapacity(setup.rosterCounts);
+  const isCapacityValid = totalSlots >= 8 && totalSlots <= 24 && starterSlots > 0;
+
+  function changeCount(slot: RosterSlotType, nextCount: number): void {
+    const option = ROSTER_SLOT_OPTIONS.find((candidate) => candidate.slot === slot);
+    if (option === undefined) {
+      return;
+    }
+    const boundedCount = Math.max(option.min, Math.min(option.max, nextCount));
+    onSetupChange(setRosterCount(setup, slot, boundedCount));
+  }
+
+  return (
+    <fieldset className="roster-fieldset field-wide">
+      <legend className="sr-only">Roster configuration</legend>
+      <div className="roster-heading">
+        <div>
+          <h3>Roster configuration</h3>
+          <p>Draft rounds update automatically from the total number of roster slots.</p>
+        </div>
+        <button
+          className="ghost-button roster-reset-button"
+          type="button"
+          onClick={() => onSetupChange(resetRosterCounts(setup))}
+        >
+          Reset standard
+        </button>
+      </div>
+
+      <div className="roster-grid">
+        {ROSTER_SLOT_OPTIONS.map((option) => {
+          const count = setup.rosterCounts[option.slot];
+          return (
+            <div className="roster-slot-card" key={option.slot}>
+              <div className="roster-slot-copy">
+                <strong>{option.slot}</strong>
+                <span>{option.label}</span>
+                <small>{option.description}</small>
+              </div>
+              <div className="roster-stepper">
+                <button
+                  type="button"
+                  aria-label={`Decrease ${option.label}`}
+                  disabled={count <= option.min}
+                  onClick={() => changeCount(option.slot, count - 1)}
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={option.min}
+                  max={option.max}
+                  step="1"
+                  value={count}
+                  aria-label={`${option.label} roster slots`}
+                  onChange={(event) => changeCount(option.slot, Number(event.target.value))}
+                />
+                <button
+                  type="button"
+                  aria-label={`Increase ${option.label}`}
+                  disabled={count >= option.max}
+                  onClick={() => changeCount(option.slot, count + 1)}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={`roster-capacity ${isCapacityValid ? "" : "roster-capacity-invalid"}`}>
+        <span>
+          <strong>{starterSlots}</strong> starters
+        </span>
+        <span>
+          <strong>{setup.rosterCounts.BENCH}</strong> bench
+        </span>
+        <span>
+          <strong>{totalSlots}</strong> rounds
+        </span>
+        <small>
+          {isCapacityValid
+            ? `${setup.teamCount * totalSlots} total selections
 
 [TRUNCATED]
 ```
@@ -3799,13 +3908,16 @@ import { createDraftState } from "@fdi/draft-engine";
 import type {
   DraftState,
   LeagueSettings,
+  PlayerPosition,
   RosterSlotRule,
+  RosterSlotType,
   ScoringPreset,
   ScoringSettings,
 } from "@fdi/shared-types";
 import { createDemoPlayerDataRelease } from "./demo-data.js";
 
 export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
+export type RosterCounts = Record<RosterSlotType, number>;
 
 export interface DraftSetup {
   leagueName: string;
@@ -3813,14 +3925,112 @@ export interface DraftSetup {
   userDraftSlot: number;
   rounds: number;
   scoringPreset: SupportedScoringPreset;
+  rosterCounts: RosterCounts;
 }
+
+export interface RosterSlotOption {
+  slot: RosterSlotType;
+  label: string;
+  description: string;
+  min: number;
+  max: number;
+  eligiblePositions: PlayerPosition[];
+}
+
+export const ROSTER_SLOT_OPTIONS: RosterSlotOption[] = [
+  {
+    slot: "QB",
+    label: "Quarterback",
+    description: "Dedicated QB starters",
+    min: 0,
+    max: 3,
+    eligiblePositions: ["QB"],
+  },
+  {
+    slot: "RB",
+    label: "Running back",
+    description: "Dedicated RB starters",
+    min: 0,
+    max: 6,
+    eligiblePositions: ["RB"],
+  },
+  {
+    slot: "WR",
+    label: "Wide receiver",
+    description: "Dedicated WR starters",
+    min: 0,
+    max: 6,
+    eligiblePositions: ["WR"],
+  },
+  {
+    slot: "TE",
+    label: "Tight end",
+    description: "Dedicated TE starters",
+    min: 0,
+    max: 3,
+    eligiblePositions: ["TE"],
+  },
+  {
+    slot: "FLEX",
+    label: "Flex",
+    description: "RB, WR, or TE",
+    min: 0,
+    max: 4,
+    eligiblePositions: ["RB", "WR", "TE"],
+  },
+  {
+    slot: "SUPERFLEX",
+    label: "Superflex",
+    description: "QB, RB, WR, or TE",
+    min: 0,
+    max: 3,
+    eligiblePositions: ["QB", "RB", "WR", "TE"],
+  },
+  {
+    slot: "K",
+    label: "Kicker",
+    description: "Dedicated kicker slot",
+    min: 0,
+    max: 1,
+    eligiblePositions: ["K"],
+  },
+  {
+    slot: "DST",
+    label: "Defense",
+    description: "Team defense / special teams",
+    min: 0,
+    max: 1,
+    eligiblePositions: ["DST"],
+  },
+  {
+    slot: "BENCH",
+    label: "Bench",
+    description: "Any offensive player, K, or DST",
+    min: 0,
+    max: 16,
+    eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
+  },
+];
+
+export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
+  QB: 1,
+  RB: 2,
+  WR: 2,
+  TE: 1,
+  FLEX: 1,
+  SUPERFLEX: 0,
+  K: 1,
+  DST: 1,
+  BENCH: 7,
+};
 
 export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   leagueName: "Friday Night League",
   teamCount: 12,
   userDraftSlot: 6,
-  rounds: 16,
+  rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
+  rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
 };
 
 export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
@@ -3855,74 +4065,7 @@ export function createDraftFromSetup(
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
   const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
-
-  return createDraftState({
-    draftId,
-    settings,
-    teamNames,
-    playerDataRelease: createDemoPlayerDataRelease(setup.teamCount * setup.rounds + 40),
-  });
-}
-
-export function createLeagueSettings(setup: DraftSetup): LeagueSettings {
-  validateDraftSetup(setup);
-
-  return {
-    leagueName: setup.leagueName.trim(),
-    teamCount: setup.teamCount,
-    userDraftSlot: setup.userDraftSlot,
-    rounds: setup.rounds,
-    scoring: createScoringSettings(setup.scoringPreset),
-    rosterSlots: createRosterSlots(setup.rounds),
-  };
-}
-
-export function createRosterSlots(rounds: number): RosterSlotRule[] {
-  const requiredStarterSlots = 9;
-  if (!Number.isInteger(rounds) || rounds < requiredStarterSlots) {
-    throw new RangeError(`Draft rounds must be at least ${requiredStarterSlots}.`);
-  }
-
-  return [
-    { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-    { slot: "RB", count: 2, eligiblePositions: ["RB"] },
-    { slot: "WR", count: 2, eligiblePositions: ["WR"] },
-    { slot: "TE", count: 1, eligiblePositions: ["TE"] },
-    { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-    { slot: "K", count: 1, eligiblePositions: ["K"] },
-    { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-    {
-      slot: "BENCH",
-      count: rounds - requiredStarterSlots,
-      eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
-    },
-  ];
-}
-
-function createScoringSettings(preset: SupportedScoringPreset): ScoringSettings {
-  const reception = preset === "ppr" ? 1 : preset === "half_ppr" ? 0.5 : 0;
-
-  return {
-    preset,
-    passingYardsPerPoint: 25,
-    passingTouchdown: 4,
-    interception: -2,
-    rushingYardsPerPoint: 10,
-    rushingTouchdown: 6,
-    receivingYardsPerPoint: 10,
-    receivingTouchdown: 6,
-    reception,
-    fumbleLost: -2,
-  };
-}
-
-function validateDraftSetup(setup: DraftSetup): void {
-  if (setup.leagueName.trim().length === 0) {
-    throw new RangeError("League name is required.");
-  }
-  if (!TEAM_COUNT_OPTIO
+    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1
 
 [TRUNCATED]
 ```
@@ -3989,6 +4132,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
 import "./styles.css";
 import "./recovery.css";
+import "./roster-config.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
@@ -4002,64 +4146,115 @@ createRoot(rootElement).render(
 );
 ```
 
-### `apps/draft-room/tests/app.test.tsx`
+## Fantasy Domain Logic Files
+
+### `apps/draft-room/src/components/RosterConfigurator.tsx`
 
 ```text
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { makePick } from "@fdi/draft-engine";
-import { recommendPlayers } from "@fdi/recommendation-engine";
-import { App } from "../src/App.js";
+import type { RosterSlotType } from "@fdi/shared-types";
 import {
-  DEFAULT_DRAFT_SETUP,
-  createDraftFromSetup,
-  createRosterSlots,
-} from "../src/draft-factory.js";
+  ROSTER_SLOT_OPTIONS,
+  getRosterCapacity,
+  getStarterCapacity,
+  resetRosterCounts,
+  setRosterCount,
+  type DraftSetup,
+} from "../draft-factory.js";
 
-describe("draft room application shell", () => {
-  it("renders the league setup and recovery experience", () => {
-    const html = renderToStaticMarkup(<App />);
+interface RosterConfiguratorProps {
+  setup: DraftSetup;
+  onSetupChange: (setup: DraftSetup) => void;
+}
 
-    expect(html).toContain("Build your draft room.");
-    expect(html).toContain("Start new draft");
-    expect(html).toContain("Import backup");
-    expect(html).toContain("Autosaved after every change");
-  });
+export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorProps) {
+  const totalSlots = getRosterCapacity(setup.rosterCounts);
+  const starterSlots = getStarterCapacity(setup.rosterCounts);
+  const isCapacityValid = totalSlots >= 8 && totalSlots <= 24 && starterSlots > 0;
 
-  it("creates a complete engine-backed snake draft from setup", () => {
-    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "ui-test-draft");
-    const userTeam = state.teams.find((team) => team.isUser);
+  function changeCount(slot: RosterSlotType, nextCount: number): void {
+    const option = ROSTER_SLOT_OPTIONS.find((candidate) => candidate.slot === slot);
+    if (option === undefined) {
+      return;
+    }
+    const boundedCount = Math.max(option.min, Math.min(option.max, nextCount));
+    onSetupChange(setRosterCount(setup, slot, boundedCount));
+  }
 
-    expect(state.order).toHaveLength(DEFAULT_DRAFT_SETUP.teamCount * DEFAULT_DRAFT_SETUP.rounds);
-    expect(state.playerPoolIds.length).toBeGreaterThan(state.order.length);
-    expect(userTeam?.draftSlot).toBe(DEFAULT_DRAFT_SETUP.userDraftSlot);
-    expect(state.status).toBe("not_started");
-  });
+  return (
+    <fieldset className="roster-fieldset field-wide">
+      <legend className="sr-only">Roster configuration</legend>
+      <div className="roster-heading">
+        <div>
+          <h3>Roster configuration</h3>
+          <p>Draft rounds update automatically from the total number of roster slots.</p>
+        </div>
+        <button
+          className="ghost-button roster-reset-button"
+          type="button"
+          onClick={() => onSetupChange(resetRosterCounts(setup))}
+        >
+          Reset standard
+        </button>
+      </div>
 
-  it("keeps roster capacity aligned with the selected round count", () => {
-    const rosterSlots = createRosterSlots(18);
-    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
-    const bench = rosterSlots.find((rule) => rule.slot === "BENCH");
+      <div className="roster-grid">
+        {ROSTER_SLOT_OPTIONS.map((option) => {
+          const count = setup.rosterCounts[option.slot];
+          return (
+            <div className="roster-slot-card" key={option.slot}>
+              <div className="roster-slot-copy">
+                <strong>{option.slot}</strong>
+                <span>{option.label}</span>
+                <small>{option.description}</small>
+              </div>
+              <div className="roster-stepper">
+                <button
+                  type="button"
+                  aria-label={`Decrease ${option.label}`}
+                  disabled={count <= option.min}
+                  onClick={() => changeCount(option.slot, count - 1)}
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min={option.min}
+                  max={option.max}
+                  step="1"
+                  value={count}
+                  aria-label={`${option.label} roster slots`}
+                  onChange={(event) => changeCount(option.slot, Number(event.target.value))}
+                />
+                <button
+                  type="button"
+                  aria-label={`Increase ${option.label}`}
+                  disabled={count >= option.max}
+                  onClick={() => changeCount(option.slot, count + 1)}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
-    expect(capacity).toBe(18);
-    expect(bench?.count).toBe(9);
-  });
+      <div className={`roster-capacity ${isCapacityValid ? "" : "roster-capacity-invalid"}`}>
+        <span>
+          <strong>{starterSlots}</strong> starters
+        </span>
+        <span>
+          <strong>{setup.rosterCounts.BENCH}</strong> bench
+        </span>
+        <span>
+          <strong>{totalSlots}</strong> rounds
+        </span>
+        <small>
+          {isCapacityValid
+            ? `${setup.teamCount * totalSlots} total selections
 
-  it("connects manual selections to live recommendations", () => {
-    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recommendation-ui-test");
-    const draftedPlayerId = state.availablePlayerIds[0]!;
-    const nextState = makePick(state, draftedPlayerId);
-    const result = recommendPlayers(nextState, { limit: 5 });
-
-    expect(nextState.picks).toHaveLength(1);
-    expect(nextState.availablePlayerIds).not.toContain(draftedPlayerId);
-    expect(result.recommendations.map((item) => item.playerId)).not.toContain(draftedPlayerId);
-    expect(result.recommendations).toHaveLength(5);
-  });
-});
+[TRUNCATED]
 ```
-
-## Fantasy Domain Logic Files
 
 ### `apps/draft-room/package.json`
 
@@ -4545,12 +4740,13 @@ export function DraftWorkspace({
 import { useRef, type ChangeEvent, type FormEvent } from "react";
 import type { DraftState } from "@fdi/shared-types";
 import {
-  ROUND_OPTIONS,
   SCORING_OPTIONS,
   TEAM_COUNT_OPTIONS,
+  getStarterCapacity,
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import { RosterConfigurator } from "./RosterConfigurator.js";
 
 interface RecoverySetupScreenProps {
   setup: DraftSetup;
@@ -4575,6 +4771,7 @@ export function RecoverySetupScreen({
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+  const starterCount = getStarterCapacity(setup.rosterCounts);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -4598,12 +4795,12 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league, restore a saved draft, and run the entire snake draft from one
-          laptop. No platform login. No live sync dependency.
+          Configure the league and roster, restore a saved draft, and run the entire snake draft
+          from one laptop. No platform login. No live sync dependency.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
-          <span>Manual pick entry</span>
+          <span>Custom rosters</span>
           <span>Automatic recovery</span>
           <span>Live recommendations</span>
           <span>Every roster tracked</span>
@@ -4644,9 +4841,6 @@ export function RecoverySetupScreen({
             </div>
             <div className="recovery-actions">
               <button className="primary-button" type="button" onClick={onResumeDraft}>
-                Resume draft
-              </button>
-              <button className="ghost-button" type="button" onClick={onDiscardRecovery}>
 
 [TRUNCATED]
 ```
@@ -4977,13 +5171,16 @@ import { createDraftState } from "@fdi/draft-engine";
 import type {
   DraftState,
   LeagueSettings,
+  PlayerPosition,
   RosterSlotRule,
+  RosterSlotType,
   ScoringPreset,
   ScoringSettings,
 } from "@fdi/shared-types";
 import { createDemoPlayerDataRelease } from "./demo-data.js";
 
 export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
+export type RosterCounts = Record<RosterSlotType, number>;
 
 export interface DraftSetup {
   leagueName: string;
@@ -4991,14 +5188,112 @@ export interface DraftSetup {
   userDraftSlot: number;
   rounds: number;
   scoringPreset: SupportedScoringPreset;
+  rosterCounts: RosterCounts;
 }
+
+export interface RosterSlotOption {
+  slot: RosterSlotType;
+  label: string;
+  description: string;
+  min: number;
+  max: number;
+  eligiblePositions: PlayerPosition[];
+}
+
+export const ROSTER_SLOT_OPTIONS: RosterSlotOption[] = [
+  {
+    slot: "QB",
+    label: "Quarterback",
+    description: "Dedicated QB starters",
+    min: 0,
+    max: 3,
+    eligiblePositions: ["QB"],
+  },
+  {
+    slot: "RB",
+    label: "Running back",
+    description: "Dedicated RB starters",
+    min: 0,
+    max: 6,
+    eligiblePositions: ["RB"],
+  },
+  {
+    slot: "WR",
+    label: "Wide receiver",
+    description: "Dedicated WR starters",
+    min: 0,
+    max: 6,
+    eligiblePositions: ["WR"],
+  },
+  {
+    slot: "TE",
+    label: "Tight end",
+    description: "Dedicated TE starters",
+    min: 0,
+    max: 3,
+    eligiblePositions: ["TE"],
+  },
+  {
+    slot: "FLEX",
+    label: "Flex",
+    description: "RB, WR, or TE",
+    min: 0,
+    max: 4,
+    eligiblePositions: ["RB", "WR", "TE"],
+  },
+  {
+    slot: "SUPERFLEX",
+    label: "Superflex",
+    description: "QB, RB, WR, or TE",
+    min: 0,
+    max: 3,
+    eligiblePositions: ["QB", "RB", "WR", "TE"],
+  },
+  {
+    slot: "K",
+    label: "Kicker",
+    description: "Dedicated kicker slot",
+    min: 0,
+    max: 1,
+    eligiblePositions: ["K"],
+  },
+  {
+    slot: "DST",
+    label: "Defense",
+    description: "Team defense / special teams",
+    min: 0,
+    max: 1,
+    eligiblePositions: ["DST"],
+  },
+  {
+    slot: "BENCH",
+    label: "Bench",
+    description: "Any offensive player, K, or DST",
+    min: 0,
+    max: 16,
+    eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
+  },
+];
+
+export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
+  QB: 1,
+  RB: 2,
+  WR: 2,
+  TE: 1,
+  FLEX: 1,
+  SUPERFLEX: 0,
+  K: 1,
+  DST: 1,
+  BENCH: 7,
+};
 
 export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   leagueName: "Friday Night League",
   teamCount: 12,
   userDraftSlot: 6,
-  rounds: 16,
+  rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
+  rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
 };
 
 export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
@@ -5033,74 +5328,7 @@ export function createDraftFromSetup(
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
   const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
-
-  return createDraftState({
-    draftId,
-    settings,
-    teamNames,
-    playerDataRelease: createDemoPlayerDataRelease(setup.teamCount * setup.rounds + 40),
-  });
-}
-
-export function createLeagueSettings(setup: DraftSetup): LeagueSettings {
-  validateDraftSetup(setup);
-
-  return {
-    leagueName: setup.leagueName.trim(),
-    teamCount: setup.teamCount,
-    userDraftSlot: setup.userDraftSlot,
-    rounds: setup.rounds,
-    scoring: createScoringSettings(setup.scoringPreset),
-    rosterSlots: createRosterSlots(setup.rounds),
-  };
-}
-
-export function createRosterSlots(rounds: number): RosterSlotRule[] {
-  const requiredStarterSlots = 9;
-  if (!Number.isInteger(rounds) || rounds < requiredStarterSlots) {
-    throw new RangeError(`Draft rounds must be at least ${requiredStarterSlots}.`);
-  }
-
-  return [
-    { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-    { slot: "RB", count: 2, eligiblePositions: ["RB"] },
-    { slot: "WR", count: 2, eligiblePositions: ["WR"] },
-    { slot: "TE", count: 1, eligiblePositions: ["TE"] },
-    { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-    { slot: "K", count: 1, eligiblePositions: ["K"] },
-    { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-    {
-      slot: "BENCH",
-      count: rounds - requiredStarterSlots,
-      eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
-    },
-  ];
-}
-
-function createScoringSettings(preset: SupportedScoringPreset): ScoringSettings {
-  const reception = preset === "ppr" ? 1 : preset === "half_ppr" ? 0.5 : 0;
-
-  return {
-    preset,
-    passingYardsPerPoint: 25,
-    passingTouchdown: 4,
-    interception: -2,
-    rushingYardsPerPoint: 10,
-    rushingTouchdown: 6,
-    receivingYardsPerPoint: 10,
-    receivingTouchdown: 6,
-    reception,
-    fumbleLost: -2,
-  };
-}
-
-function validateDraftSetup(setup: DraftSetup): void {
-  if (setup.leagueName.trim().length === 0) {
-    throw new RangeError("League name is required.");
-  }
-  if (!TEAM_COUNT_OPTIO
+    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1
 
 [TRUNCATED]
 ```
@@ -5167,6 +5395,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
 import "./styles.css";
 import "./recovery.css";
+import "./roster-config.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
@@ -5178,63 +5407,6 @@ createRoot(rootElement).render(
     <App />
   </StrictMode>,
 );
-```
-
-### `apps/draft-room/tests/app.test.tsx`
-
-```text
-import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { makePick } from "@fdi/draft-engine";
-import { recommendPlayers } from "@fdi/recommendation-engine";
-import { App } from "../src/App.js";
-import {
-  DEFAULT_DRAFT_SETUP,
-  createDraftFromSetup,
-  createRosterSlots,
-} from "../src/draft-factory.js";
-
-describe("draft room application shell", () => {
-  it("renders the league setup and recovery experience", () => {
-    const html = renderToStaticMarkup(<App />);
-
-    expect(html).toContain("Build your draft room.");
-    expect(html).toContain("Start new draft");
-    expect(html).toContain("Import backup");
-    expect(html).toContain("Autosaved after every change");
-  });
-
-  it("creates a complete engine-backed snake draft from setup", () => {
-    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "ui-test-draft");
-    const userTeam = state.teams.find((team) => team.isUser);
-
-    expect(state.order).toHaveLength(DEFAULT_DRAFT_SETUP.teamCount * DEFAULT_DRAFT_SETUP.rounds);
-    expect(state.playerPoolIds.length).toBeGreaterThan(state.order.length);
-    expect(userTeam?.draftSlot).toBe(DEFAULT_DRAFT_SETUP.userDraftSlot);
-    expect(state.status).toBe("not_started");
-  });
-
-  it("keeps roster capacity aligned with the selected round count", () => {
-    const rosterSlots = createRosterSlots(18);
-    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
-    const bench = rosterSlots.find((rule) => rule.slot === "BENCH");
-
-    expect(capacity).toBe(18);
-    expect(bench?.count).toBe(9);
-  });
-
-  it("connects manual selections to live recommendations", () => {
-    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recommendation-ui-test");
-    const draftedPlayerId = state.availablePlayerIds[0]!;
-    const nextState = makePick(state, draftedPlayerId);
-    const result = recommendPlayers(nextState, { limit: 5 });
-
-    expect(nextState.picks).toHaveLength(1);
-    expect(nextState.availablePlayerIds).not.toContain(draftedPlayerId);
-    expect(result.recommendations.map((item) => item.playerId)).not.toContain(draftedPlayerId);
-    expect(result.recommendations).toHaveLength(5);
-  });
-});
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -6223,17 +6395,22 @@ import { recommendPlayers } from "@fdi/recommendation-engine";
 import { App } from "../src/App.js";
 import {
   DEFAULT_DRAFT_SETUP,
+  DEFAULT_ROSTER_COUNTS,
   createDraftFromSetup,
   createRosterSlots,
+  getRosterCapacity,
+  setRosterCount,
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders the league setup and recovery experience", () => {
+  it("renders league, recovery, and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
+    expect(html).toContain("Roster configuration");
+    expect(html).toContain("Superflex");
     expect(html).toContain("Autosaved after every change");
   });
 
@@ -6247,27 +6424,34 @@ describe("draft room application shell", () => {
     expect(state.status).toBe("not_started");
   });
 
-  it("keeps roster capacity aligned with the selected round count", () => {
-    const rosterSlots = createRosterSlots(18);
+  it("derives draft rounds from custom roster capacity", () => {
+    let setup = setRosterCount(DEFAULT_DRAFT_SETUP, "SUPERFLEX", 1);
+    setup = setRosterCount(setup, "K", 0);
+    setup = setRosterCount(setup, "BENCH", 8);
+
+    const state = createDraftFromSetup(setup, "custom-roster-test");
+
+    expect(setup.rounds).toBe(17);
+    expect(state.settings.rounds).toBe(17);
+    expect(state.order).toHaveLength(204);
+    expect(state.settings.rosterSlots.find((rule) => rule.slot === "SUPERFLEX")?.count).toBe(1);
+    expect(state.settings.rosterSlots.find((rule) => rule.slot === "K")?.count).toBe(0);
+    expect(state.settings.rosterSlots.find((rule) => rule.slot === "BENCH")?.count).toBe(8);
+  });
+
+  it("maps every configurable roster slot to engine eligibility", () => {
+    const rosterSlots = createRosterSlots({
+      ...DEFAULT_ROSTER_COUNTS,
+      SUPERFLEX: 1,
+      K: 0,
+      DST: 0,
+    });
     const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
-    const bench = rosterSlots.find((rule) => rule.slot === "BENCH");
+    const superflex = rosterSlots.find((rule) => rule.slot === "SUPERFLEX");
 
-    expect(capacity).toBe(18);
-    expect(bench?.count).toBe(9);
-  });
+    expect(capacity).toBe(
 
-  it("connects manual selections to live recommendations", () => {
-    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recommendation-ui-test");
-    const draftedPlayerId = state.availablePlayerIds[0]!;
-    const nextState = makePick(state, draftedPlayerId);
-    const result = recommendPlayers(nextState, { limit: 5 });
-
-    expect(nextState.picks).toHaveLength(1);
-    expect(nextState.availablePlayerIds).not.toContain(draftedPlayerId);
-    expect(result.recommendations.map((item) => item.playerId)).not.toContain(draftedPlayerId);
-    expect(result.recommendations).toHaveLength(5);
-  });
-});
+[TRUNCATED]
 ```
 
 ### `apps/draft-room/tests/recovery.test.ts`
