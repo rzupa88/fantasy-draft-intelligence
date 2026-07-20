@@ -61,6 +61,24 @@ Current players without prior-season statistics, including rookies, still receiv
 
 Team defenses remain UDK team records because the NFLverse release is player-oriented.
 
+## Release cleanup and roster repair
+
+The raw NFLverse player universe contains historical and college-only identities that are not useful during a current redraft. Release generation therefore keeps only players who have a current team or genuine prior-season fantasy production.
+
+Current roster data can also contain safe, repairable identity gaps:
+
+- A rookie roster row may omit a GSIS ID while the master player table already has one provisional identity.
+- A current roster position may be more useful for fantasy than the master-table position for a dual-role player.
+- A widely used nickname may not be present in the source aliases.
+
+The release builder handles these cases conservatively:
+
+1. Missing roster IDs are reconciled only when exact normalized name and position identify one master record.
+2. Ambiguous same-name candidates are never assigned automatically.
+3. Current roster position takes precedence when it is a supported fantasy position.
+4. Small stable-ID alias overrides are allowed for verified nickname exceptions.
+5. Current team and roster status are attached before irrelevant historical identities are removed.
+
 ## Matching rules
 
 The browser joins UDK and NFLverse records without aggressive guessing.
@@ -73,6 +91,19 @@ The browser joins UDK and NFLverse records without aggressive guessing.
 6. Prevent the same NFLverse player ID from being assigned to more than one UDK player.
 
 A player keeps the temporary UDK ID unless a deterministic NFLverse match is found.
+
+## Real 2025/2026 validation
+
+The cleaned 2025/2026 release was tested against the current UDK package used to develop the importer.
+
+- 340 individual QB, RB, WR, TE, and K records were evaluated.
+- 340 received deterministic NFLverse identities.
+- 0 were ambiguous.
+- 0 were unmatched.
+- 290 matched players also received 2025 history.
+- 32 defenses remained correctly separate as UDK team records.
+
+The repaired release contains 1,046 draft-relevant player identities rather than the nearly 9,000 historical and college-only records in the unfiltered master universe.
 
 ## Draft-day workflow
 
@@ -94,6 +125,6 @@ The combined release is rebuilt automatically when scoring, team count, or ADP m
 - The combined player release is embedded in the local draft state and its JSON backup.
 - Repository tests use synthetic UDK and NFLverse fixtures only.
 
-## Current limitation
+## Remaining limitation
 
-The review panel reports ambiguous and unmatched players but does not yet provide a manual candidate-selection control. Those players remain valid UDK draft records with temporary IDs and no NFLverse history. A later calibration increment can add saved manual overrides after the first real 2025/2026 release is inspected.
+The review panel reports ambiguous and unmatched players but does not yet provide a manual candidate-selection control. The current validated package has full deterministic coverage, but a future UDK or NFLverse update could introduce a new exception. Such players remain valid UDK draft records with temporary IDs until a verified alias, roster repair, or manual-selection feature resolves them.
