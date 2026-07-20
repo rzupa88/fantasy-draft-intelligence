@@ -30,7 +30,24 @@ The repository includes:
 - versioned draft export/import
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
-- full-draft and recommendation regression tests
+- a React/Vite live draft-room shell
+- full-draft, recommendation, and interface regression tests
+
+## Current draft-room capabilities
+
+The React interface currently supports:
+
+- league name, team count, draft slot, rounds, and scoring setup
+- an offline deterministic demo player release
+- manual entry for every team selection
+- automatic snake-order advancement
+- search and position filters
+- live recommendations for the user roster
+- team-by-team roster tracking
+- undo of the latest selection
+- JSON draft export
+
+The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
 
 ## Target application
 
@@ -66,6 +83,24 @@ See:
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 
+## Run the draft room
+
+Requires Node.js 22 and npm 10 or later.
+
+```bash
+npm install
+npm run dev
+```
+
+Vite serves the local app at `http://localhost:5173` by default. In GitHub Codespaces, open the forwarded port when prompted.
+
+Build the browser application:
+
+```bash
+npm run build
+npm run preview
+```
+
 ## Python setup
 
 Requires Python 3.11 or later.
@@ -85,22 +120,12 @@ python scripts/build_player_reference.py
 pytest
 ```
 
-## TypeScript setup
-
-Requires Node.js 22 and npm 10 or later.
-
-```bash
-npm install
-npm run check
-```
-
-Useful commands:
+## Validation commands
 
 ```bash
 npm run typecheck
 npm test
-npm run test:watch
-npm run build
+npm run check
 npm run evaluate:recommendations
 npm run evaluate:recommendations:json
 ```
@@ -108,6 +133,8 @@ npm run evaluate:recommendations:json
 ## Current project structure
 
 ```text
+apps/
+  draft-room/            # React/Vite live draft interface
 packages/
   data/                  # Python ingestion and identity logic
   modeling/              # Python modeling package
@@ -125,6 +152,6 @@ docs/                    # Product and technical documentation
 
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** evaluation in progress
-- **M4 — Local draft-room interface**
+- **M3 — Recommendation engine v1:** baseline and evaluation harness established
+- **M4 — Local draft-room interface:** active
 - **M5 — Desktop packaging and release**

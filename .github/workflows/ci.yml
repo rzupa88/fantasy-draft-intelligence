@@ -41,8 +41,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Typecheck and test
-        run: npm run check
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Production build
+        run: npm run build
 
       - name: Evaluate recommendation behavior
         run: npm run evaluate:recommendations

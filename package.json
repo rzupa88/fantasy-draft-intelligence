@@ -1,15 +1,18 @@
 {
   "name": "fantasy-draft-intelligence",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/shared-types",
     "packages/draft-engine",
-    "packages/recommendation-engine"
+    "packages/recommendation-engine",
+    "apps/draft-room"
   ],
   "scripts": {
-    "build": "tsc -b",
+    "dev": "npm run dev --workspace @fdi/draft-room",
+    "build": "tsc -b && npm run build:vite --workspace @fdi/draft-room",
+    "preview": "npm run preview --workspace @fdi/draft-room",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
