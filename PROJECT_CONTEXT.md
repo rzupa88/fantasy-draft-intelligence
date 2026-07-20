@@ -23,14 +23,16 @@ At any draft pick, identify which available player offers the best risk-adjusted
 
 ## Current foundation
 
-The repository currently includes the first historical data foundation:
+The repository includes:
 
 - nflverse weekly data ingestion
 - historical ADP ingestion
 - canonical player ID normalization
 - cross-source player reference data
 - Parquet-based intermediate datasets
-- validation and unit tests
+- a TypeScript shared-contract package
+- a deterministic snake-draft engine
+- full-draft simulation tests
 
 ## Target application
 
@@ -61,6 +63,7 @@ See:
 - [`docs/product-requirements.md`](docs/product-requirements.md)
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
+- [`docs/draft-engine.md`](docs/draft-engine.md)
 
 ## Python setup
 
@@ -72,7 +75,7 @@ source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-## Existing data pipeline
+Run the existing data pipeline and tests:
 
 ```bash
 python scripts/ingest_adp.py
@@ -81,31 +84,43 @@ python scripts/build_player_reference.py
 pytest
 ```
 
+## TypeScript setup
+
+Requires Node.js 22 and npm 10 or later.
+
+```bash
+npm install
+npm run check
+```
+
+Useful commands:
+
+```bash
+npm run typecheck
+npm test
+npm run test:watch
+npm run build
+```
+
 ## Current project structure
 
 ```text
 packages/
-  data/
-    ingest/
-    player_ids.py
-    io.py
-    validation.py
-scripts/
-  ingest_adp.py
-  ingest_nflverse.py
-  build_player_reference.py
-data/
-  raw/
-  intermediate/
-tests/
-  data/
-docs/
+  data/                  # Python ingestion and identity logic
+  modeling/              # Python modeling package
+  shared/                # Python shared package
+  shared-types/          # TypeScript contracts and runtime release validation
+  draft-engine/          # Deterministic TypeScript draft state engine
+scripts/                 # Python pipeline entrypoints
+data/                    # Raw, intermediate, and processed data
+tests/                   # Python tests
+docs/                    # Product and technical documentation
 ```
 
 ## Milestones
 
 - **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** current
+- **M2 — Offline draft engine foundation:** in progress
 - **M3 — Recommendation engine v1**
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
@@ -117,15 +132,22 @@ Potentially useful commands and setup hints found in project files:
 ```text
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
-- validation and unit tests
+- full-draft simulation tests
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 - **Testing:** pytest, Vitest, Playwright
 pip install -e ".[dev]"
+Run the existing data pipeline and tests:
 python scripts/build_player_reference.py
 pytest
-build_player_reference.py
-tests/
+npm install
+npm run check
+npm run typecheck
+npm test
+npm run test:watch
+npm run build
+shared-types/          # TypeScript contracts and runtime release validation
+tests/                   # Python tests
 [build-system]
 build-backend = "setuptools.build_meta"
 dev = [
@@ -168,6 +190,7 @@ test:
 │   ├── architecture.md
 │   ├── data-contract.md
 │   ├── decision-log.md
+│   ├── draft-engine.md
 │   ├── local-development.md
 │   ├── m2-backlog.md
 │   ├── MASTER_PROJECT_PLAN.md
@@ -195,12 +218,31 @@ test:
 │   │   ├── io.py
 │   │   ├── player_ids.py
 │   │   └── validation.py
+│   ├── draft-engine
+│   │   ├── src
+│   │   │   ├── errors.ts
+│   │   │   ├── index.ts
+│   │   │   ├── order.ts
+│   │   │   └── state.ts
+│   │   ├── tests
+│   │   │   ├── fixtures.ts
+│   │   │   ├── order.test.ts
+│   │   │   └── state.test.ts
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   ├── modeling
 │   │   ├── __init__.py
 │   │   └── baseline.py
-│   └── shared
-│       ├── __init__.py
-│       └── logging.py
+│   ├── shared
+│   │   ├── __init__.py
+│   │   └── logging.py
+│   └── shared-types
+│       ├── src
+│       │   └── index.ts
+│       ├── tests
+│       │   └── player-data-release.test.ts
+│       ├── package.json
+│       └── tsconfig.json
 ├── scripts
 │   ├── bootstrap.py
 │   ├── build_player_reference.py
@@ -222,9 +264,13 @@ test:
 │   └── build_project_context.py
 ├── debug_adp.csv
 ├── Makefile
+├── package.json
 ├── PROJECT_CONTEXT.md
 ├── pyproject.toml
-└── README.md
+├── README.md
+├── tsconfig.base.json
+├── tsconfig.json
+└── vitest.config.ts
 ```
 
 ## Root Configuration and Dependency Files
@@ -251,14 +297,16 @@ At any draft pick, identify which available player offers the best risk-adjusted
 
 ## Current foundation
 
-The repository currently includes the first historical data foundation:
+The repository includes:
 
 - nflverse weekly data ingestion
 - historical ADP ingestion
 - canonical player ID normalization
 - cross-source player reference data
 - Parquet-based intermediate datasets
-- validation and unit tests
+- a TypeScript shared-contract package
+- a deterministic snake-draft engine
+- full-draft simulation tests
 
 ## Target application
 
@@ -289,6 +337,7 @@ See:
 - [`docs/product-requirements.md`](docs/product-requirements.md)
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
+- [`docs/draft-engine.md`](docs/draft-engine.md)
 
 ## Python setup
 
@@ -300,7 +349,7 @@ source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-## Existing data pipeline
+Run the existing data pipeline and tests:
 
 ```bash
 python scripts/ingest_adp.py
@@ -309,31 +358,43 @@ python scripts/build_player_reference.py
 pytest
 ```
 
+## TypeScript setup
+
+Requires Node.js 22 and npm 10 or later.
+
+```bash
+npm install
+npm run check
+```
+
+Useful commands:
+
+```bash
+npm run typecheck
+npm test
+npm run test:watch
+npm run build
+```
+
 ## Current project structure
 
 ```text
 packages/
-  data/
-    ingest/
-    player_ids.py
-    io.py
-    validation.py
-scripts/
-  ingest_adp.py
-  ingest_nflverse.py
-  build_player_reference.py
-data/
-  raw/
-  intermediate/
-tests/
-  data/
-docs/
+  data/                  # Python ingestion and identity logic
+  modeling/              # Python modeling package
+  shared/                # Python shared package
+  shared-types/          # TypeScript contracts and runtime release validation
+  draft-engine/          # Deterministic TypeScript draft state engine
+scripts/                 # Python pipeline entrypoints
+data/                    # Raw, intermediate, and processed data
+tests/                   # Python tests
+docs/                    # Product and technical documentation
 ```
 
 ## Milestones
 
 - **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** current
+- **M2 — Offline draft engine foundation:** in progress
 - **M3 — Recommendation engine v1**
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
@@ -1092,6 +1153,66 @@ Parquet remains appropriate for intermediate and research datasets. The final de
 
 - Snake ordering, picks, rosters, undo, correction, and serialization are verified before UI complexity is added.
 - The first feature milestone is test-driven domain logic rather than mockups.
+```
+
+### `docs/draft-engine.md`
+
+```text
+# Draft Engine Core
+
+## Scope
+
+Milestone 2 begins with a deterministic TypeScript domain engine. It has no dependency on React, Tauri, SQLite, or a recommendation model.
+
+## Packages
+
+- `@fdi/shared-types` owns the versioned player-data contract and shared league/draft types.
+- `@fdi/draft-engine` owns snake order, pick transitions, availability, roster assignment, undo, and correction.
+
+## State invariants
+
+1. Draft order contains exactly `teamCount * rounds` slots.
+2. Every order slot has a unique overall pick.
+3. Pick history is always a contiguous prefix of the generated order.
+4. A player can appear in pick history at most once.
+5. Available players are derived from the immutable initial player pool minus drafted players.
+6. Undo and correction return a new state and do not mutate prior state.
+7. `nextOverallPick` is `null` only when the draft is complete.
+8. State transitions increment `revision`.
+
+## Public operations
+
+- `createDraftTeams`
+- `generateSnakeDraftOrder`
+- `createDraftState`
+- `makePick`
+- `undoLastPick`
+- `correctPick`
+- `getCurrentOrderSlot`
+- `buildRosters`
+
+## Error behavior
+
+Expected domain failures use `DraftEngineError` with a stable code. Examples include invalid settings, duplicate or unavailable players, missing picks, and attempts to continue a completed draft.
+
+## Current limits
+
+This first core tracks players by canonical ID and roster by team. Position-slot legality and lineup allocation are intentionally deferred to the next draft-engine increment, when the engine consumes the full player catalog rather than IDs alone.
+
+## Validation
+
+The regression suite includes:
+
+- odd/even snake order
+- user-team identification
+- invalid league settings
+- pick sequencing
+- duplicate prevention
+- roster assignment
+- undo
+- earlier-pick correction
+- a complete 12-team, 16-round, 192-pick simulation
+- player-data release validation
 ```
 
 ### `docs/local-development.md`
@@ -2485,560 +2606,497 @@ def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFra
 [TRUNCATED]
 ```
 
-### `packages/shared/logging.py`
+### `packages/draft-engine/package.json`
 
 ```text
-import logging
-
-
-def get_logger(name: str) -> logging.Logger:
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    )
-    return logging.getLogger(name)
+{
+  "name": "@fdi/draft-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@fdi/shared-types": "0.1.0"
+  }
+}
 ```
 
-### `scripts/bootstrap.py`
+### `packages/draft-engine/src/errors.ts`
 
 ```text
-from pathlib import Path
+export type DraftEngineErrorCode =
+  | "INVALID_SETTINGS"
+  | "INVALID_PLAYER_POOL"
+  | "DRAFT_COMPLETE"
+  | "PLAYER_UNAVAILABLE"
+  | "NO_PICKS_TO_UNDO"
+  | "PICK_NOT_FOUND";
 
-DIRECTORIES = [
-    "data/raw",
-    "data/intermediate",
-    "data/processed",
-    "artifacts/figures",
-    "artifacts/reports",
-    "artifacts/model_cards",
-]
+export class DraftEngineError extends Error {
+  readonly code: DraftEngineErrorCode;
 
-for directory in DIRECTORIES:
-    Path(directory).mkdir(parents=True, exist_ok=True)
-
-print("Bootstrap complete.")
+  constructor(code: DraftEngineErrorCode, message: string) {
+    super(message);
+    this.name = "DraftEngineError";
+    this.code = code;
+  }
+}
 ```
 
-### `scripts/build_player_reference.py`
+### `packages/draft-engine/src/index.ts`
 
 ```text
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-
-from packages.data.constants import DEFAULT_PILOT_YEARS, INTERMEDIATE_DATA_DIR
-from packages.data.io import read_parquet, write_parquet
-from packages.data.player_ids import build_player_reference_table
-
-INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
-
-
-def _adp_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"adp_historical_{min(years)}_{max(years)}.parquet"
-
-
-def _nflverse_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"nflverse_player_weekly_{min(years)}_{max(years)}.parquet"
-
-
-def _reference_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"player_reference_{min(years)}_{max(years)}.parquet"
-
-
-def main() -> None:
-    years = list(DEFAULT_PILOT_YEARS)
-
-    adp = read_parquet(_adp_path(years))
-    nflverse = pd.read_parquet(_nflverse_path(years))
-
-    reference = build_player_reference_table([adp, nflverse])
-    write_parquet(reference, _reference_path(years))
-
-    print(
-        f"Player reference build complete: rows={len(reference)}, "
-        f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
-    )
-
-
-if __name__ == "__main__":
-    main()
+export { DraftEngineError, type DraftEngineErrorCode } from "./errors.js";
+export {
+  createDraftTeams,
+  generateSnakeDraftOrder,
+  validateLeagueSettings,
+} from "./order.js";
+export {
+  buildRosters,
+  correctPick,
+  createDraftState,
+  getCurrentOrderSlot,
+  makePick,
+  undoLastPick,
+  type CreateDraftStateInput,
+} from "./state.js";
 ```
 
-### `scripts/build_player_season_warehouse.py`
+### `packages/draft-engine/src/order.ts`
 
 ```text
-# scripts/build_player_season_warehouse.py
-from __future__ import annotations
+import type { DraftOrderSlot, DraftTeam, LeagueSettings } from "@fdi/shared-types";
+import { DraftEngineError } from "./errors.js";
 
-import logging
+export function validateLeagueSettings(settings: LeagueSettings): void {
+  if (!Number.isInteger(settings.teamCount) || settings.teamCount < 2 || settings.teamCount > 20) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "teamCount must be an integer between 2 and 20.",
+    );
+  }
 
-from packages.data.warehouse.player_season import (
-    build_and_write_player_season_warehouse,
-)
+  if (
+    !Number.isInteger(settings.userDraftSlot) ||
+    settings.userDraftSlot < 1 ||
+    settings.userDraftSlot > settings.teamCount
+  ) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "userDraftSlot must be within the configured team count.",
+    );
+  }
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
-logger = logging.getLogger(__name__)
+  if (!Number.isInteger(settings.rounds) || settings.rounds < 1 || settings.rounds > 40) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "rounds must be an integer between 1 and 40.",
+    );
+  }
 
+  if (settings.rosterSlots.length === 0) {
+    throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
+  }
 
-def main() -> None:
-    seasons_label = "2023_2024"
-    logger.info("Building player-season warehouse for %s", seasons_label)
-    df = build_and_write_player_season_warehouse(seasons_label=seasons_label)
-    logger.info(
-        "Player-season warehouse complete: rows=%s cols=%s",
-        len(df),
-        len(df.columns),
-    )
-
-
-if __name__ == "__main__":
-    main()
-```
-
-### `tests/data/ingest/test_adp.py`
-
-```text
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-import pytest
-
-from packages.data.ingest.adp import (
-    REQUIRED_OUTPUT_COLUMNS,
-    UNIQUE_KEY_COLUMNS,
-    AdpIngestConfig,
-    ingest_historical_adp,
-    normalize_historical_adp,
-)
-from packages.data.validation import ValidationError
-
-
-@pytest.fixture
-def fantasypros_html_2023() -> str:
-    return """
-    <html>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player Team (Bye)</th>
-              <th>POS</th>
-              <th>AVG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
-            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-@pytest.fixture
-def fantasypros_html_2024() -> str:
-    return """
-    <html>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player Team (Bye)</th>
-              <th>POS</th>
-              <th>AVG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
-            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-def test_normalize_historical_adp_requires_expected_columns() -> None:
-    raw = pd.DataFrame(
-        {
-            "season": [2024],
-            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
-            "POS": ["WR1"],
-            "AVG": [2.1],
-            "source_name": ["fantasypros"],
-        }
-    )
-
-    normalized = normalize_historical_adp(raw)
-
-    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
-    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
-    assert normalized.iloc[0]["position"] == "WR"
-
-
-def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
-    raw = pd.DataFrame(
-        {
-            "season": [2024, 2024],
-            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
-            "POS": ["WR1", "WR1"],
-            "AVG": [2.1, 2.1],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    with pytest.raises(ValidationError, match="duplicate rows"):
-        normalize_historical_adp(raw)
-
-
-def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
-    monkeypatch,
-    tmp_path: Path,
-    fantasypros_html_2023: str,
-    fantasypros_html_2024: str,
-) -> None:
-    from packages.data.ingest import adp as adp_module
-
-    html_by_url = {
-        "https://example.test/2023": fantasypros_html_2023,
-        "https://example.test/2024": fantasypros_html_2024,
+  for (const rule of settings.rosterSlots) {
+    if (!Number.isInteger(rule.count) || rule.count < 0) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must have a non-negative integer count.`,
+      );
     }
 
-    def fake_fetch_html(url: str) -> str:
-        return html_by_url[url]
+    if (rule.count > 0 && rule.eligiblePositions.length === 0) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must define eligible positions.`,
+      );
+    }
+  }
+}
 
-    monkeypatch.setattr(adp_module, "_fetch_html", fake_fetch_html)
+export function createDraftTeams(settings: LeagueSettings, teamNames?: string[]): DraftTeam[] {
+  validateLeagueSettings(settings);
 
-    config = AdpIngestConfig(
-        years=[2023, 2024],
-        raw_dir=tmp_path / "raw",
-        intermediate_dir=tmp_path / "intermediate",
-        source_urls={
-            2023: "https://example.test/2023",
-            2024: "https://example.test/2024",
-        },
-    )
+  if (teamNames !== undefined && teamNames.length !== settings.teamCount) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "teamNames must contain one name for each configured team.",
+    );
+  }
 
-    df = ingest_historical_adp(config)
+  return Array.from({ length: settings.teamCount }, (_, index) => {
+    const draftSlot = index + 1;
+    const providedName = teamNames?.[index]?.trim();
 
-    assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
-    assert sorted(df["season"].unique().tolist()) == [2023, 2024]
-    assert UNIQUE_KEY_COLUMNS == ["season", "canonical_player_id", "source_name"]
+    return {
+      teamId: `team-${draftSlot}`,
+      name: providedName && providedName.length > 0 ? providedName : `Team ${draftSlot}`,
+      draftSlot,
+      isUser: draftSlot === settings.userDraftSlot,
+    };
+  });
+}
+
+export function generateSnakeDraftOrder(
+  settings: LeagueSettings,
+  teams: DraftTeam[] = createDraftTeams(settings),
+): DraftOrderSlot[] {
+  validateLeagueSettings(settings);
+  validateTeams(settings, teams);
+
+  const teamsByDraftSlot = [...teams].sort((left, right) => left.draftSlot - right.draftSlot);
+  const order: DraftOrderSlot[] = [];
+
+  for (let round = 1; round <= settings.rounds; round += 1) {
+    const roundTeams = round % 2 === 1 ? teamsByDraftSlot : [...teamsByDraftSlot].reverse();
+
+    roundTeams.forEach((team, index) => {
+      order.push({
+        overallPick: order.length + 1,
+        round,
+        pickInRound: index + 1,
+        teamId: team.teamId,
+        draftSlot: team.draftSlot,
+      });
+    });
+  }
+
+  return order;
+}
+
+function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
+  if (teams.length !== settings.teamCount) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "The number of teams must match league settings.",
+    );
+  }
+
+  const teamIds = new Set<string>();
+  const draftSlots = new Set<number>();
+
+  for (const team of teams) {
+    if (teamIds.has(team.teamId)) {
+      throw new DraftEngineError("INVALID_SETTINGS", `Duplicate teamId: ${team.te
 
 [TRUNCATED]
 ```
 
-### `tests/data/ingest/test_nflverse.py`
+### `packages/draft-engine/src/state.ts`
 
 ```text
-from __future__ import annotations
+import type {
+  DraftOrderSlot,
+  DraftPick,
+  DraftState,
+  DraftStatus,
+  DraftTeam,
+  LeagueSettings,
+} from "@fdi/shared-types";
+import { DraftEngineError } from "./errors.js";
+import { createDraftTeams, generateSnakeDraftOrder } from "./order.js";
 
-from pathlib import Path
+export interface CreateDraftStateInput {
+  draftId: string;
+  settings: LeagueSettings;
+  playerPoolIds: string[];
+  teamNames?: string[];
+  teams?: DraftTeam[];
+}
 
-import polars as pl
-import pytest
+export function createDraftState(input: CreateDraftStateInput): DraftState {
+  const draftId = input.draftId.trim();
+  if (draftId.length === 0) {
+    throw new DraftEngineError("INVALID_SETTINGS", "draftId must be a non-empty string.");
+  }
 
-from packages.data.ingest.nflverse import (
-    REQUIRED_OUTPUT_COLUMNS,
-    NflverseIngestConfig,
-    ingest_nflverse_weekly_players,
-)
+  const playerPoolIds = normalizePlayerPool(input.playerPoolIds);
+  const teams = input.teams ?? createDraftTeams(input.settings, input.teamNames);
+  const order = generateSnakeDraftOrder(input.settings, teams);
 
+  return {
+    draftId,
+    settings: structuredClone(input.settings),
+    teams: structuredClone(teams),
+    order,
+    playerPoolIds,
+    availablePlayerIds: [...playerPoolIds],
+    picks: [],
+    nextOverallPick: 1,
+    status: "not_started",
+    revision: 0,
+  };
+}
 
-@pytest.fixture
-def sample_raw_df() -> pl.DataFrame:
-    return pl.DataFrame(
-        {
-            "season": [2023, 2023, 2024],
-            "week": [1, 2, 1],
-            "player_display_name": ["Christian McCaffrey", "Tyreek Hill", "Josh Allen"],
-            "recent_team": ["SF", "MIA", "BUF"],
-            "position": ["RB", "WR", "QB"],
-            "fantasy_points": [24.6, 31.2, 27.8],
-            "extra_col": [1, 2, 3],
-        }
-    )
+export function makePick(state: DraftState, playerId: string): DraftState {
+  assertStateShape(state);
 
+  if (state.nextOverallPick === null) {
+    throw new DraftEngineError("DRAFT_COMPLETE", "The draft is already complete.");
+  }
 
-def test_ingest_nflverse_weekly_players_writes_outputs(
-    monkeypatch,
-    tmp_path: Path,
-    sample_raw_df: pl.DataFrame,
-) -> None:
+  const normalizedPlayerId = playerId.trim();
+  if (!state.availablePlayerIds.includes(normalizedPlayerId)) {
+    throw new DraftEngineError(
+      "PLAYER_UNAVAILABLE",
+      `Player ${normalizedPlayerId || "<empty>"} is not available.`,
+    );
+  }
 
-    from packages.data.ingest import nflverse as nflverse_module
+  const orderSlot = state.order[state.nextOverallPick - 1];
+  if (orderSlot === undefined) {
+    throw new DraftEngineError("DRAFT_COMPLETE", "The draft order has no remaining picks.");
+  }
 
-    def fake_load_player_stats(seasons, summary_level):
-        assert seasons == [2023, 2024]
-        assert summary_level == "week"
-        return sample_raw_df
+  const pick: DraftPick = { ...orderSlot, playerId: normalizedPlayerId };
+  return rebuildState(state, [...state.picks, pick]);
+}
 
-    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+export function undoLastPick(state: DraftState): DraftState {
+  assertStateShape(state);
 
-    config = NflverseIngestConfig(
-        years=[2023, 2024],
-        raw_dir=tmp_path / "raw",
-        intermediate_dir=tmp_path / "intermediate",
-    )
+  if (state.picks.length === 0) {
+    throw new DraftEngineError("NO_PICKS_TO_UNDO", "There are no picks to undo.");
+  }
 
-    df = ingest_nflverse_weekly_players(config)
+  return rebuildState(state, state.picks.slice(0, -1));
+}
 
-    assert df.height == 3
-    assert df.columns == REQUIRED_OUTPUT_COLUMNS
-    assert sorted(df["season"].unique().to_list()) == [2023, 2024]
+export function correctPick(
+  state: DraftState,
+  overallPick: number,
+  replacementPlayerId: string,
+): DraftState {
+  assertStateShape(state);
 
-    raw_files = list((tmp_path / "raw").glob("*.parquet"))
-    intermediate_files = list((tmp_path / "intermediate").glob("*.parquet"))
+  if (!Number.isInteger(overallPick) || overallPick < 1 || overallPick > state.picks.length) {
+    throw new DraftEngineError("PICK_NOT_FOUND", `Pick ${overallPick} has not been made.`);
+  }
 
-    assert len(raw_files) == 1
-    assert len(intermediate_files) == 1
+  const normalizedPlayerId = replacementPlayerId.trim();
+  const existingPick = state.picks[overallPick - 1]!;
 
+  if (normalizedPlayerId === existingPick.playerId) {
+    return cloneState(state);
+  }
 
-def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
-    from packages.data.ingest import nflverse as nflverse_module
+  const draftedElsewhere = state.picks.some(
+    (pick) => pick.overallPick !== overallPick && pick.playerId === normalizedPlayerId,
+  );
+  if (!state.playerPoolIds.includes(normalizedPlayerId) || draftedElsewhere) {
+    throw new DraftEngineError(
+      "PLAYER_UNAVAILABLE",
+      `Player ${normalizedPlayerId || "<empty>"} is not available as a replacement.`,
+    );
+  }
 
-    bad_df = pl.DataFrame(
-        {
-            "season": [2023],
-            "week": [1],
-            "position": ["RB"],
-        }
-    )
+  const correctedPicks = state.picks.map((pick) =>
+    pick.overallPick === overallPick ? { ...pick, playerId: normalizedPlayerId } : { ...pick },
+  );
 
-    def fake_load_player_stats(seasons, summary_level):
-        return bad_df
+  return rebuildState(state, correctedPicks);
+}
 
-    monkeypatch.setattr(nflverse_module.nfl, "load_player_stats", fake_load_player_stats)
+export function getCurrentOrderSlot(state: DraftState): DraftOrderSlot | null {
+  if (state.nextOverallPick === null) {
+    return null;
+  }
+  return state.ord
 
-    config = NflverseIngestConfig(
-        years=[2023],
-        raw_dir=tmp_path / "raw",
-        intermediate_dir=tmp_path / "intermediate",
-    )
-
-    with pytest.raises(ValueError):
-        ingest_nflverse_weekly_players(config)
+[TRUNCATED]
 ```
 
-### `tests/data/test_player_ids.py`
+### `packages/draft-engine/tests/fixtures.ts`
 
 ```text
-from __future__ import annotations
+import type { LeagueSettings } from "@fdi/shared-types";
 
-import pandas as pd
-import polars as pl
+export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
+  return {
+    leagueName: "Test League",
+    teamCount: 12,
+    userDraftSlot: 6,
+    rounds: 16,
+    scoring: {
+      preset: "half_ppr",
+      passingYardsPerPoint: 25,
+      passingTouchdown: 4,
+      interception: -2,
+      rushingYardsPerPoint: 10,
+      rushingTouchdown: 6,
+      receivingYardsPerPoint: 10,
+      receivingTouchdown: 6,
+      reception: 0.5,
+      fumbleLost: -2,
+    },
+    rosterSlots: [
+      { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+      { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+      { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+      { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+      { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+      { slot: "K", count: 1, eligiblePositions: ["K"] },
+      { slot: "DST", count: 1, eligiblePositions: ["DST"] },
+      { slot: "BENCH", count: 7, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
+    ],
+    ...overrides,
+  };
+}
 
-from packages.data.player_ids import (
-    attach_canonical_ids_pandas,
-    attach_canonical_ids_polars,
-    build_canonical_player_id,
-    build_player_reference_table,
-    normalize_dst_name,
-    normalize_player_name,
-)
-
-
-def test_normalize_player_name_removes_punctuation_and_suffix() -> None:
-    assert normalize_player_name("D.J. Moore") == "dj_moore"
-    assert normalize_player_name("Kenneth Walker III") == "kenneth_walker"
-    assert normalize_player_name("Brian Thomas Jr.") == "brian_thomas"
-
-
-def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
-    assert normalize_dst_name("DAL") == "dallas_cowboys"
-    assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
-    assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
-
-
-def test_build_canonical_player_id_is_stable() -> None:
-    assert build_canonical_player_id("D.J. Moore", "WR") == "player:dj_moore:WR"
-    assert build_canonical_player_id("Kenneth Walker III", "RB") == "player:kenneth_walker:RB"
-    assert build_canonical_player_id("Dallas Cowboys DST", "DST") == "dst:dallas_cowboys:DST"
-
-
-def test_attach_canonical_ids_pandas() -> None:
-    df = pd.DataFrame(
-        {
-            "player_name": ["D.J. Moore", "Kenneth Walker III"],
-            "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    out = attach_canonical_ids_pandas(df)
-
-    assert "canonical_player_id" in out.columns
-    assert out.loc[0, "canonical_player_id"] == "player:dj_moore:WR"
-    assert out.loc[1, "canonical_player_id"] == "player:kenneth_walker:RB"
-
-
-def test_attach_canonical_ids_polars() -> None:
-    df = pl.DataFrame(
-        {
-            "player_name": ["Dallas Cowboys DST"],
-            "position": ["DST"],
-            "source_name": ["fantasypros"],
-        }
-    )
-
-    out = attach_canonical_ids_polars(df)
-
-    assert "canonical_player_id" in out.columns
-    assert out["canonical_player_id"].to_list() == ["dst:dallas_cowboys:DST"]
-
-
-def test_build_player_reference_table_unifies_cross_source_names() -> None:
-    adp = pd.DataFrame(
-        {
-            "player_name": ["D.J. Moore", "Kenneth Walker III"],
-            "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    nflverse = pd.DataFrame(
-        {
-            "player_name": ["DJ Moore", "Kenneth Walker"],
-            "position": ["WR", "RB"],
-            "source_name": ["nflverse", "nflverse"],
-        }
-    )
-
-    reference = build_player_reference_table([adp, nflverse])
-
-    dj_rows = reference.loc[reference["canonical_player_id"] == "player:dj_moore:WR"]
-    kw_rows = reference.loc[reference["canonical_player_id"] == "player:kenneth_walker:RB"]
-
-    assert len(dj_rows) == 2
-    assert len(kw_rows) == 2
+export function playerPool(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `player-${index + 1}`);
+}
 ```
 
-### `tests/data/test_player_season_warehouse.py`
+### `packages/draft-engine/tests/order.test.ts`
 
 ```text
-from __future__ import annotations
+import { describe, expect, it } from "vitest";
+import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "@fdi/draft-engine";
+import { leagueSettings } from "./fixtures.js";
 
-import pandas as pd
+describe("snake draft order", () => {
+  it("reverses team order in even rounds", () => {
+    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 });
+    const order = generateSnakeDraftOrder(settings);
 
-from packages.data.warehouse.player_season import (
-    aggregate_nflverse_to_player_season,
-    build_player_season_warehouse,
-    prepare_adp_player_season,
-)
+    expect(order.map((slot) => slot.draftSlot)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]);
+    expect(order.map((slot) => slot.overallPick)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
 
+  it("identifies the configured user team", () => {
+    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 3, rounds: 2 });
+    const teams = createDraftTeams(settings, ["A", "B", "Ryan", "D"]);
 
-def test_aggregate_nflverse_to_player_season_rolls_up_weekly_rows():
-    nflverse_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "week": 1,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 10.0,
-                "receiving_yards": 50,
-            },
-            {
-                "season": 2024,
-                "week": 2,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 20.0,
-                "receiving_yards": 100,
-            },
-        ]
-    )
+    expect(teams.filter((team) => team.isUser)).toEqual([
+      { teamId: "team-3", name: "Ryan", draftSlot: 3, isUser: true },
+    ]);
+  });
 
-    result = aggregate_nflverse_to_player_season(nflverse_df)
+  it("rejects a user draft slot outside the league", () => {
+    const settings = leagueSettings({ teamCount: 10, userDraftSlot: 11 });
 
-    assert len(result) == 1
-    assert result.loc[0, "games_played"] == 2
-    assert result.loc[0, "fantasy_points_ppr"] == 30.0
-    assert result.loc[0, "receiving_yards"] == 150
-    assert result.loc[0, "fantasy_points_per_game"] == 15.0
+    expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
+  });
+});
+```
 
+### `packages/draft-engine/tests/state.test.ts`
 
-def test_prepare_adp_player_season_adds_position_rank():
-    adp_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "canonical_player_id": "rb_1",
-                "player_name": "RB One",
-                "normalized_player_name": "rb one",
-                "position": "RB",
-                "adp_overall": 5.0,
-                "source_name": "fantasypros",
-            },
-            {
-                "season": 2024,
-                "canonical_player_id": "rb_2",
-                "player_name": "RB Two",
-                "normalized_player_name": "rb two",
-                "position": "RB",
-                "adp_overall": 10.0,
-                "source_name": "fantasypros",
-            },
-        ]
-    )
+```text
+import { describe, expect, it } from "vitest";
+import {
+  buildRosters,
+  correctPick,
+  createDraftState,
+  getCurrentOrderSlot,
+  makePick,
+  undoLastPick,
+} from "@fdi/draft-engine";
+import { leagueSettings, playerPool } from "./fixtures.js";
 
-    result = prepare_adp_player_season(adp_df)
+describe("draft state transitions", () => {
+  it("creates a deterministic initial state", () => {
+    const state = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
+      playerPoolIds: playerPool(20),
+    });
 
-    assert len(result) == 2
-    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
-    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
+    expect(state.status).toBe("not_started");
+    expect(state.nextOverallPick).toBe(1);
+    expect(state.picks).toEqual([]);
+    expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
+  });
 
+  it("records picks, advances the clock, and updates rosters", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
 
-def test_build_player_season_warehouse_merges_stats_and_adp():
-    nflverse_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "week": 1,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 10.0,
-            },
-            {
-                "season": 2024,
-                "week": 2,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 20.0,
-            },
-        ]
-    )
+    const afterOne = makePick(initial, "player-1");
+    const afterTwo = makePick(afterOne, "player-2");
 
-    adp_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position":
+    expect(initial.picks).toHaveLength(0);
+    expect(afterTwo.status).toBe("in_progress");
+    expect(afterTwo.nextOverallPick).toBe(3);
+    expect(afterTwo.availablePlayerIds).not.toContain("player-1");
+    expect(buildRosters(afterTwo)).toEqual({
+      "team-1": ["player-1"],
+      "team-2": ["player-2"],
+      "team-3": [],
+      "team-4": [],
+    });
+  });
+
+  it("prevents a player from being selected twice", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterOne = makePick(initial, "player-1");
+
+    expect(() => makePick(afterOne, "player-1")).toThrow(/not available/);
+  });
+
+  it("undoes the most recent pick and restores availability", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
+    const undone = undoLastPick(afterTwo);
+
+    expect(undone.picks.map((pick) => pick.playerId)).toEqual(["player-1"]);
+    expect(undone.availablePlayerIds).toContain("player-2");
+    expect(undone.nextOverallPick).toBe(2);
+  });
+
+  it("corrects an earlier pick without changing its board position", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterThree = makePick(
+      makePick(makePick(initial, "player-1"), "player-2"),
+      "player-3",
+    );
+    const corrected = correctPick(afterThree, 1, "player-4");
+
+    expect(corrected.picks[0]).toMatchObject({
+      overallPick: 1,
+      teamId: "team-1",
+      playerId: "player-4",
+    });
+    expect(corrected.availablePlayerIds).toContain("player-1");
+    expect(corrected.availablePlayerIds).not.toContain("player-4");
+    expect(corrected.nextOverallPick).toBe(4);
+  });
+
+  it("runs a complete twelve-team, sixteen-round draft", () => {
+    const settings = leagueSettings();
+    const players = playerPool(settings.teamCount * settings.rounds + 20);
+    let state = createDraftState({
+      draftId: "full-simulation",
+      settings,
+      playerPoolIds: players,
+    });
+
+    for (let index = 0; i
 
 [TRUNCATED]
 ```
@@ -3427,513 +3485,514 @@ def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFra
 [TRUNCATED]
 ```
 
-### `scripts/build_player_reference.py`
+### `packages/draft-engine/package.json`
 
 ```text
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-
-from packages.data.constants import DEFAULT_PILOT_YEARS, INTERMEDIATE_DATA_DIR
-from packages.data.io import read_parquet, write_parquet
-from packages.data.player_ids import build_player_reference_table
-
-INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
-
-
-def _adp_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"adp_historical_{min(years)}_{max(years)}.parquet"
-
-
-def _nflverse_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"nflverse_player_weekly_{min(years)}_{max(years)}.parquet"
-
-
-def _reference_path(years: list[int]) -> Path:
-    return INTERMEDIATE_DIR / f"player_reference_{min(years)}_{max(years)}.parquet"
-
-
-def main() -> None:
-    years = list(DEFAULT_PILOT_YEARS)
-
-    adp = read_parquet(_adp_path(years))
-    nflverse = pd.read_parquet(_nflverse_path(years))
-
-    reference = build_player_reference_table([adp, nflverse])
-    write_parquet(reference, _reference_path(years))
-
-    print(
-        f"Player reference build complete: rows={len(reference)}, "
-        f"cols={len(reference.columns)}, years={min(years)}-{max(years)}"
-    )
-
-
-if __name__ == "__main__":
-    main()
+{
+  "name": "@fdi/draft-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@fdi/shared-types": "0.1.0"
+  }
+}
 ```
 
-### `scripts/build_player_season_warehouse.py`
+### `packages/draft-engine/src/errors.ts`
 
 ```text
-# scripts/build_player_season_warehouse.py
-from __future__ import annotations
+export type DraftEngineErrorCode =
+  | "INVALID_SETTINGS"
+  | "INVALID_PLAYER_POOL"
+  | "DRAFT_COMPLETE"
+  | "PLAYER_UNAVAILABLE"
+  | "NO_PICKS_TO_UNDO"
+  | "PICK_NOT_FOUND";
 
-import logging
+export class DraftEngineError extends Error {
+  readonly code: DraftEngineErrorCode;
 
-from packages.data.warehouse.player_season import (
-    build_and_write_player_season_warehouse,
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
-logger = logging.getLogger(__name__)
-
-
-def main() -> None:
-    seasons_label = "2023_2024"
-    logger.info("Building player-season warehouse for %s", seasons_label)
-    df = build_and_write_player_season_warehouse(seasons_label=seasons_label)
-    logger.info(
-        "Player-season warehouse complete: rows=%s cols=%s",
-        len(df),
-        len(df.columns),
-    )
-
-
-if __name__ == "__main__":
-    main()
+  constructor(code: DraftEngineErrorCode, message: string) {
+    super(message);
+    this.name = "DraftEngineError";
+    this.code = code;
+  }
+}
 ```
 
-### `scripts/ingest_adp.py`
+### `packages/draft-engine/src/index.ts`
 
 ```text
-from __future__ import annotations
-
-import argparse
-from pathlib import Path
-
-from packages.data.constants import (
-    DEFAULT_PILOT_YEARS,
-    INTERMEDIATE_DATA_DIR,
-    RAW_DATA_DIR,
-)
-from packages.data.ingest.adp import (
-    DEFAULT_SOURCE_URLS,
-    AdpIngestConfig,
-    ingest_historical_adp,
-)
-from packages.shared.logging import get_logger
-
-logger = get_logger(__name__)
-
-DEFAULT_RAW_DIR = Path(RAW_DATA_DIR)
-DEFAULT_INTERMEDIATE_DIR = Path(INTERMEDIATE_DATA_DIR)
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Ingest historical fantasy football ADP data")
-    parser.add_argument(
-        "--years",
-        nargs="+",
-        type=int,
-        default=DEFAULT_PILOT_YEARS,
-        help="Season years to ingest, e.g. --years 2023 2024",
-    )
-    parser.add_argument(
-        "--raw-dir",
-        type=Path,
-        default=DEFAULT_RAW_DIR,
-        help="Directory for raw HTML snapshots",
-    )
-    parser.add_argument(
-        "--intermediate-dir",
-        type=Path,
-        default=DEFAULT_INTERMEDIATE_DIR,
-        help="Directory for normalized parquet outputs",
-    )
-    return parser.parse_args()
-
-
-def main() -> None:
-    args = parse_args()
-
-    source_urls = {year: DEFAULT_SOURCE_URLS[year] for year in args.years}
-
-    config = AdpIngestConfig(
-        years=args.years,
-        raw_dir=args.raw_dir,
-        intermediate_dir=args.intermediate_dir,
-        source_urls=source_urls,
-    )
-
-    logger.info("Ingesting historical ADP for seasons=%s", args.years)
-    df = ingest_historical_adp(config)
-    logger.info(
-        "ADP ingest complete: rows=%s cols=%s years=%s-%s",
-        len(df),
-        len(df.columns),
-        min(args.years),
-        max(args.years),
-    )
-
-
-if __name__ == "__main__":
-    main()
+export { DraftEngineError, type DraftEngineErrorCode } from "./errors.js";
+export {
+  createDraftTeams,
+  generateSnakeDraftOrder,
+  validateLeagueSettings,
+} from "./order.js";
+export {
+  buildRosters,
+  correctPick,
+  createDraftState,
+  getCurrentOrderSlot,
+  makePick,
+  undoLastPick,
+  type CreateDraftStateInput,
+} from "./state.js";
 ```
 
-### `tests/data/ingest/test_adp.py`
+### `packages/draft-engine/src/order.ts`
 
 ```text
-from __future__ import annotations
+import type { DraftOrderSlot, DraftTeam, LeagueSettings } from "@fdi/shared-types";
+import { DraftEngineError } from "./errors.js";
 
-from pathlib import Path
+export function validateLeagueSettings(settings: LeagueSettings): void {
+  if (!Number.isInteger(settings.teamCount) || settings.teamCount < 2 || settings.teamCount > 20) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "teamCount must be an integer between 2 and 20.",
+    );
+  }
 
-import pandas as pd
-import pytest
+  if (
+    !Number.isInteger(settings.userDraftSlot) ||
+    settings.userDraftSlot < 1 ||
+    settings.userDraftSlot > settings.teamCount
+  ) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "userDraftSlot must be within the configured team count.",
+    );
+  }
 
-from packages.data.ingest.adp import (
-    REQUIRED_OUTPUT_COLUMNS,
-    UNIQUE_KEY_COLUMNS,
-    AdpIngestConfig,
-    ingest_historical_adp,
-    normalize_historical_adp,
-)
-from packages.data.validation import ValidationError
+  if (!Number.isInteger(settings.rounds) || settings.rounds < 1 || settings.rounds > 40) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "rounds must be an integer between 1 and 40.",
+    );
+  }
 
+  if (settings.rosterSlots.length === 0) {
+    throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
+  }
 
-@pytest.fixture
-def fantasypros_html_2023() -> str:
-    return """
-    <html>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player Team (Bye)</th>
-              <th>POS</th>
-              <th>AVG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
-            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-@pytest.fixture
-def fantasypros_html_2024() -> str:
-    return """
-    <html>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player Team (Bye)</th>
-              <th>POS</th>
-              <th>AVG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
-            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-def test_normalize_historical_adp_requires_expected_columns() -> None:
-    raw = pd.DataFrame(
-        {
-            "season": [2024],
-            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
-            "POS": ["WR1"],
-            "AVG": [2.1],
-            "source_name": ["fantasypros"],
-        }
-    )
-
-    normalized = normalize_historical_adp(raw)
-
-    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
-    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
-    assert normalized.iloc[0]["position"] == "WR"
-
-
-def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
-    raw = pd.DataFrame(
-        {
-            "season": [2024, 2024],
-            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
-            "POS": ["WR1", "WR1"],
-            "AVG": [2.1, 2.1],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    with pytest.raises(ValidationError, match="duplicate rows"):
-        normalize_historical_adp(raw)
-
-
-def test_ingest_historical_adp_writes_raw_and_intermediate_outputs(
-    monkeypatch,
-    tmp_path: Path,
-    fantasypros_html_2023: str,
-    fantasypros_html_2024: str,
-) -> None:
-    from packages.data.ingest import adp as adp_module
-
-    html_by_url = {
-        "https://example.test/2023": fantasypros_html_2023,
-        "https://example.test/2024": fantasypros_html_2024,
+  for (const rule of settings.rosterSlots) {
+    if (!Number.isInteger(rule.count) || rule.count < 0) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must have a non-negative integer count.`,
+      );
     }
 
-    def fake_fetch_html(url: str) -> str:
-        return html_by_url[url]
+    if (rule.count > 0 && rule.eligiblePositions.length === 0) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must define eligible positions.`,
+      );
+    }
+  }
+}
 
-    monkeypatch.setattr(adp_module, "_fetch_html", fake_fetch_html)
+export function createDraftTeams(settings: LeagueSettings, teamNames?: string[]): DraftTeam[] {
+  validateLeagueSettings(settings);
 
-    config = AdpIngestConfig(
-        years=[2023, 2024],
-        raw_dir=tmp_path / "raw",
-        intermediate_dir=tmp_path / "intermediate",
-        source_urls={
-            2023: "https://example.test/2023",
-            2024: "https://example.test/2024",
-        },
-    )
+  if (teamNames !== undefined && teamNames.length !== settings.teamCount) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "teamNames must contain one name for each configured team.",
+    );
+  }
 
-    df = ingest_historical_adp(config)
+  return Array.from({ length: settings.teamCount }, (_, index) => {
+    const draftSlot = index + 1;
+    const providedName = teamNames?.[index]?.trim();
 
-    assert list(df.columns) == REQUIRED_OUTPUT_COLUMNS
-    assert sorted(df["season"].unique().tolist()) == [2023, 2024]
-    assert UNIQUE_KEY_COLUMNS == ["season", "canonical_player_id", "source_name"]
+    return {
+      teamId: `team-${draftSlot}`,
+      name: providedName && providedName.length > 0 ? providedName : `Team ${draftSlot}`,
+      draftSlot,
+      isUser: draftSlot === settings.userDraftSlot,
+    };
+  });
+}
+
+export function generateSnakeDraftOrder(
+  settings: LeagueSettings,
+  teams: DraftTeam[] = createDraftTeams(settings),
+): DraftOrderSlot[] {
+  validateLeagueSettings(settings);
+  validateTeams(settings, teams);
+
+  const teamsByDraftSlot = [...teams].sort((left, right) => left.draftSlot - right.draftSlot);
+  const order: DraftOrderSlot[] = [];
+
+  for (let round = 1; round <= settings.rounds; round += 1) {
+    const roundTeams = round % 2 === 1 ? teamsByDraftSlot : [...teamsByDraftSlot].reverse();
+
+    roundTeams.forEach((team, index) => {
+      order.push({
+        overallPick: order.length + 1,
+        round,
+        pickInRound: index + 1,
+        teamId: team.teamId,
+        draftSlot: team.draftSlot,
+      });
+    });
+  }
+
+  return order;
+}
+
+function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
+  if (teams.length !== settings.teamCount) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      "The number of teams must match league settings.",
+    );
+  }
+
+  const teamIds = new Set<string>();
+  const draftSlots = new Set<number>();
+
+  for (const team of teams) {
+    if (teamIds.has(team.teamId)) {
+      throw new DraftEngineError("INVALID_SETTINGS", `Duplicate teamId: ${team.te
 
 [TRUNCATED]
 ```
 
-### `tests/data/test_player_ids.py`
+### `packages/draft-engine/src/state.ts`
 
 ```text
-from __future__ import annotations
+import type {
+  DraftOrderSlot,
+  DraftPick,
+  DraftState,
+  DraftStatus,
+  DraftTeam,
+  LeagueSettings,
+} from "@fdi/shared-types";
+import { DraftEngineError } from "./errors.js";
+import { createDraftTeams, generateSnakeDraftOrder } from "./order.js";
 
-import pandas as pd
-import polars as pl
+export interface CreateDraftStateInput {
+  draftId: string;
+  settings: LeagueSettings;
+  playerPoolIds: string[];
+  teamNames?: string[];
+  teams?: DraftTeam[];
+}
 
-from packages.data.player_ids import (
-    attach_canonical_ids_pandas,
-    attach_canonical_ids_polars,
-    build_canonical_player_id,
-    build_player_reference_table,
-    normalize_dst_name,
-    normalize_player_name,
-)
+export function createDraftState(input: CreateDraftStateInput): DraftState {
+  const draftId = input.draftId.trim();
+  if (draftId.length === 0) {
+    throw new DraftEngineError("INVALID_SETTINGS", "draftId must be a non-empty string.");
+  }
 
+  const playerPoolIds = normalizePlayerPool(input.playerPoolIds);
+  const teams = input.teams ?? createDraftTeams(input.settings, input.teamNames);
+  const order = generateSnakeDraftOrder(input.settings, teams);
 
-def test_normalize_player_name_removes_punctuation_and_suffix() -> None:
-    assert normalize_player_name("D.J. Moore") == "dj_moore"
-    assert normalize_player_name("Kenneth Walker III") == "kenneth_walker"
-    assert normalize_player_name("Brian Thomas Jr.") == "brian_thomas"
+  return {
+    draftId,
+    settings: structuredClone(input.settings),
+    teams: structuredClone(teams),
+    order,
+    playerPoolIds,
+    availablePlayerIds: [...playerPoolIds],
+    picks: [],
+    nextOverallPick: 1,
+    status: "not_started",
+    revision: 0,
+  };
+}
 
+export function makePick(state: DraftState, playerId: string): DraftState {
+  assertStateShape(state);
 
-def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
-    assert normalize_dst_name("DAL") == "dallas_cowboys"
-    assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
-    assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
+  if (state.nextOverallPick === null) {
+    throw new DraftEngineError("DRAFT_COMPLETE", "The draft is already complete.");
+  }
 
+  const normalizedPlayerId = playerId.trim();
+  if (!state.availablePlayerIds.includes(normalizedPlayerId)) {
+    throw new DraftEngineError(
+      "PLAYER_UNAVAILABLE",
+      `Player ${normalizedPlayerId || "<empty>"} is not available.`,
+    );
+  }
 
-def test_build_canonical_player_id_is_stable() -> None:
-    assert build_canonical_player_id("D.J. Moore", "WR") == "player:dj_moore:WR"
-    assert build_canonical_player_id("Kenneth Walker III", "RB") == "player:kenneth_walker:RB"
-    assert build_canonical_player_id("Dallas Cowboys DST", "DST") == "dst:dallas_cowboys:DST"
+  const orderSlot = state.order[state.nextOverallPick - 1];
+  if (orderSlot === undefined) {
+    throw new DraftEngineError("DRAFT_COMPLETE", "The draft order has no remaining picks.");
+  }
 
+  const pick: DraftPick = { ...orderSlot, playerId: normalizedPlayerId };
+  return rebuildState(state, [...state.picks, pick]);
+}
 
-def test_attach_canonical_ids_pandas() -> None:
-    df = pd.DataFrame(
-        {
-            "player_name": ["D.J. Moore", "Kenneth Walker III"],
-            "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
+export function undoLastPick(state: DraftState): DraftState {
+  assertStateShape(state);
 
-    out = attach_canonical_ids_pandas(df)
+  if (state.picks.length === 0) {
+    throw new DraftEngineError("NO_PICKS_TO_UNDO", "There are no picks to undo.");
+  }
 
-    assert "canonical_player_id" in out.columns
-    assert out.loc[0, "canonical_player_id"] == "player:dj_moore:WR"
-    assert out.loc[1, "canonical_player_id"] == "player:kenneth_walker:RB"
+  return rebuildState(state, state.picks.slice(0, -1));
+}
 
+export function correctPick(
+  state: DraftState,
+  overallPick: number,
+  replacementPlayerId: string,
+): DraftState {
+  assertStateShape(state);
 
-def test_attach_canonical_ids_polars() -> None:
-    df = pl.DataFrame(
-        {
-            "player_name": ["Dallas Cowboys DST"],
-            "position": ["DST"],
-            "source_name": ["fantasypros"],
-        }
-    )
+  if (!Number.isInteger(overallPick) || overallPick < 1 || overallPick > state.picks.length) {
+    throw new DraftEngineError("PICK_NOT_FOUND", `Pick ${overallPick} has not been made.`);
+  }
 
-    out = attach_canonical_ids_polars(df)
+  const normalizedPlayerId = replacementPlayerId.trim();
+  const existingPick = state.picks[overallPick - 1]!;
 
-    assert "canonical_player_id" in out.columns
-    assert out["canonical_player_id"].to_list() == ["dst:dallas_cowboys:DST"]
+  if (normalizedPlayerId === existingPick.playerId) {
+    return cloneState(state);
+  }
 
+  const draftedElsewhere = state.picks.some(
+    (pick) => pick.overallPick !== overallPick && pick.playerId === normalizedPlayerId,
+  );
+  if (!state.playerPoolIds.includes(normalizedPlayerId) || draftedElsewhere) {
+    throw new DraftEngineError(
+      "PLAYER_UNAVAILABLE",
+      `Player ${normalizedPlayerId || "<empty>"} is not available as a replacement.`,
+    );
+  }
 
-def test_build_player_reference_table_unifies_cross_source_names() -> None:
-    adp = pd.DataFrame(
-        {
-            "player_name": ["D.J. Moore", "Kenneth Walker III"],
-            "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
+  const correctedPicks = state.picks.map((pick) =>
+    pick.overallPick === overallPick ? { ...pick, playerId: normalizedPlayerId } : { ...pick },
+  );
 
-    nflverse = pd.DataFrame(
-        {
-            "player_name": ["DJ Moore", "Kenneth Walker"],
-            "position": ["WR", "RB"],
-            "source_name": ["nflverse", "nflverse"],
-        }
-    )
+  return rebuildState(state, correctedPicks);
+}
 
-    reference = build_player_reference_table([adp, nflverse])
-
-    dj_rows = reference.loc[reference["canonical_player_id"] == "player:dj_moore:WR"]
-    kw_rows = reference.loc[reference["canonical_player_id"] == "player:kenneth_walker:RB"]
-
-    assert len(dj_rows) == 2
-    assert len(kw_rows) == 2
-```
-
-### `tests/data/test_player_season_warehouse.py`
-
-```text
-from __future__ import annotations
-
-import pandas as pd
-
-from packages.data.warehouse.player_season import (
-    aggregate_nflverse_to_player_season,
-    build_player_season_warehouse,
-    prepare_adp_player_season,
-)
-
-
-def test_aggregate_nflverse_to_player_season_rolls_up_weekly_rows():
-    nflverse_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "week": 1,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 10.0,
-                "receiving_yards": 50,
-            },
-            {
-                "season": 2024,
-                "week": 2,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 20.0,
-                "receiving_yards": 100,
-            },
-        ]
-    )
-
-    result = aggregate_nflverse_to_player_season(nflverse_df)
-
-    assert len(result) == 1
-    assert result.loc[0, "games_played"] == 2
-    assert result.loc[0, "fantasy_points_ppr"] == 30.0
-    assert result.loc[0, "receiving_yards"] == 150
-    assert result.loc[0, "fantasy_points_per_game"] == 15.0
-
-
-def test_prepare_adp_player_season_adds_position_rank():
-    adp_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "canonical_player_id": "rb_1",
-                "player_name": "RB One",
-                "normalized_player_name": "rb one",
-                "position": "RB",
-                "adp_overall": 5.0,
-                "source_name": "fantasypros",
-            },
-            {
-                "season": 2024,
-                "canonical_player_id": "rb_2",
-                "player_name": "RB Two",
-                "normalized_player_name": "rb two",
-                "position": "RB",
-                "adp_overall": 10.0,
-                "source_name": "fantasypros",
-            },
-        ]
-    )
-
-    result = prepare_adp_player_season(adp_df)
-
-    assert len(result) == 2
-    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
-    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
-
-
-def test_build_player_season_warehouse_merges_stats_and_adp():
-    nflverse_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "week": 1,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 10.0,
-            },
-            {
-                "season": 2024,
-                "week": 2,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 20.0,
-            },
-        ]
-    )
-
-    adp_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position":
+export function getCurrentOrderSlot(state: DraftState): DraftOrderSlot | null {
+  if (state.nextOverallPick === null) {
+    return null;
+  }
+  return state.ord
 
 [TRUNCATED]
+```
+
+### `packages/draft-engine/tests/fixtures.ts`
+
+```text
+import type { LeagueSettings } from "@fdi/shared-types";
+
+export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
+  return {
+    leagueName: "Test League",
+    teamCount: 12,
+    userDraftSlot: 6,
+    rounds: 16,
+    scoring: {
+      preset: "half_ppr",
+      passingYardsPerPoint: 25,
+      passingTouchdown: 4,
+      interception: -2,
+      rushingYardsPerPoint: 10,
+      rushingTouchdown: 6,
+      receivingYardsPerPoint: 10,
+      receivingTouchdown: 6,
+      reception: 0.5,
+      fumbleLost: -2,
+    },
+    rosterSlots: [
+      { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+      { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+      { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+      { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+      { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+      { slot: "K", count: 1, eligiblePositions: ["K"] },
+      { slot: "DST", count: 1, eligiblePositions: ["DST"] },
+      { slot: "BENCH", count: 7, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
+    ],
+    ...overrides,
+  };
+}
+
+export function playerPool(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `player-${index + 1}`);
+}
+```
+
+### `packages/draft-engine/tests/order.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "@fdi/draft-engine";
+import { leagueSettings } from "./fixtures.js";
+
+describe("snake draft order", () => {
+  it("reverses team order in even rounds", () => {
+    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 });
+    const order = generateSnakeDraftOrder(settings);
+
+    expect(order.map((slot) => slot.draftSlot)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]);
+    expect(order.map((slot) => slot.overallPick)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it("identifies the configured user team", () => {
+    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 3, rounds: 2 });
+    const teams = createDraftTeams(settings, ["A", "B", "Ryan", "D"]);
+
+    expect(teams.filter((team) => team.isUser)).toEqual([
+      { teamId: "team-3", name: "Ryan", draftSlot: 3, isUser: true },
+    ]);
+  });
+
+  it("rejects a user draft slot outside the league", () => {
+    const settings = leagueSettings({ teamCount: 10, userDraftSlot: 11 });
+
+    expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
+  });
+});
+```
+
+### `packages/draft-engine/tests/state.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import {
+  buildRosters,
+  correctPick,
+  createDraftState,
+  getCurrentOrderSlot,
+  makePick,
+  undoLastPick,
+} from "@fdi/draft-engine";
+import { leagueSettings, playerPool } from "./fixtures.js";
+
+describe("draft state transitions", () => {
+  it("creates a deterministic initial state", () => {
+    const state = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
+      playerPoolIds: playerPool(20),
+    });
+
+    expect(state.status).toBe("not_started");
+    expect(state.nextOverallPick).toBe(1);
+    expect(state.picks).toEqual([]);
+    expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
+  });
+
+  it("records picks, advances the clock, and updates rosters", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+
+    const afterOne = makePick(initial, "player-1");
+    const afterTwo = makePick(afterOne, "player-2");
+
+    expect(initial.picks).toHaveLength(0);
+    expect(afterTwo.status).toBe("in_progress");
+    expect(afterTwo.nextOverallPick).toBe(3);
+    expect(afterTwo.availablePlayerIds).not.toContain("player-1");
+    expect(buildRosters(afterTwo)).toEqual({
+      "team-1": ["player-1"],
+      "team-2": ["player-2"],
+      "team-3": [],
+      "team-4": [],
+    });
+  });
+
+  it("prevents a player from being selected twice", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterOne = makePick(initial, "player-1");
+
+    expect(() => makePick(afterOne, "player-1")).toThrow(/not available/);
+  });
+
+  it("undoes the most recent pick and restores availability", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
+    const undone = undoLastPick(afterTwo);
+
+    expect(undone.picks.map((pick) => pick.playerId)).toEqual(["player-1"]);
+    expect(undone.availablePlayerIds).toContain("player-2");
+    expect(undone.nextOverallPick).toBe(2);
+  });
+
+  it("corrects an earlier pick without changing its board position", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterThree = makePick(
+      makePick(makePick(initial, "player-1"), "player-2"),
+      "player-3",
+    );
+    const corrected = correctPick(afterThree, 1, "player-4");
+
+    expect(corrected.picks[0]).toMatchObject({
+      overallPick: 1,
+      teamId: "team-1",
+      playerId: "player-4",
+    });
+    expect(corrected.availablePlayerIds).toContain("player-1");
+    expect(corrected.availablePlayerIds).not.toContain("player-4");
+    expect(corrected.nextOverallPick).toBe(4);
+  });
+
+  it("runs a complete twelve-team, sixteen-round draft", () => {
+    const settings = leagueSettings();
+    const players = playerPool(settings.teamCount * settings.rounds + 20);
+    let state = createDraftState({
+      draftId: "full-simulation",
+      settings,
+      playerPoolIds: players,
+    });
+
+    for (let index = 0; i
+
+[TRUNCATED]
+```
+
+### `packages/draft-engine/tsconfig.json`
+
+```text
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [{ "path": "../shared-types" }]
+}
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -4825,6 +4884,219 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
     df = pd.DataFrame({"season": [2024, 2024], "player": ["x", "x"]})
     with pytest.raises(ValidationError):
         assert_unique_key(df, ["season", "player"])
+```
+
+### `packages/draft-engine/tests/fixtures.ts`
+
+```text
+import type { LeagueSettings } from "@fdi/shared-types";
+
+export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
+  return {
+    leagueName: "Test League",
+    teamCount: 12,
+    userDraftSlot: 6,
+    rounds: 16,
+    scoring: {
+      preset: "half_ppr",
+      passingYardsPerPoint: 25,
+      passingTouchdown: 4,
+      interception: -2,
+      rushingYardsPerPoint: 10,
+      rushingTouchdown: 6,
+      receivingYardsPerPoint: 10,
+      receivingTouchdown: 6,
+      reception: 0.5,
+      fumbleLost: -2,
+    },
+    rosterSlots: [
+      { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+      { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+      { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+      { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+      { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+      { slot: "K", count: 1, eligiblePositions: ["K"] },
+      { slot: "DST", count: 1, eligiblePositions: ["DST"] },
+      { slot: "BENCH", count: 7, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
+    ],
+    ...overrides,
+  };
+}
+
+export function playerPool(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `player-${index + 1}`);
+}
+```
+
+### `packages/draft-engine/tests/order.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "@fdi/draft-engine";
+import { leagueSettings } from "./fixtures.js";
+
+describe("snake draft order", () => {
+  it("reverses team order in even rounds", () => {
+    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 });
+    const order = generateSnakeDraftOrder(settings);
+
+    expect(order.map((slot) => slot.draftSlot)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]);
+    expect(order.map((slot) => slot.overallPick)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it("identifies the configured user team", () => {
+    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 3, rounds: 2 });
+    const teams = createDraftTeams(settings, ["A", "B", "Ryan", "D"]);
+
+    expect(teams.filter((team) => team.isUser)).toEqual([
+      { teamId: "team-3", name: "Ryan", draftSlot: 3, isUser: true },
+    ]);
+  });
+
+  it("rejects a user draft slot outside the league", () => {
+    const settings = leagueSettings({ teamCount: 10, userDraftSlot: 11 });
+
+    expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
+  });
+});
+```
+
+### `packages/draft-engine/tests/state.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import {
+  buildRosters,
+  correctPick,
+  createDraftState,
+  getCurrentOrderSlot,
+  makePick,
+  undoLastPick,
+} from "@fdi/draft-engine";
+import { leagueSettings, playerPool } from "./fixtures.js";
+
+describe("draft state transitions", () => {
+  it("creates a deterministic initial state", () => {
+    const state = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
+      playerPoolIds: playerPool(20),
+    });
+
+    expect(state.status).toBe("not_started");
+    expect(state.nextOverallPick).toBe(1);
+    expect(state.picks).toEqual([]);
+    expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
+  });
+
+  it("records picks, advances the clock, and updates rosters", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+
+    const afterOne = makePick(initial, "player-1");
+    const afterTwo = makePick(afterOne, "player-2");
+
+    expect(initial.picks).toHaveLength(0);
+    expect(afterTwo.status).toBe("in_progress");
+    expect(afterTwo.nextOverallPick).toBe(3);
+    expect(afterTwo.availablePlayerIds).not.toContain("player-1");
+    expect(buildRosters(afterTwo)).toEqual({
+      "team-1": ["player-1"],
+      "team-2": ["player-2"],
+      "team-3": [],
+      "team-4": [],
+    });
+  });
+
+  it("prevents a player from being selected twice", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterOne = makePick(initial, "player-1");
+
+    expect(() => makePick(afterOne, "player-1")).toThrow(/not available/);
+  });
+
+  it("undoes the most recent pick and restores availability", () => {
+    const initial = createDraftState({
+      draftId: "draft-1",
+      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+      playerPoolIds: playerPool(12),
+    });
+    const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
+    const undone = undoLastPick(afterTwo);
+
+    expect(undone.picks.map((pick) => pick.playerId)).toEqual(["player-1"]);
+    expect(undone.availablePlayerIds).toContain("player-2");
+    expect(undone.nextOverallPick).toBe(2);
+  });
+
+  it("corrects an earlier pick without changing its board position", () => {
+    const in
+
+[TRUNCATED]
+```
+
+### `packages/shared-types/tests/player-data-release.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import { assertPlayerDataRelease, type PlayerDataRelease } from "@fdi/shared-types";
+
+function validRelease(): PlayerDataRelease {
+  return {
+    schema_version: "1.0",
+    season: 2026,
+    release_id: "2026-preseason-v1",
+    generated_at: "2026-07-16T12:00:00Z",
+    sources: ["nflverse"],
+    players: [
+      {
+        canonical_player_id: "josh-allen-qb",
+        display_name: "Josh Allen",
+        position: "QB",
+        nfl_team: "BUF",
+        bye_week: 7,
+        overall_rank: 24,
+        position_rank: 1,
+        adp: 27.4,
+        projected_points: 372.2,
+        tier: 1,
+        risk_score: 0.2,
+        upside_score: 0.9,
+        availability_status: "active",
+      },
+    ],
+  };
+}
+
+describe("assertPlayerDataRelease", () => {
+  it("accepts a release matching the versioned player contract", () => {
+    const release: unknown = validRelease();
+
+    expect(() => assertPlayerDataRelease(release)).not.toThrow();
+  });
+
+  it("rejects duplicate canonical player IDs", () => {
+    const release = validRelease();
+    release.players.push({ ...release.players[0]! });
+
+    expect(() => assertPlayerDataRelease(release)).toThrow(/Duplicate canonical_player_id/);
+  });
+
+  it("rejects unsupported positions", () => {
+    const release = validRelease() as unknown as Record<string, unknown>;
+    const players = release.players as Array<Record<string, unknown>>;
+    players[0]!.position = "IDP";
+
+    expect(() => assertPlayerDataRelease(release)).toThrow(/position is unsupported/);
+  });
+});
 ```
 
 ### `tests/data/ingest/test_adp.py`
