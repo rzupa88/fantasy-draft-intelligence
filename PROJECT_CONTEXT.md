@@ -20,6 +20,7 @@ At any draft pick, identify which available player offers the best risk-adjusted
 - Recommendations must be explainable.
 - Cross-source player joins use `canonical_player_id`, never raw player names.
 - Draft state, recommendation logic, and the user interface remain independently testable.
+- Proprietary projection exports remain local and are never committed to the repository.
 
 ## Current foundation
 
@@ -37,6 +38,7 @@ The repository includes:
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
 - a React/Vite live draft room with local recovery
+- Fantasy Footballers UDK ZIP import and release normalization
 - Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
@@ -47,7 +49,11 @@ The React interface currently supports:
 - editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts
 - draft rounds derived automatically from roster capacity
 - standard, no-kicker, no-defense, extra-flex, two-QB, and superflex roster structures
-- an offline deterministic demo player release
+- one-step import of a Fantasy Footballers UDK ZIP package
+- UDK Andy, Jason, and Mike statistical projections recalculated for the selected scoring format
+- Average, Sleeper, ESPN, Yahoo, and Underdog ADP markets
+- UDK rankings, tiers, risk scores, upside scores, and bye weeks
+- an offline deterministic demo release when no UDK package is loaded
 - manual entry for every team selection
 - automatic snake-order advancement
 - search and position filters
@@ -58,9 +64,20 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery, backup, and custom-roster workflows
+- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
 
-The next primary increments are production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
+The next data increment is matching the UDK release to stable NFLverse player IDs and prior-year statistics. SQLite persistence and Tauri desktop packaging follow.
+
+## Draft-day UDK refresh
+
+1. Download fresh UDK CSV exports.
+2. Keep the exported folder structure and compress the files into one ZIP.
+3. Configure scoring, league size, roster slots, and the desired ADP market.
+4. Select **Import UDK ZIP**.
+5. Review the coverage report.
+6. Start the draft.
+
+All ZIP processing happens locally in the browser. See [`docs/udk-import.md`](docs/udk-import.md) for recognized files, projection math, ADP conversion, and privacy rules.
 
 ## Target application
 
@@ -95,6 +112,7 @@ See:
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
+- [`docs/udk-import.md`](docs/udk-import.md)
 
 ## Run the draft room
 
@@ -149,7 +167,7 @@ npm run test:e2e
 
 ```text
 apps/
-  draft-room/            # React/Vite live draft interface
+  draft-room/            # React/Vite live draft interface and UDK importer
 e2e/                     # Playwright browser workflows
 packages/
   data/                  # Python ingestion and identity logic
@@ -169,7 +187,7 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** functional, recoverable, and roster-configurable; production data remains
+- **M4 — Local draft-room interface:** functional, recoverable, roster-configurable, and UDK-enabled; NFLverse enrichment remains
 - **M5 — Desktop packaging and release**
 
 ## Quickstart and Useful Commands
@@ -180,7 +198,8 @@ Potentially useful commands and setup hints found in project files:
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
 - Vitest and Playwright regression coverage
-- browser-tested recovery, backup, and custom-roster workflows
+- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
+6. Start the draft.
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 - **Testing:** pytest, Vitest, Playwright
@@ -231,10 +250,13 @@ test:
 │   │   │   ├── main.tsx
 │   │   │   ├── recovery.css
 │   │   │   ├── roster-config.css
-│   │   │   └── styles.css
+│   │   │   ├── styles.css
+│   │   │   ├── udk-import.css
+│   │   │   └── udk-importer.ts
 │   │   ├── tests
 │   │   │   ├── app.test.tsx
-│   │   │   └── recovery.test.ts
+│   │   │   ├── recovery.test.ts
+│   │   │   └── udk-importer.test.ts
 │   │   ├── index.html
 │   │   ├── package.json
 │   │   ├── tsconfig.json
@@ -274,7 +296,8 @@ test:
 │   ├── repository-audit.md
 │   ├── roadmap.md
 │   ├── SOURCE_INVENTORY.md
-│   └── testing-strategy.md
+│   ├── testing-strategy.md
+│   └── udk-import.md
 ├── e2e
 │   └── draft-room.spec.ts
 ├── notebooks
@@ -386,6 +409,7 @@ At any draft pick, identify which available player offers the best risk-adjusted
 - Recommendations must be explainable.
 - Cross-source player joins use `canonical_player_id`, never raw player names.
 - Draft state, recommendation logic, and the user interface remain independently testable.
+- Proprietary projection exports remain local and are never committed to the repository.
 
 ## Current foundation
 
@@ -403,6 +427,7 @@ The repository includes:
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
 - a React/Vite live draft room with local recovery
+- Fantasy Footballers UDK ZIP import and release normalization
 - Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
@@ -413,7 +438,11 @@ The React interface currently supports:
 - editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts
 - draft rounds derived automatically from roster capacity
 - standard, no-kicker, no-defense, extra-flex, two-QB, and superflex roster structures
-- an offline deterministic demo player release
+- one-step import of a Fantasy Footballers UDK ZIP package
+- UDK Andy, Jason, and Mike statistical projections recalculated for the selected scoring format
+- Average, Sleeper, ESPN, Yahoo, and Underdog ADP markets
+- UDK rankings, tiers, risk scores, upside scores, and bye weeks
+- an offline deterministic demo release when no UDK package is loaded
 - manual entry for every team selection
 - automatic snake-order advancement
 - search and position filters
@@ -424,9 +453,20 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery, backup, and custom-roster workflows
+- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
 
-The next primary increments are production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
+The next data increment is matching the UDK release to stable NFLverse player IDs and prior-year statistics. SQLite persistence and Tauri desktop packaging follow.
+
+## Draft-day UDK refresh
+
+1. Download fresh UDK CSV exports.
+2. Keep the exported folder structure and compress the files into one ZIP.
+3. Configure scoring, league size, roster slots, and the desired ADP market.
+4. Select **Import UDK ZIP**.
+5. Review the coverage report.
+6. Start the draft.
+
+All ZIP processing happens locally in the browser. See [`docs/udk-import.md`](docs/udk-import.md) for recognized files, projection math, ADP conversion, and privacy rules.
 
 ## Target application
 
@@ -461,6 +501,7 @@ See:
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
+- [`docs/udk-import.md`](docs/udk-import.md)
 
 ## Run the draft room
 
@@ -486,45 +527,7 @@ Requires Python 3.11 or later.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-```
-
-Run the existing data pipeline and tests:
-
-```bash
-python scripts/ingest_adp.py
-python scripts/ingest_nflverse.py
-python scripts/build_player_reference.py
-pytest
-```
-
-## Validation commands
-
-```bash
-npm run typecheck
-npm test
-npm run check
-npm run build
-npm run evaluate:recommendations
-npx playwright install chromium
-npm run test:e2e
-```
-
-## Current project structure
-
-```text
-apps/
-  draft-room/            # React/Vite live draft interface
-e2e/                     # Playwright browser workflows
-packages/
-  data/                  # Python ingestion and identity logic
-  modeling/              # Python modeling package
-  shared/                # Python shared package
-  shared-types/          # TypeScript contracts and runtime release validation
-  draft-engine/          # Deterministic TypeScript draft state engine
-  recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
-scripts/                 # Data entrypoints and recommendation evaluation comma
+source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activat
 
 [TRUNCATED]
 ```
@@ -2159,7 +2162,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** Functional, recoverable, and roster-configurable browser application implemented
+**Status:** Functional, recoverable, roster-configurable, and UDK-enabled browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -2177,7 +2180,8 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 10. Draft import, autosave, and recovery — complete for the browser application
 11. Playwright end-to-end tests — baseline complete
 12. Custom roster editor — complete
-13. Production player-data release import — pending
+13. Fantasy Footballers UDK ZIP import — complete
+14. NFLverse identity and prior-year-stat enrichment — pending
 
 ### Current behavior
 
@@ -2192,8 +2196,12 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - League setup supports editable QB, RB, WR, TE, FLEX, SUPERFLEX, K, DST, and bench counts.
 - Draft rounds and total selections are derived automatically from roster capacity.
 - Standard, no-kicker, no-defense, extra-flex, two-QB, and superflex structures are supported.
-- Playwright validates keyboard drafting, recovery, correction, undo, export, import, and custom roster setup in Chromium.
-- A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
+- A UDK ZIP is recognized and normalized entirely in the browser.
+- Andy, Jason, and Mike stat lines are rescored for Standard, Half PPR, or Full PPR and combined by median.
+- Average, Sleeper, ESPN, Yahoo, and Underdog ADP can be selected and converted to overall picks using league size.
+- Import coverage and unmatched rows are shown before the draft starts.
+- The UDK release replaces the fictional player pool while remaining local to the user's device.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, import, custom roster setup, and synthetic UDK ZIP upload in Chromium.
 
 ### Exit criteria
 
@@ -2201,8 +2209,9 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Common pick entry requires minimal interaction.
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
+- A fresh day-of-draft UDK package can replace the demonstration release without code changes.
 
-The interface and resilience exit criteria are covered. Remaining M4 work is replacing demonstration data with a validated production preseason release.
+The interface, resilience, roster, and UDK import exit criteria are covered. Remaining M4 data work is stable NFLverse identity matching and prior-year-stat enrichment.
 
 ## M5 — Local persistence and desktop release
 
@@ -2255,9 +2264,10 @@ The active build sequence is:
 6. Build the React/Vite draft-room shell against stable engine APIs.
 7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
 8. Add custom roster editing.
-9. Replace demonstration data with versioned preseason player-data releases.
-10. Expand evaluation with full mock drafts and historical player releases.
-11. Add SQLite autosave and Tauri desktop packaging.
+9. Add day-of-draft UDK ZIP import and normalization.
+10. Match UDK players to NFLverse identities and prior-year statistics.
+11. Expand evaluation with full mock drafts and historical player releases.
+12. Add SQLite autosave and Tauri desktop packaging.
 ```
 
 ### `docs/testing-strategy.md`
@@ -2890,7 +2900,7 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
 ```text
 {
   "name": "@fdi/draft-room",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -2902,6 +2912,7 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
     "@fdi/draft-engine": "0.1.0",
     "@fdi/recommendation-engine": "0.1.0",
     "@fdi/shared-types": "0.1.0",
+    "fflate": "0.8.3",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
@@ -2917,7 +2928,7 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
 ### `apps/draft-room/src/App.tsx`
 
 ```text
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   correctPick,
   getPlayerById,
@@ -2931,6 +2942,7 @@ import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
   createDraftFromSetup,
+  createScoringSettings,
   type DraftSetup,
 } from "./draft-factory.js";
 import {
@@ -2939,16 +2951,35 @@ import {
   loadDraftRecovery,
   saveDraftRecovery,
 } from "./draft-storage.js";
+import {
+  buildUdkPlayerDataRelease,
+  parseUdkZip,
+  type UdkImportPackage,
+} from "./udk-importer.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
+  const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
   );
+
+  const udkBuild = useMemo(() => {
+    if (udkPackage === null) {
+      return null;
+    }
+    return buildUdkPlayerDataRelease(udkPackage, {
+      scoring: createScoringSettings(setup.scoringPreset),
+      adpTeamCount: setup.teamCount,
+      adpSource: setup.adpSource,
+      generatedAt: new Date().toISOString(),
+    });
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
 
   useEffect(() => {
     if (draftState === null) {
@@ -2960,77 +2991,52 @@ export function App() {
 
   function startDraft(): void {
     try {
-      const nextState = createDraftFromSetup(setup);
+      const release = udkBuild?.release;
+      if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
+        throw new RangeError(
+          `The imported UDK package contains ${release.players.length} players, but this draft requires ${
+            setup.teamCount * setup.rounds
+          } selections.`,
+        );
+      }
+      const nextState = createDraftFromSetup(setup, undefined, release);
       clearDraftRecovery();
       setRecoveredDraft(null);
       setDraftState(nextState);
       setErrorMessage(null);
-      setNotice("Draft created. Record the first selection from the player board.");
+      setNotice(
+        release === undefined
+          ? "Draft created with demonstration player data."
+          : `Draft created with the ${release.season} UDK release and ${release.players.length} players.`,
+      );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     }
   }
 
+  async function importUdkPackage(file: File): Promise<void> {
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const parsed = parseUdkZip(bytes);
+      setUdkPackage(parsed);
+      setUdkFilename(file.name);
+      setErrorMessage(null);
+      setNotice(null);
+    } catch (error) {
+      setUdkPackage(null);
+      setUdkFilename(null);
+      setErrorMessage(toErrorMessage(error));
+    }
+  }
+
+  function clearUdkPackage(): void {
+    setUdkPackage(null);
+    setUdkFilename(null);
+    setErrorMessage(null);
+  }
+
   function resumeDraft(): void {
-    if (recoveredDraft === null) {
-      return;
-    }
-    setDraftState(recoveredDraft);
-    setErrorMessage(null);
-    setNotice("Autosaved draft resumed.");
-  }
-
-  function discardRecovery(): void {
-    clearDraftRecovery();
-    setRecoveredDraft(null);
-    setErrorMessage(null);
-  }
-
-  function draftPlayer(playerId: string): void {
-    if (draftState === null) {
-      return;
-    }
-
-    try {
-      const player = getPlayerById(draftState, playerId);
-      const currentPick = draftState.nextOverallPick;
-      const nextState = makePick(draftState, playerId);
-      setDraftState(nextState);
-      setNotice(
-        `${player?.display_name ?? playerId} selected at pick ${currentPick ?? "—"}.`,
-      );
-    } catch (error) {
-      setNotice(toErrorMessage(error));
-    }
-  }
-
-  function undoPick(): void {
-    if (draftState === null || draftState.picks.length === 0) {
-      return;
-    }
-
-    try {
-      const lastPick = draftState.picks[draftState.picks.length - 1]!;
-      const player = getPlayerById(draftState, lastPick.playerId);
-      const nextState = undoLastPick(draftState);
-      setDraftState(nextState);
-      setNotice(`${player?.display_name ?? lastPick.playerId} returned to the player pool.`);
-    } catch (error) {
-      setNotice(toErrorMessage(error));
-    }
-  }
-
-  function correctDraftPick(overallPick: number, replacementPlayerId: string): boolean {
-    if (draftState === null) {
-      return false;
-    }
-
-    try {
-      const previousPick = draftState.picks[overallPick - 1];
-      const previousPlayer =
-        previousPick === undefined ? null : getPlayerById(draftState, previousPick.playerId);
-      const replacementPlayer = getPlayerById(draftState, replacementPlayerId);
-      const nextState = correctPick(draftState, ove
+    if (recoveredD
 
 [TRUNCATED]
 ```
@@ -3375,28 +3381,50 @@ import {
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import {
+  UDK_ADP_SOURCES,
+  type UdkAdpSource,
+  type UdkBuildReport,
+} from "../udk-importer.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
+import { UdkImportCard } from "./UdkImportCard.js";
 
 interface RecoverySetupScreenProps {
   setup: DraftSetup;
   recoveredDraft: DraftState | null;
+  udkReport: UdkBuildReport | null;
+  udkFilename: string | null;
   errorMessage: string | null;
   onSetupChange: (setup: DraftSetup) => void;
   onStartDraft: () => void;
   onResumeDraft: () => void;
   onDiscardRecovery: () => void;
   onImportDraft: (file: File) => Promise<boolean>;
+  onImportUdk: (file: File) => Promise<void>;
+  onClearUdk: () => void;
 }
+
+const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
+  average: "Average market",
+  sleeper: "Sleeper",
+  espn: "ESPN",
+  yahoo: "Yahoo",
+  underdog: "Underdog",
+};
 
 export function RecoverySetupScreen({
   setup,
   recoveredDraft,
+  udkReport,
+  udkFilename,
   errorMessage,
   onSetupChange,
   onStartDraft,
   onResumeDraft,
   onDiscardRecovery,
   onImportDraft,
+  onImportUdk,
+  onClearUdk,
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
@@ -3424,15 +3452,15 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, restore a saved draft, and run the entire snake draft
-          from one laptop. No platform login. No live sync dependency.
+          Configure the league and roster, load fresh UDK data, restore a saved draft, and run the
+          entire snake draft from one laptop. No platform login. No live sync dependency.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>UDK projections</span>
           <span>Custom rosters</span>
           <span>Automatic recovery</span>
           <span>Live recommendations</span>
-          <span>Every roster tracked</span>
         </div>
       </section>
 
@@ -3459,17 +3487,7 @@ export function RecoverySetupScreen({
         </div>
 
         {recoveredDraft === null ? null : (
-          <section className="recovery-card" aria-labelledby="recovery-title">
-            <div>
-              <p className="eyebrow">Autosaved draft found</p>
-              <h3 id="recovery-title">{recoveredDraft.settings.leagueName}</h3>
-              <p>
-                {recoveredDraft.picks.length} of {recoveredDraft.order.length} picks recorded ·
-                revision {recoveredDraft.revision}
-              </p>
-            </div>
-            <div className="recovery-actions">
-              <button className="primary-button" type="button" onClick={onResumeDraft}>
+          <section className="recovery-card" aria-lab
 
 [TRUNCATED]
 ```
@@ -3705,6 +3723,104 @@ export function SetupScreen({
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/components/UdkImportCard.tsx`
+
+```text
+import { useRef, type ChangeEvent } from "react";
+import type { UdkBuildReport } from "../udk-importer.js";
+
+interface UdkImportCardProps {
+  report: UdkBuildReport | null;
+  filename: string | null;
+  onImport: (file: File) => Promise<void>;
+  onClear: () => void;
+}
+
+export function UdkImportCard({ report, filename, onImport, onClear }: UdkImportCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImport(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <section className="udk-import-card field-wide" aria-labelledby="udk-import-title">
+      <div className="udk-import-heading">
+        <div>
+          <p className="eyebrow">Player data</p>
+          <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
+          <p>
+            Upload the fresh ZIP from the UDK. Rankings, analyst projections, and platform ADP are
+            recognized locally and never sent to a server.
+          </p>
+        </div>
+        <div className="udk-import-actions">
+          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
+            {report === null ? "Import UDK ZIP" : "Replace UDK ZIP"}
+          </button>
+          {report === null ? null : (
+            <button className="ghost-button" type="button" onClick={onClear}>
+              Use demo data
+            </button>
+          )}
+          <input
+            ref={inputRef}
+            data-testid="udk-file-input"
+            className="sr-only"
+            type="file"
+            accept="application/zip,.zip"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+      </div>
+
+      {report === null ? (
+        <div className="udk-empty-state">
+          <strong>Demo player data is active.</strong>
+          <span>Importing a UDK ZIP replaces the fictional pool when the draft begins.</span>
+        </div>
+      ) : (
+        <div className="udk-preview" role="status">
+          <div className="udk-ready-row">
+            <span className="udk-ready-badge">UDK {report.season} ready</span>
+            <span>{filename}</span>
+          </div>
+          <div className="udk-metrics">
+            <Metric label="Players" value={report.playerCount} />
+            <Metric label="Projected" value={report.projectedPlayerCount} />
+            <Metric label="All 3 analysts" value={report.allAnalystProjectionCount} />
+            <Metric label="Selected ADP" value={report.selectedAdpPlayerCount} />
+            <Metric label="Files recognized" value={report.recognizedFileCount} />
+          </div>
+          <p className="udk-preview-note">
+            {report.adpPlayerCount} ranked players appeared in the ADP comparison. The selected
+            market and league size below determine the ADP used by recommendations.
+          </p>
+          {report.warnings.length === 0 ? null : (
+            <details className="udk-warning-list">
+              <summary>{report.warnings.length} import note{report.warnings.length === 1 ? "" : "s"}</summary>
+              <ul>
+                {report.warnings.slice(0, 8).map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/demo-data.ts`
 
 ```text
@@ -3908,6 +4024,7 @@ import { createDraftState } from "@fdi/draft-engine";
 import type {
   DraftState,
   LeagueSettings,
+  PlayerDataRelease,
   PlayerPosition,
   RosterSlotRule,
   RosterSlotType,
@@ -3915,6 +4032,7 @@ import type {
   ScoringSettings,
 } from "@fdi/shared-types";
 import { createDemoPlayerDataRelease } from "./demo-data.js";
+import { UDK_ADP_SOURCES, type UdkAdpSource } from "./udk-importer.js";
 
 export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
 export type RosterCounts = Record<RosterSlotType, number>;
@@ -3925,6 +4043,7 @@ export interface DraftSetup {
   userDraftSlot: number;
   rounds: number;
   scoringPreset: SupportedScoringPreset;
+  adpSource: UdkAdpSource;
   rosterCounts: RosterCounts;
 }
 
@@ -3938,78 +4057,15 @@ export interface RosterSlotOption {
 }
 
 export const ROSTER_SLOT_OPTIONS: RosterSlotOption[] = [
-  {
-    slot: "QB",
-    label: "Quarterback",
-    description: "Dedicated QB starters",
-    min: 0,
-    max: 3,
-    eligiblePositions: ["QB"],
-  },
-  {
-    slot: "RB",
-    label: "Running back",
-    description: "Dedicated RB starters",
-    min: 0,
-    max: 6,
-    eligiblePositions: ["RB"],
-  },
-  {
-    slot: "WR",
-    label: "Wide receiver",
-    description: "Dedicated WR starters",
-    min: 0,
-    max: 6,
-    eligiblePositions: ["WR"],
-  },
-  {
-    slot: "TE",
-    label: "Tight end",
-    description: "Dedicated TE starters",
-    min: 0,
-    max: 3,
-    eligiblePositions: ["TE"],
-  },
-  {
-    slot: "FLEX",
-    label: "Flex",
-    description: "RB, WR, or TE",
-    min: 0,
-    max: 4,
-    eligiblePositions: ["RB", "WR", "TE"],
-  },
-  {
-    slot: "SUPERFLEX",
-    label: "Superflex",
-    description: "QB, RB, WR, or TE",
-    min: 0,
-    max: 3,
-    eligiblePositions: ["QB", "RB", "WR", "TE"],
-  },
-  {
-    slot: "K",
-    label: "Kicker",
-    description: "Dedicated kicker slot",
-    min: 0,
-    max: 1,
-    eligiblePositions: ["K"],
-  },
-  {
-    slot: "DST",
-    label: "Defense",
-    description: "Team defense / special teams",
-    min: 0,
-    max: 1,
-    eligiblePositions: ["DST"],
-  },
-  {
-    slot: "BENCH",
-    label: "Bench",
-    description: "Any offensive player, K, or DST",
-    min: 0,
-    max: 16,
-    eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
-  },
+  { slot: "QB", label: "Quarterback", description: "Dedicated QB starters", min: 0, max: 3, eligiblePositions: ["QB"] },
+  { slot: "RB", label: "Running back", description: "Dedicated RB starters", min: 0, max: 6, eligiblePositions: ["RB"] },
+  { slot: "WR", label: "Wide receiver", description: "Dedicated WR starters", min: 0, max: 6, eligiblePositions: ["WR"] },
+  { slot: "TE", label: "Tight end", description: "Dedicated TE starters", min: 0, max: 3, eligiblePositions: ["TE"] },
+  { slot: "FLEX", label: "Flex", description: "RB, WR, or TE", min: 0, max: 4, eligiblePositions: ["RB", "WR", "TE"] },
+  { slot: "SUPERFLEX", label: "Superflex", description: "QB, RB, WR, or TE", min: 0, max: 3, eligiblePositions: ["QB", "RB", "WR", "TE"] },
+  { slot: "K", label: "Kicker", description: "Dedicated kicker slot", min: 0, max: 1, eligiblePositions: ["K"] },
+  { slot: "DST", label: "Defense", description: "Team defense / special teams", min: 0, max: 1, eligiblePositions: ["DST"] },
+  { slot: "BENCH", label: "Bench", description: "Any offensive player, K, or DST", min: 0, max: 16, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
 ];
 
 export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
@@ -4030,6 +4086,7 @@ export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   userDraftSlot: 6,
   rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
+  adpSource: "sleeper",
   rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
 };
 
@@ -4041,31 +4098,27 @@ export const SCORING_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-  {
-    value: "standard",
-    label: "Standard",
-    description: "No points per reception",
-  },
-  {
-    value: "half_ppr",
-    label: "Half PPR",
-    description: "0.5 points per reception",
-  },
-  {
-    value: "ppr",
-    label: "Full PPR",
-    description: "1 point per reception",
-  },
+  { value: "standard", label: "Standard", description: "No points per reception" },
+  { value: "half_ppr", label: "Half PPR", description: "0.5 points per reception" },
+  { value: "ppr", label: "Full PPR", description: "1 point per reception" },
 ];
 
 export function createDraftFromSetup(
   setup: DraftSetup,
   draftId = createDraftId(setup.leagueName),
+  playerDataRelease?: PlayerDataRelease,
 ): DraftState {
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
   const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1
+    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
+  );
+
+  return createDraftState({
+    draftId,
+    settings,
+    teamNames,
+    playerDataRelease:
 
 [TRUNCATED]
 ```
@@ -4122,28 +4175,6 @@ function getBrowserStorage(): Storage | null {
   }
   return window.localStorage;
 }
-```
-
-### `apps/draft-room/src/main.tsx`
-
-```text
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { App } from "./App.js";
-import "./styles.css";
-import "./recovery.css";
-import "./roster-config.css";
-
-const rootElement = document.getElementById("root");
-if (rootElement === null) {
-  throw new Error("Draft room root element was not found.");
-}
-
-createRoot(rootElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
 ```
 
 ## Fantasy Domain Logic Files
@@ -4261,7 +4292,7 @@ export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorP
 ```text
 {
   "name": "@fdi/draft-room",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -4273,6 +4304,7 @@ export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorP
     "@fdi/draft-engine": "0.1.0",
     "@fdi/recommendation-engine": "0.1.0",
     "@fdi/shared-types": "0.1.0",
+    "fflate": "0.8.3",
     "react": "19.2.7",
     "react-dom": "19.2.7"
   },
@@ -4288,7 +4320,7 @@ export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorP
 ### `apps/draft-room/src/App.tsx`
 
 ```text
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   correctPick,
   getPlayerById,
@@ -4302,6 +4334,7 @@ import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
   createDraftFromSetup,
+  createScoringSettings,
   type DraftSetup,
 } from "./draft-factory.js";
 import {
@@ -4310,16 +4343,35 @@ import {
   loadDraftRecovery,
   saveDraftRecovery,
 } from "./draft-storage.js";
+import {
+  buildUdkPlayerDataRelease,
+  parseUdkZip,
+  type UdkImportPackage,
+} from "./udk-importer.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
+  const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
   );
+
+  const udkBuild = useMemo(() => {
+    if (udkPackage === null) {
+      return null;
+    }
+    return buildUdkPlayerDataRelease(udkPackage, {
+      scoring: createScoringSettings(setup.scoringPreset),
+      adpTeamCount: setup.teamCount,
+      adpSource: setup.adpSource,
+      generatedAt: new Date().toISOString(),
+    });
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
 
   useEffect(() => {
     if (draftState === null) {
@@ -4331,77 +4383,52 @@ export function App() {
 
   function startDraft(): void {
     try {
-      const nextState = createDraftFromSetup(setup);
+      const release = udkBuild?.release;
+      if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
+        throw new RangeError(
+          `The imported UDK package contains ${release.players.length} players, but this draft requires ${
+            setup.teamCount * setup.rounds
+          } selections.`,
+        );
+      }
+      const nextState = createDraftFromSetup(setup, undefined, release);
       clearDraftRecovery();
       setRecoveredDraft(null);
       setDraftState(nextState);
       setErrorMessage(null);
-      setNotice("Draft created. Record the first selection from the player board.");
+      setNotice(
+        release === undefined
+          ? "Draft created with demonstration player data."
+          : `Draft created with the ${release.season} UDK release and ${release.players.length} players.`,
+      );
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     }
   }
 
+  async function importUdkPackage(file: File): Promise<void> {
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const parsed = parseUdkZip(bytes);
+      setUdkPackage(parsed);
+      setUdkFilename(file.name);
+      setErrorMessage(null);
+      setNotice(null);
+    } catch (error) {
+      setUdkPackage(null);
+      setUdkFilename(null);
+      setErrorMessage(toErrorMessage(error));
+    }
+  }
+
+  function clearUdkPackage(): void {
+    setUdkPackage(null);
+    setUdkFilename(null);
+    setErrorMessage(null);
+  }
+
   function resumeDraft(): void {
-    if (recoveredDraft === null) {
-      return;
-    }
-    setDraftState(recoveredDraft);
-    setErrorMessage(null);
-    setNotice("Autosaved draft resumed.");
-  }
-
-  function discardRecovery(): void {
-    clearDraftRecovery();
-    setRecoveredDraft(null);
-    setErrorMessage(null);
-  }
-
-  function draftPlayer(playerId: string): void {
-    if (draftState === null) {
-      return;
-    }
-
-    try {
-      const player = getPlayerById(draftState, playerId);
-      const currentPick = draftState.nextOverallPick;
-      const nextState = makePick(draftState, playerId);
-      setDraftState(nextState);
-      setNotice(
-        `${player?.display_name ?? playerId} selected at pick ${currentPick ?? "—"}.`,
-      );
-    } catch (error) {
-      setNotice(toErrorMessage(error));
-    }
-  }
-
-  function undoPick(): void {
-    if (draftState === null || draftState.picks.length === 0) {
-      return;
-    }
-
-    try {
-      const lastPick = draftState.picks[draftState.picks.length - 1]!;
-      const player = getPlayerById(draftState, lastPick.playerId);
-      const nextState = undoLastPick(draftState);
-      setDraftState(nextState);
-      setNotice(`${player?.display_name ?? lastPick.playerId} returned to the player pool.`);
-    } catch (error) {
-      setNotice(toErrorMessage(error));
-    }
-  }
-
-  function correctDraftPick(overallPick: number, replacementPlayerId: string): boolean {
-    if (draftState === null) {
-      return false;
-    }
-
-    try {
-      const previousPick = draftState.picks[overallPick - 1];
-      const previousPlayer =
-        previousPick === undefined ? null : getPlayerById(draftState, previousPick.playerId);
-      const replacementPlayer = getPlayerById(draftState, replacementPlayerId);
-      const nextState = correctPick(draftState, ove
+    if (recoveredD
 
 [TRUNCATED]
 ```
@@ -4746,28 +4773,50 @@ import {
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import {
+  UDK_ADP_SOURCES,
+  type UdkAdpSource,
+  type UdkBuildReport,
+} from "../udk-importer.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
+import { UdkImportCard } from "./UdkImportCard.js";
 
 interface RecoverySetupScreenProps {
   setup: DraftSetup;
   recoveredDraft: DraftState | null;
+  udkReport: UdkBuildReport | null;
+  udkFilename: string | null;
   errorMessage: string | null;
   onSetupChange: (setup: DraftSetup) => void;
   onStartDraft: () => void;
   onResumeDraft: () => void;
   onDiscardRecovery: () => void;
   onImportDraft: (file: File) => Promise<boolean>;
+  onImportUdk: (file: File) => Promise<void>;
+  onClearUdk: () => void;
 }
+
+const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
+  average: "Average market",
+  sleeper: "Sleeper",
+  espn: "ESPN",
+  yahoo: "Yahoo",
+  underdog: "Underdog",
+};
 
 export function RecoverySetupScreen({
   setup,
   recoveredDraft,
+  udkReport,
+  udkFilename,
   errorMessage,
   onSetupChange,
   onStartDraft,
   onResumeDraft,
   onDiscardRecovery,
   onImportDraft,
+  onImportUdk,
+  onClearUdk,
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
@@ -4795,15 +4844,15 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, restore a saved draft, and run the entire snake draft
-          from one laptop. No platform login. No live sync dependency.
+          Configure the league and roster, load fresh UDK data, restore a saved draft, and run the
+          entire snake draft from one laptop. No platform login. No live sync dependency.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>UDK projections</span>
           <span>Custom rosters</span>
           <span>Automatic recovery</span>
           <span>Live recommendations</span>
-          <span>Every roster tracked</span>
         </div>
       </section>
 
@@ -4830,17 +4879,7 @@ export function RecoverySetupScreen({
         </div>
 
         {recoveredDraft === null ? null : (
-          <section className="recovery-card" aria-labelledby="recovery-title">
-            <div>
-              <p className="eyebrow">Autosaved draft found</p>
-              <h3 id="recovery-title">{recoveredDraft.settings.leagueName}</h3>
-              <p>
-                {recoveredDraft.picks.length} of {recoveredDraft.order.length} picks recorded ·
-                revision {recoveredDraft.revision}
-              </p>
-            </div>
-            <div className="recovery-actions">
-              <button className="primary-button" type="button" onClick={onResumeDraft}>
+          <section className="recovery-card" aria-lab
 
 [TRUNCATED]
 ```
@@ -4964,6 +5003,104 @@ export function SetupScreen({
           </label>
 
           <label
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/UdkImportCard.tsx`
+
+```text
+import { useRef, type ChangeEvent } from "react";
+import type { UdkBuildReport } from "../udk-importer.js";
+
+interface UdkImportCardProps {
+  report: UdkBuildReport | null;
+  filename: string | null;
+  onImport: (file: File) => Promise<void>;
+  onClear: () => void;
+}
+
+export function UdkImportCard({ report, filename, onImport, onClear }: UdkImportCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImport(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <section className="udk-import-card field-wide" aria-labelledby="udk-import-title">
+      <div className="udk-import-heading">
+        <div>
+          <p className="eyebrow">Player data</p>
+          <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
+          <p>
+            Upload the fresh ZIP from the UDK. Rankings, analyst projections, and platform ADP are
+            recognized locally and never sent to a server.
+          </p>
+        </div>
+        <div className="udk-import-actions">
+          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
+            {report === null ? "Import UDK ZIP" : "Replace UDK ZIP"}
+          </button>
+          {report === null ? null : (
+            <button className="ghost-button" type="button" onClick={onClear}>
+              Use demo data
+            </button>
+          )}
+          <input
+            ref={inputRef}
+            data-testid="udk-file-input"
+            className="sr-only"
+            type="file"
+            accept="application/zip,.zip"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+      </div>
+
+      {report === null ? (
+        <div className="udk-empty-state">
+          <strong>Demo player data is active.</strong>
+          <span>Importing a UDK ZIP replaces the fictional pool when the draft begins.</span>
+        </div>
+      ) : (
+        <div className="udk-preview" role="status">
+          <div className="udk-ready-row">
+            <span className="udk-ready-badge">UDK {report.season} ready</span>
+            <span>{filename}</span>
+          </div>
+          <div className="udk-metrics">
+            <Metric label="Players" value={report.playerCount} />
+            <Metric label="Projected" value={report.projectedPlayerCount} />
+            <Metric label="All 3 analysts" value={report.allAnalystProjectionCount} />
+            <Metric label="Selected ADP" value={report.selectedAdpPlayerCount} />
+            <Metric label="Files recognized" value={report.recognizedFileCount} />
+          </div>
+          <p className="udk-preview-note">
+            {report.adpPlayerCount} ranked players appeared in the ADP comparison. The selected
+            market and league size below determine the ADP used by recommendations.
+          </p>
+          {report.warnings.length === 0 ? null : (
+            <details className="udk-warning-list">
+              <summary>{report.warnings.length} import note{report.warnings.length === 1 ? "" : "s"}</summary>
+              <ul>
+                {report.warnings.slice(0, 8).map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string
 
 [TRUNCATED]
 ```
@@ -5171,6 +5308,7 @@ import { createDraftState } from "@fdi/draft-engine";
 import type {
   DraftState,
   LeagueSettings,
+  PlayerDataRelease,
   PlayerPosition,
   RosterSlotRule,
   RosterSlotType,
@@ -5178,6 +5316,7 @@ import type {
   ScoringSettings,
 } from "@fdi/shared-types";
 import { createDemoPlayerDataRelease } from "./demo-data.js";
+import { UDK_ADP_SOURCES, type UdkAdpSource } from "./udk-importer.js";
 
 export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
 export type RosterCounts = Record<RosterSlotType, number>;
@@ -5188,6 +5327,7 @@ export interface DraftSetup {
   userDraftSlot: number;
   rounds: number;
   scoringPreset: SupportedScoringPreset;
+  adpSource: UdkAdpSource;
   rosterCounts: RosterCounts;
 }
 
@@ -5201,78 +5341,15 @@ export interface RosterSlotOption {
 }
 
 export const ROSTER_SLOT_OPTIONS: RosterSlotOption[] = [
-  {
-    slot: "QB",
-    label: "Quarterback",
-    description: "Dedicated QB starters",
-    min: 0,
-    max: 3,
-    eligiblePositions: ["QB"],
-  },
-  {
-    slot: "RB",
-    label: "Running back",
-    description: "Dedicated RB starters",
-    min: 0,
-    max: 6,
-    eligiblePositions: ["RB"],
-  },
-  {
-    slot: "WR",
-    label: "Wide receiver",
-    description: "Dedicated WR starters",
-    min: 0,
-    max: 6,
-    eligiblePositions: ["WR"],
-  },
-  {
-    slot: "TE",
-    label: "Tight end",
-    description: "Dedicated TE starters",
-    min: 0,
-    max: 3,
-    eligiblePositions: ["TE"],
-  },
-  {
-    slot: "FLEX",
-    label: "Flex",
-    description: "RB, WR, or TE",
-    min: 0,
-    max: 4,
-    eligiblePositions: ["RB", "WR", "TE"],
-  },
-  {
-    slot: "SUPERFLEX",
-    label: "Superflex",
-    description: "QB, RB, WR, or TE",
-    min: 0,
-    max: 3,
-    eligiblePositions: ["QB", "RB", "WR", "TE"],
-  },
-  {
-    slot: "K",
-    label: "Kicker",
-    description: "Dedicated kicker slot",
-    min: 0,
-    max: 1,
-    eligiblePositions: ["K"],
-  },
-  {
-    slot: "DST",
-    label: "Defense",
-    description: "Team defense / special teams",
-    min: 0,
-    max: 1,
-    eligiblePositions: ["DST"],
-  },
-  {
-    slot: "BENCH",
-    label: "Bench",
-    description: "Any offensive player, K, or DST",
-    min: 0,
-    max: 16,
-    eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
-  },
+  { slot: "QB", label: "Quarterback", description: "Dedicated QB starters", min: 0, max: 3, eligiblePositions: ["QB"] },
+  { slot: "RB", label: "Running back", description: "Dedicated RB starters", min: 0, max: 6, eligiblePositions: ["RB"] },
+  { slot: "WR", label: "Wide receiver", description: "Dedicated WR starters", min: 0, max: 6, eligiblePositions: ["WR"] },
+  { slot: "TE", label: "Tight end", description: "Dedicated TE starters", min: 0, max: 3, eligiblePositions: ["TE"] },
+  { slot: "FLEX", label: "Flex", description: "RB, WR, or TE", min: 0, max: 4, eligiblePositions: ["RB", "WR", "TE"] },
+  { slot: "SUPERFLEX", label: "Superflex", description: "QB, RB, WR, or TE", min: 0, max: 3, eligiblePositions: ["QB", "RB", "WR", "TE"] },
+  { slot: "K", label: "Kicker", description: "Dedicated kicker slot", min: 0, max: 1, eligiblePositions: ["K"] },
+  { slot: "DST", label: "Defense", description: "Team defense / special teams", min: 0, max: 1, eligiblePositions: ["DST"] },
+  { slot: "BENCH", label: "Bench", description: "Any offensive player, K, or DST", min: 0, max: 16, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
 ];
 
 export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
@@ -5293,6 +5370,7 @@ export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   userDraftSlot: 6,
   rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
+  adpSource: "sleeper",
   rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
 };
 
@@ -5304,31 +5382,27 @@ export const SCORING_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-  {
-    value: "standard",
-    label: "Standard",
-    description: "No points per reception",
-  },
-  {
-    value: "half_ppr",
-    label: "Half PPR",
-    description: "0.5 points per reception",
-  },
-  {
-    value: "ppr",
-    label: "Full PPR",
-    description: "1 point per reception",
-  },
+  { value: "standard", label: "Standard", description: "No points per reception" },
+  { value: "half_ppr", label: "Half PPR", description: "0.5 points per reception" },
+  { value: "ppr", label: "Full PPR", description: "1 point per reception" },
 ];
 
 export function createDraftFromSetup(
   setup: DraftSetup,
   draftId = createDraftId(setup.leagueName),
+  playerDataRelease?: PlayerDataRelease,
 ): DraftState {
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
   const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1
+    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
+  );
+
+  return createDraftState({
+    draftId,
+    settings,
+    teamNames,
+    playerDataRelease:
 
 [TRUNCATED]
 ```
@@ -5385,28 +5459,6 @@ function getBrowserStorage(): Storage | null {
   }
   return window.localStorage;
 }
-```
-
-### `apps/draft-room/src/main.tsx`
-
-```text
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import { App } from "./App.js";
-import "./styles.css";
-import "./recovery.css";
-import "./roster-config.css";
-
-const rootElement = document.getElementById("root");
-if (rootElement === null) {
-  throw new Error("Draft room root element was not found.");
-}
-
-createRoot(rootElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -5937,6 +5989,104 @@ def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
         ingest_nflverse_weekly_players(config)
 ```
 
+### `apps/draft-room/src/components/UdkImportCard.tsx`
+
+```text
+import { useRef, type ChangeEvent } from "react";
+import type { UdkBuildReport } from "../udk-importer.js";
+
+interface UdkImportCardProps {
+  report: UdkBuildReport | null;
+  filename: string | null;
+  onImport: (file: File) => Promise<void>;
+  onClear: () => void;
+}
+
+export function UdkImportCard({ report, filename, onImport, onClear }: UdkImportCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImport(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <section className="udk-import-card field-wide" aria-labelledby="udk-import-title">
+      <div className="udk-import-heading">
+        <div>
+          <p className="eyebrow">Player data</p>
+          <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
+          <p>
+            Upload the fresh ZIP from the UDK. Rankings, analyst projections, and platform ADP are
+            recognized locally and never sent to a server.
+          </p>
+        </div>
+        <div className="udk-import-actions">
+          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
+            {report === null ? "Import UDK ZIP" : "Replace UDK ZIP"}
+          </button>
+          {report === null ? null : (
+            <button className="ghost-button" type="button" onClick={onClear}>
+              Use demo data
+            </button>
+          )}
+          <input
+            ref={inputRef}
+            data-testid="udk-file-input"
+            className="sr-only"
+            type="file"
+            accept="application/zip,.zip"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+      </div>
+
+      {report === null ? (
+        <div className="udk-empty-state">
+          <strong>Demo player data is active.</strong>
+          <span>Importing a UDK ZIP replaces the fictional pool when the draft begins.</span>
+        </div>
+      ) : (
+        <div className="udk-preview" role="status">
+          <div className="udk-ready-row">
+            <span className="udk-ready-badge">UDK {report.season} ready</span>
+            <span>{filename}</span>
+          </div>
+          <div className="udk-metrics">
+            <Metric label="Players" value={report.playerCount} />
+            <Metric label="Projected" value={report.projectedPlayerCount} />
+            <Metric label="All 3 analysts" value={report.allAnalystProjectionCount} />
+            <Metric label="Selected ADP" value={report.selectedAdpPlayerCount} />
+            <Metric label="Files recognized" value={report.recognizedFileCount} />
+          </div>
+          <p className="udk-preview-note">
+            {report.adpPlayerCount} ranked players appeared in the ADP comparison. The selected
+            market and league size below determine the ADP used by recommendations.
+          </p>
+          {report.warnings.length === 0 ? null : (
+            <details className="udk-warning-list">
+              <summary>{report.warnings.length} import note{report.warnings.length === 1 ? "" : "s"}</summary>
+              <ul>
+                {report.warnings.slice(0, 8).map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Metric({ label, value }: { label: string
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/demo-data.ts`
 
 ```text
@@ -6133,6 +6283,226 @@ export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDa
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/udk-importer.ts`
+
+```text
+import { strFromU8, unzipSync } from "fflate";
+import type {
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+  ScoringSettings,
+} from "@fdi/shared-types";
+
+export const UDK_ADP_SOURCES = ["average", "sleeper", "espn", "yahoo", "underdog"] as const;
+export type UdkAdpSource = (typeof UDK_ADP_SOURCES)[number];
+export type UdkAnalyst = "Andy" | "Jason" | "Mike";
+
+type ProjectionStat =
+  | "passingYards"
+  | "passingTouchdowns"
+  | "interceptions"
+  | "rushingAttempts"
+  | "rushingYards"
+  | "rushingTouchdowns"
+  | "receptions"
+  | "receivingYards"
+  | "receivingTouchdowns"
+  | "fumbles";
+
+type ProjectionStats = Partial<Record<ProjectionStat, number>>;
+
+interface UdkRankingRow {
+  name: string;
+  position: PlayerPosition;
+  team: string | null;
+  byeWeek: number | null;
+  positionRank: number;
+  projectedPoints: number | null;
+  risk: number | null;
+  upside: number | null;
+  tier: number | null;
+}
+
+interface UdkProjectionRow {
+  analyst: UdkAnalyst;
+  name: string;
+  position: PlayerPosition;
+  stats: ProjectionStats;
+}
+
+interface UdkAdpRow {
+  name: string;
+  position: PlayerPosition;
+  values: Record<UdkAdpSource, string | null>;
+}
+
+export interface UdkRecognizedFile {
+  path: string;
+  kind: "rankings" | "projections" | "adp" | "career" | "value-scout";
+  rowCount: number;
+}
+
+export interface UdkImportPackage {
+  season: number;
+  recognizedFiles: UdkRecognizedFile[];
+  ignoredFiles: string[];
+  rankings: UdkRankingRow[];
+  projections: UdkProjectionRow[];
+  adpRows: UdkAdpRow[];
+  warnings: string[];
+}
+
+export interface UdkBuildOptions {
+  scoring: ScoringSettings;
+  adpTeamCount: number;
+  adpSource: UdkAdpSource;
+  generatedAt?: string;
+}
+
+export interface UdkBuildReport {
+  season: number;
+  recognizedFileCount: number;
+  ignoredFileCount: number;
+  playerCount: number;
+  projectedPlayerCount: number;
+  allAnalystProjectionCount: number;
+  adpPlayerCount: number;
+  selectedAdpPlayerCount: number;
+  unmatchedProjectionRows: string[];
+  unmatchedAdpRows: string[];
+  warnings: string[];
+}
+
+export interface UdkBuildResult {
+  release: PlayerDataRelease;
+  report: UdkBuildReport;
+}
+
+export function parseUdkZip(
+  bytes: Uint8Array,
+  fallbackSeason = new Date().getFullYear(),
+): UdkImportPackage {
+  let archive: Record<string, Uint8Array>;
+  try {
+    archive = unzipSync(bytes);
+  } catch (error) {
+    throw new TypeError(`The selected file is not a readable ZIP archive: ${messageOf(error)}`);
+  }
+
+  const recognizedFiles: UdkRecognizedFile[] = [];
+  const ignoredFiles: string[] = [];
+  const rankings: UdkRankingRow[] = [];
+  const projections: UdkProjectionRow[] = [];
+  const adpRows: UdkAdpRow[] = [];
+  const warnings: string[] = [];
+  const careerYears: number[] = [];
+
+  for (const [rawPath, bytesForFile] of Object.entries(archive)) {
+    const path = rawPath.replaceAll("\\", "/");
+    if (path.endsWith("/") || bytesForFile.length === 0) continue;
+    const filename = path.split("/").at(-1) ?? path;
+
+    if (/\.pdf$/i.test(filename) || !/\.csv$/i.test(filename)) {
+      ignoredFiles.push(path);
+      continue;
+    }
+
+    const rows = parseCsv(strFromU8(bytesForFile));
+    if (rows.length === 0) {
+      warnings.push(`${path} was empty and was ignored.`);
+      continue;
+    }
+
+    const rankingMatch = filename.match(/UDK Position Rankings - (QB|RB|WR|TE|K|DST)\.csv$/i);
+    if (rankingMatch !== null) {
+      const position = normalizePosition(rankingMatch[1]);
+      if (position === null) {
+        warnings.push(`${path} u
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/tests/udk-importer.test.ts`
+
+```text
+import { strToU8, zipSync } from "fflate";
+import { describe, expect, it } from "vitest";
+import { createScoringSettings } from "../src/draft-factory.js";
+import {
+  buildUdkPlayerDataRelease,
+  parseCsv,
+  parseUdkZip,
+} from "../src/udk-importer.js";
+
+function createFixtureZip(): Uint8Array {
+  const files: Record<string, Uint8Array> = {
+    "Position Rankings/UDK Position Rankings - QB.csv": strToU8(
+      [
+        "Name,Position,Team,Bye Week,Rank,Points,Risk,Upside,ADP,Tier,Outlook,Dynasty,Markers",
+        'Josh Allen,QB,BUF,7,1,419.7,2.6,9.7,2.12,1,"Line one, with comma\nand line two",Dynasty,Markers',
+      ].join("\n"),
+    ),
+    "Position Rankings/UDK Position Rankings - RB.csv": strToU8(
+      [
+        "Name,Position,Team,Bye Week,Rank,Points,Risk,Upside,ADP,Tier,Outlook,Dynasty,Markers",
+        "Bijan Robinson,RB,ATL,11,1,356.4,1.3,10,1.02,1,Outlook,Dynasty,Markers",
+      ].join("\n"),
+    ),
+    "Position Rankings/UDK Position Rankings - K.csv": strToU8(
+      "Name,Position,Team,Bye Week,Rank,Andy,Jason,Mike,Markers\nBrandon Aubrey,K,DAL,14,1,1,1,1,Markers",
+    ),
+    "Position Rankings/UDK Position Rankings - DST.csv": strToU8(
+      "Name,Position,Team,Bye Week,Rank,Andy,Jason,Mike,Markers\nHouston Texans,D,HOU,8,1,1,2,1,Markers",
+    ),
+    "Projections/Andy/UDK - Andys Projections - QB.csv": strToU8(
+      [
+        "Name,Team,Bye Week,Rank,PPG,YDS,TDS,YDS,TDS,INT,FUM",
+        "Josh Allen,BUF,7,1,25.2,4000,30,500,8,10,3",
+        "Ghost Quarterback,FA,1,99,1,100,1,0,0,0,0",
+      ].join("\n"),
+    ),
+    "Projections/Jason/UDK - Jasons Projections - QB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,YDS,TDS,YDS,TDS,INT,FUM\nJosh Allen,BUF,7,1,25.8,4100,32,600,7,9,4",
+    ),
+    "Projections/Mike/UDK - Mikes Projections - QB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,YDS,TDS,YDS,TDS,INT,FUM\nJosh Allen,BUF,7,1,23,3900,28,550,9,12,5",
+    ),
+    "Projections/Andy/UDK - Andys Projections - RB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,ATTS,YDS,TDS,REC,YDS,TDS,FUM\nBijan Robinson,ATL,11,1,20,250,1200,10,60,500,4,2",
+    ),
+    "Projections/Jason/UDK - Jasons Projections - RB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,ATTS,YDS,TDS,REC,YDS,TDS,FUM\nBijan Robinson,ATL,11,1,21,275,1300,12,70,550,5,1",
+    ),
+    "Projections/Mike/UDK - Mikes Projections - RB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,ATTS,YDS,TDS,REC,YDS,TDS,FUM\nBijan Robinson,ATL,11,1,19,230,1100,8,50,450,3,3",
+    ),
+    "ADP Analysis/UDK - ADP Comparison - Fantasy Footballers Podcast.csv": strToU8(
+      [
+        "Rank,Name,Team,Pos,Pos,Avg,Sleeper,ESPN,Yahoo,Underdog",
+        "[object Object],Bijan Robinson,ATL,RB,RB,1.03,1.05,1.02,1.04,1.01",
+        "[object Object],Josh Allen,BUF,QB,QB,2.01,2.03,,2.02,2.04",
+      ].join("\n"),
+    ),
+    "Career Snapshot Tool/UDK - Consistency Charts - QB.csv": strToU8(
+      "Player,Rank,Total Points,Team,2025,2024,2023\nJosh Allen,1,1000,BUF,1,4,1",
+    ),
+    "Value Scout Tool/UDK - Value Scout - Fantasy Footballers Podcast.csv": strToU8(
+      "Name,Team,Pos,Pos,TrueValue,Diff,Sleeper ADP,Markers\nBijan Robinson,ATL,RB,RB,1.03,-2Pick,1.05,Markers",
+    ),
+    "Cheat Sheet/Cheat Sheet.pdf": new Uint8Array([37, 80, 68, 70]),
+  };
+  return zipSync(files);
+}
+
+describe("UDK ZIP importer", () => {
+  it("recognizes the package and builds a scored player release", () => {
+    const parsed = parseUdkZip(createFixtureZip(), 2024);
+    const result = buildUdkPlayerDataRelease(parsed, {
+
+[TRUNCATED]
+```
+
 ### `packages/data/__init__.py`
 
 ```text
@@ -6150,171 +6520,6 @@ PROCESSED_DATA_DIR = "data/processed"
 
 DEFAULT_PILOT_YEARS = [2023, 2024]
 VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}
-```
-
-### `packages/data/io.py`
-
-```text
-from pathlib import Path
-
-import pandas as pd
-
-
-def ensure_parent_dir(path: str | Path) -> Path:
-    output_path = Path(path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    return output_path
-
-
-def write_parquet(df: pd.DataFrame, path: str | Path) -> None:
-    output_path = ensure_parent_dir(path)
-    df.to_parquet(output_path, index=False)
-
-
-def read_parquet(path: str | Path) -> pd.DataFrame:
-    return pd.read_parquet(path)
-```
-
-### `packages/data/player_ids.py`
-
-```text
-from __future__ import annotations
-
-import re
-import unicodedata
-from collections.abc import Iterable
-
-import pandas as pd
-import polars as pl
-
-from packages.data.validation import assert_unique_key, require_columns
-
-CANONICAL_ID_COLUMN = "canonical_player_id"
-NORMALIZED_NAME_COLUMN = "normalized_player_name"
-ENTITY_TYPE_COLUMN = "entity_type"
-
-PLAYER_ENTITY = "player"
-DST_ENTITY = "dst"
-
-POSITION_NORMALIZATION_MAP: dict[str, str] = {
-    "QB": "QB",
-    "RB": "RB",
-    "WR": "WR",
-    "TE": "TE",
-    "K": "K",
-    "DST": "DST",
-    "DEF": "DST",
-    "D/ST": "DST",
-}
-
-_SUFFIX_PATTERN = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b", flags=re.IGNORECASE)
-_MULTI_SPACE_PATTERN = re.compile(r"\s+")
-_NON_WORD_SPACE_HYPHEN_SLASH_PATTERN = re.compile(r"[^a-z0-9\s\-/]")
-_DST_TOKEN_PATTERN = re.compile(r"\b(?:d\s*/\s*st|dst|defense|def)\b", flags=re.IGNORECASE)
-
-DST_ALIAS_MAP: dict[str, str] = {
-    "arizona cardinals": "arizona_cardinals",
-    "atlanta falcons": "atlanta_falcons",
-    "baltimore ravens": "baltimore_ravens",
-    "buffalo bills": "buffalo_bills",
-    "carolina panthers": "carolina_panthers",
-    "chicago bears": "chicago_bears",
-    "cincinnati bengals": "cincinnati_bengals",
-    "cleveland browns": "cleveland_browns",
-    "dallas cowboys": "dallas_cowboys",
-    "denver broncos": "denver_broncos",
-    "detroit lions": "detroit_lions",
-    "green bay packers": "green_bay_packers",
-    "houston texans": "houston_texans",
-    "indianapolis colts": "indianapolis_colts",
-    "jacksonville jaguars": "jacksonville_jaguars",
-    "kansas city chiefs": "kansas_city_chiefs",
-    "las vegas raiders": "las_vegas_raiders",
-    "los angeles chargers": "los_angeles_chargers",
-    "los angeles rams": "los_angeles_rams",
-    "miami dolphins": "miami_dolphins",
-    "minnesota vikings": "minnesota_vikings",
-    "new england patriots": "new_england_patriots",
-    "new orleans saints": "new_orleans_saints",
-    "new york giants": "new_york_giants",
-    "new york jets": "new_york_jets",
-    "philadelphia eagles": "philadelphia_eagles",
-    "pittsburgh steelers": "pittsburgh_steelers",
-    "san francisco 49ers": "san_francisco_49ers",
-    "seattle seahawks": "seattle_seahawks",
-    "tampa bay buccaneers": "tampa_bay_buccaneers",
-    "tennessee titans": "tennessee_titans",
-    "washington commanders": "washington_commanders",
-}
-
-DST_ABBR_MAP: dict[str, str] = {
-    "ARI": "arizona_cardinals",
-    "ATL": "atlanta_falcons",
-    "BAL": "baltimore_ravens",
-    "BUF": "buffalo_bills",
-    "CAR": "carolina_panthers",
-    "CHI": "chicago_bears",
-    "CIN": "cincinnati_bengals",
-    "CLE": "cleveland_browns",
-    "DAL": "dallas_cowboys",
-    "DEN": "denver_broncos",
-    "DET": "detroit_lions",
-    "GB": "green_bay_packers",
-    "HOU": "houston_texans",
-    "IND": "indianapolis_colts",
-    "JAX": "jacksonville_jaguars",
-    "KC": "kansas_city_chiefs",
-    "LV": "las_vegas_raiders",
-    "LAC": "los_angeles_chargers",
-    "LAR": "los_angeles_rams",
-    "MIA": "miami_dolphins",
-    "MIN": "minnesota_vikings",
-    "NE": "new_england_patriots",
-    "NO": "new_orleans_saints",
-    "NYG": "new_york_giants",
-    "NYJ": "new_york_jets",
-    "PHI": "philadelphia_eagles",
-    "PIT": "pittsburgh_steelers",
-    "SF": "san_francisco_49ers",
-    "SEA": "seattle_seahawks",
-    "TB": "tampa_bay_buccaneers",
-    "TEN": "tennessee_titans",
-    "WAS": "washington_commanders",
-}
-
-
-def normalize_position(value: object) -> str:
-    text = str(value).strip().upper()
-    return POSITION_NORMALIZA
-
-[TRUNCATED]
-```
-
-### `packages/data/validation.py`
-
-```text
-from collections.abc import Sequence
-
-import pandas as pd
-
-
-class ValidationError(Exception):
-    """Raised when a data validation check fails."""
-
-
-def require_columns(df: pd.DataFrame, required_columns: Sequence[str]) -> None:
-    missing = [col for col in required_columns if col not in df.columns]
-    if missing:
-        raise ValidationError(f"Missing required columns: {missing}")
-
-
-def assert_unique_key(df: pd.DataFrame, key_columns: Sequence[str]) -> None:
-    duplicates = df.duplicated(subset=list(key_columns), keep=False)
-    if duplicates.any():
-        dup_count = int(duplicates.sum())
-        raise ValidationError(
-            f"Found {dup_count} duplicate rows for key columns: {list(key_columns)}"
-        )
 ```
 
 ## Testing and Quality Signals
@@ -6402,16 +6607,19 @@ import {
   setRosterCount,
 } from "../src/draft-factory.js";
 
+
 describe("draft room application shell", () => {
-  it("renders league, recovery, and custom roster controls", () => {
+  it("renders league, UDK, recovery, and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
+    expect(html).toContain("Import UDK ZIP");
+    expect(html).toContain("ADP market");
     expect(html).toContain("Roster configuration");
     expect(html).toContain("Superflex");
-    expect(html).toContain("Autosaved after every change");
+    expect(html).toContain("Demonstration release");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
@@ -6440,16 +6648,14 @@ describe("draft room application shell", () => {
   });
 
   it("maps every configurable roster slot to engine eligibility", () => {
-    const rosterSlots = createRosterSlots({
+    const rosterCounts = {
       ...DEFAULT_ROSTER_COUNTS,
       SUPERFLEX: 1,
       K: 0,
       DST: 0,
-    });
-    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
-    const superflex = rosterSlots.find((rule) => rule.slot === "SUPERFLEX");
-
-    expect(capacity).toBe(
+    };
+    const rosterSlots = createRosterSlots(rosterCounts);
+    const capacity = rosterSlots.reduce((sum, rule) =>
 
 [TRUNCATED]
 ```
@@ -6528,6 +6734,65 @@ function createMemoryStorage(): MemoryStorage {
   return {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) =
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/tests/udk-importer.test.ts`
+
+```text
+import { strToU8, zipSync } from "fflate";
+import { describe, expect, it } from "vitest";
+import { createScoringSettings } from "../src/draft-factory.js";
+import {
+  buildUdkPlayerDataRelease,
+  parseCsv,
+  parseUdkZip,
+} from "../src/udk-importer.js";
+
+function createFixtureZip(): Uint8Array {
+  const files: Record<string, Uint8Array> = {
+    "Position Rankings/UDK Position Rankings - QB.csv": strToU8(
+      [
+        "Name,Position,Team,Bye Week,Rank,Points,Risk,Upside,ADP,Tier,Outlook,Dynasty,Markers",
+        'Josh Allen,QB,BUF,7,1,419.7,2.6,9.7,2.12,1,"Line one, with comma\nand line two",Dynasty,Markers',
+      ].join("\n"),
+    ),
+    "Position Rankings/UDK Position Rankings - RB.csv": strToU8(
+      [
+        "Name,Position,Team,Bye Week,Rank,Points,Risk,Upside,ADP,Tier,Outlook,Dynasty,Markers",
+        "Bijan Robinson,RB,ATL,11,1,356.4,1.3,10,1.02,1,Outlook,Dynasty,Markers",
+      ].join("\n"),
+    ),
+    "Position Rankings/UDK Position Rankings - K.csv": strToU8(
+      "Name,Position,Team,Bye Week,Rank,Andy,Jason,Mike,Markers\nBrandon Aubrey,K,DAL,14,1,1,1,1,Markers",
+    ),
+    "Position Rankings/UDK Position Rankings - DST.csv": strToU8(
+      "Name,Position,Team,Bye Week,Rank,Andy,Jason,Mike,Markers\nHouston Texans,D,HOU,8,1,1,2,1,Markers",
+    ),
+    "Projections/Andy/UDK - Andys Projections - QB.csv": strToU8(
+      [
+        "Name,Team,Bye Week,Rank,PPG,YDS,TDS,YDS,TDS,INT,FUM",
+        "Josh Allen,BUF,7,1,25.2,4000,30,500,8,10,3",
+        "Ghost Quarterback,FA,1,99,1,100,1,0,0,0,0",
+      ].join("\n"),
+    ),
+    "Projections/Jason/UDK - Jasons Projections - QB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,YDS,TDS,YDS,TDS,INT,FUM\nJosh Allen,BUF,7,1,25.8,4100,32,600,7,9,4",
+    ),
+    "Projections/Mike/UDK - Mikes Projections - QB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,YDS,TDS,YDS,TDS,INT,FUM\nJosh Allen,BUF,7,1,23,3900,28,550,9,12,5",
+    ),
+    "Projections/Andy/UDK - Andys Projections - RB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,ATTS,YDS,TDS,REC,YDS,TDS,FUM\nBijan Robinson,ATL,11,1,20,250,1200,10,60,500,4,2",
+    ),
+    "Projections/Jason/UDK - Jasons Projections - RB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,ATTS,YDS,TDS,REC,YDS,TDS,FUM\nBijan Robinson,ATL,11,1,21,275,1300,12,70,550,5,1",
+    ),
+    "Projections/Mike/UDK - Mikes Projections - RB.csv": strToU8(
+      "Name,Team,Bye Week,Rank,PPG,ATTS,YDS,TDS,REC,YDS,TDS,FUM\nBijan Robinson,ATL,11,1,19,230,1100,8,50,450,3,3",
+    ),
+    "ADP Analysis/UDK -
 
 [TRUNCATED]
 ```
@@ -7139,63 +7404,6 @@ describe("recommendation engine v1", () => {
     ex
 
 [TRUNCATED]
-```
-
-### `packages/shared-types/tests/player-data-release.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import { assertPlayerDataRelease, type PlayerDataRelease } from "@fdi/shared-types";
-
-function validRelease(): PlayerDataRelease {
-  return {
-    schema_version: "1.0",
-    season: 2026,
-    release_id: "2026-preseason-v1",
-    generated_at: "2026-07-16T12:00:00Z",
-    sources: ["nflverse"],
-    players: [
-      {
-        canonical_player_id: "josh-allen-qb",
-        display_name: "Josh Allen",
-        position: "QB",
-        nfl_team: "BUF",
-        bye_week: 7,
-        overall_rank: 24,
-        position_rank: 1,
-        adp: 27.4,
-        projected_points: 372.2,
-        tier: 1,
-        risk_score: 0.2,
-        upside_score: 0.9,
-        availability_status: "active",
-      },
-    ],
-  };
-}
-
-describe("assertPlayerDataRelease", () => {
-  it("accepts a release matching the versioned player contract", () => {
-    const release: unknown = validRelease();
-
-    expect(() => assertPlayerDataRelease(release)).not.toThrow();
-  });
-
-  it("rejects duplicate canonical player IDs", () => {
-    const release = validRelease();
-    release.players.push({ ...release.players[0]! });
-
-    expect(() => assertPlayerDataRelease(release)).toThrow(/Duplicate canonical_player_id/);
-  });
-
-  it("rejects unsupported positions", () => {
-    const release = validRelease() as unknown as Record<string, unknown>;
-    const players = release.players as Array<Record<string, unknown>>;
-    players[0]!.position = "IDP";
-
-    expect(() => assertPlayerDataRelease(release)).toThrow(/position is unsupported/);
-  });
-});
 ```
 
 ## Open Implementation Notes
