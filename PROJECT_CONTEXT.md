@@ -348,6 +348,7 @@ test:
 │   │   ├── constants.py
 │   │   ├── io.py
 │   │   ├── nflverse_history.py
+│   │   ├── nflverse_release_filter.py
 │   │   ├── player_ids.py
 │   │   └── validation.py
 │   ├── draft-engine
@@ -406,6 +407,7 @@ test:
 │   │   ├── test_player_season_warehouse.py
 │   │   └── test_player_season_warehouse.py:146:5
 │   ├── test_nflverse_history.py
+│   ├── test_nflverse_release_filter.py
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
@@ -1672,6 +1674,24 @@ Current players without prior-season statistics, including rookies, still receiv
 
 Team defenses remain UDK team records because the NFLverse release is player-oriented.
 
+## Release cleanup and roster repair
+
+The raw NFLverse player universe contains historical and college-only identities that are not useful during a current redraft. Release generation therefore keeps only players who have a current team or genuine prior-season fantasy production.
+
+Current roster data can also contain safe, repairable identity gaps:
+
+- A rookie roster row may omit a GSIS ID while the master player table already has one provisional identity.
+- A current roster position may be more useful for fantasy than the master-table position for a dual-role player.
+- A widely used nickname may not be present in the source aliases.
+
+The release builder handles these cases conservatively:
+
+1. Missing roster IDs are reconciled only when exact normalized name and position identify one master record.
+2. Ambiguous same-name candidates are never assigned automatically.
+3. Current roster position takes precedence when it is a supported fantasy position.
+4. Small stable-ID alias overrides are allowed for verified nickname exceptions.
+5. Current team and roster status are attached before irrelevant historical identities are removed.
+
 ## Matching rules
 
 The browser joins UDK and NFLverse records without aggressive guessing.
@@ -1684,6 +1704,19 @@ The browser joins UDK and NFLverse records without aggressive guessing.
 6. Prevent the same NFLverse player ID from being assigned to more than one UDK player.
 
 A player keeps the temporary UDK ID unless a deterministic NFLverse match is found.
+
+## Real 2025/2026 validation
+
+The cleaned 2025/2026 release was tested against the current UDK package used to develop the importer.
+
+- 340 individual QB, RB, WR, TE, and K records were evaluated.
+- 340 received deterministic NFLverse identities.
+- 0 were ambiguous.
+- 0 were unmatched.
+- 290 matched players also received 2025 history.
+- 32 defenses remained correctly separate as UDK team records.
+
+The repaired release contains 1,046 draft-relevant player identities rather than the nearly 9,000 historical and college-only records in the unfiltered master universe.
 
 ## Draft-day workflow
 
@@ -1705,9 +1738,9 @@ The combined release is rebuilt automatically when scoring, team count, or ADP m
 - The combined player release is embedded in the local draft state and its JSON backup.
 - Repository tests use synthetic UDK and NFLverse fixtures only.
 
-## Current limitation
+## Remaining limitation
 
-The review panel reports ambiguous and unmatched players but does not yet provide a manual candidate-selection control. Those players remain valid UDK draft records with temporary IDs and no NFLverse history. A later calibration increment can add saved manual overrides after the first real 2025/2026 release is inspected.
+The review panel reports ambiguous and unmatched players but does not yet provide a manual candidate-selection control. The current validated package has full deterministic coverage, but a future UDK or NFLverse update could introduce a new exception. Such players remain valid UDK draft records with temporary IDs until a verified alias, roster repair, or manual-selection feature resolves them.
 ```
 
 ### `docs/product-requirements.md`
@@ -3008,6 +3041,128 @@ def test_builds_stable_identity_and_prior_season_summaries() -> None:
 [TRUNCATED]
 ```
 
+### `tests/test_nflverse_release_filter.py`
+
+```text
+from __future__ import annotations
+
+import polars as pl
+import pytest
+
+from packages.data.nflverse_release_filter import (
+    filter_to_draft_relevant_players,
+    repair_current_roster_identities,
+)
+
+
+def test_keeps_current_roster_and_prior_season_contributors() -> None:
+    release = {
+        "schema_version": "1.0",
+        "players": [
+            {
+                "nflverse_player_id": "current-rookie",
+                "current_team": "NYG",
+                "prior_season_stats": None,
+            },
+            {
+                "nflverse_player_id": "veteran-free-agent",
+                "current_team": None,
+                "prior_season_stats": {"games": 12},
+            },
+            {
+                "nflverse_player_id": "college-only",
+                "current_team": None,
+                "prior_season_stats": None,
+            },
+        ],
+    }
+
+    filtered = filter_to_draft_relevant_players(release)
+
+    assert [player["nflverse_player_id"] for player in filtered["players"]] == [
+        "current-rookie",
+        "veteran-free-agent",
+    ]
+    assert len(release["players"]) == 3
+
+
+def test_deduplicates_stable_ids_without_name_guessing() -> None:
+    player = {
+        "nflverse_player_id": "00-001",
+        "current_team": "DET",
+        "prior_season_stats": None,
+    }
+    filtered = filter_to_draft_relevant_players({"players": [player, dict(player)]})
+
+    assert filtered["players"] == [player]
+
+
+def test_repairs_missing_roster_ids_positions_and_aliases() -> None:
+    release = {
+        "schema_version": "1.0",
+        "prior_season": 2025,
+        "roster_season": 2026,
+        "players": [
+            _release_player("BEC122142", "Carson Beck", "QB"),
+            _release_player("00-0035662", "Marquise Brown", "WR", team="PHI"),
+        ],
+    }
+    players = pl.DataFrame(
+        {
+            "gsis_id": ["BEC122142", "00-0040718", "00-0035662"],
+            "display_name": ["Carson Beck", "Travis Hunter", "Marquise Brown"],
+            "position": ["QB", "CB", "WR"],
+        }
+    )
+    rosters = pl.DataFrame(
+        {
+            "season": [2026, 2026, 2026],
+            "gsis_id": [None, "00-0040718", "00-0035662"],
+            "full_name": ["Carson Beck", "Travis Hunter", "Marquise Brown"],
+            "position": ["QB", "WR", "WR"],
+            "team": ["ARI", "JAX", "PHI"],
+            "status": ["RES", "ACT", "ACT"],
+        }
+    )
+    stats = pl.DataFrame(
+        {
+            "season": [2025],
+            "season_type": ["REG"],
+            "week": [1],
+            "player_id": ["00-0040718"],
+            "fantasy_points": [8.0],
+            "fantasy_points_ppr": [11.0],
+            "receptions": [3.0],
+        }
+    )
+
+    repaired = repair_current_roster_identities(
+        release,
+        players=players,
+        rosters=rosters,
+        stats=stats,
+        prior_season=2025,
+        roster_season=2026,
+    )
+
+    carson = _find_player(repaired, "BEC122142")
+    assert carson["current_team"] == "ARI"
+    assert carson["roster_status"] == "RES"
+
+    travis = _find_player(repaired, "00-0040718")
+    assert travis["position"] == "WR"
+    assert travis["current_team"] == "JAX"
+    assert travis["prior_season_stats"]["fantasy_points_half_ppr"] == 9.5
+
+    marquise = _find_player(repaired, "00-0035662")
+    assert "Hollywood Brown" in marquise["aliases"]
+
+    filtered = filter_to_draft_relevant_players(repaired)
+    assert {player["nflverse_player_id"] for player in filtered["players"]} == {
+
+[TRUNCATED]
+```
+
 ### `tests/test_smoke.py`
 
 ```text
@@ -4093,202 +4248,6 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
 }
 
 function Metric({ label, value }: { label: string
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/demo-data.ts`
-
-```text
-import type {
-  PlayerDataRecord,
-  PlayerDataRelease,
-  PlayerPosition,
-} from "@fdi/shared-types";
-
-interface GeneratedPlayer extends PlayerDataRecord {
-  marketScore: number;
-}
-
-interface PositionProfile {
-  position: PlayerPosition;
-  count: number;
-  projectionStart: number;
-  projectionStep: number;
-  marketStart: number;
-  marketStep: number;
-  tierSize: number;
-}
-
-const FIRST_NAMES = [
-  "Avery",
-  "Blake",
-  "Cameron",
-  "Drew",
-  "Eli",
-  "Finn",
-  "Grant",
-  "Hayden",
-  "Isaiah",
-  "Jordan",
-  "Kai",
-  "Logan",
-  "Micah",
-  "Nolan",
-  "Owen",
-  "Parker",
-  "Quinn",
-  "Riley",
-  "Sawyer",
-  "Theo",
-  "Victor",
-  "Wesley",
-  "Xavier",
-  "Zane",
-] as const;
-
-const LAST_NAMES = [
-  "Adams",
-  "Bennett",
-  "Carter",
-  "Davis",
-  "Ellis",
-  "Foster",
-  "Gibson",
-  "Hayes",
-  "Irving",
-  "Jackson",
-  "King",
-  "Lewis",
-  "Mitchell",
-  "Nelson",
-  "Owens",
-  "Porter",
-  "Reed",
-  "Simmons",
-  "Turner",
-  "Vaughn",
-  "Walker",
-  "Young",
-] as const;
-
-const NFL_TEAMS = [
-  "ARI",
-  "ATL",
-  "BAL",
-  "BUF",
-  "CAR",
-  "CHI",
-  "CIN",
-  "CLE",
-  "DAL",
-  "DEN",
-  "DET",
-  "GB",
-  "HOU",
-  "IND",
-  "JAX",
-  "KC",
-  "LAC",
-  "LAR",
-  "LV",
-  "MIA",
-  "MIN",
-  "NE",
-  "NO",
-  "NYG",
-  "NYJ",
-  "PHI",
-  "PIT",
-  "SEA",
-  "SF",
-  "TB",
-  "TEN",
-  "WAS",
-] as const;
-
-const POSITION_PROFILES: PositionProfile[] = [
-  {
-    position: "QB",
-    count: 48,
-    projectionStart: 310,
-    projectionStep: 3.1,
-    marketStart: 84,
-    marketStep: 1.1,
-    tierSize: 6,
-  },
-  {
-    position: "RB",
-    count: 96,
-    projectionStart: 265,
-    projectionStep: 1.65,
-    marketStart: 100,
-    marketStep: 1.15,
-    tierSize: 8,
-  },
-  {
-    position: "WR",
-    count: 110,
-    projectionStart: 258,
-    projectionStep: 1.35,
-    marketStart: 98,
-    marketStep: 1,
-    tierSize: 10,
-  },
-  {
-    position: "TE",
-    count: 48,
-    projectionStart: 215,
-    projectionStep: 2.05,
-    marketStart: 88,
-    marketStep: 1.4,
-    tierSize: 6,
-  },
-  {
-    position: "K",
-    count: 14,
-    projectionStart: 150,
-    projectionStep: 2,
-    marketStart: 25,
-    marketStep: 1.3,
-    tierSize: 7,
-  },
-  {
-    position: "DST",
-    count: 14,
-    projectionStart: 160,
-    projectionStep: 2.2,
-    marketStart: 28,
-    marketStep: 1.35,
-    tierSize: 7,
-  },
-];
-
-export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDataRelease {
-  const generated: GeneratedPlayer[] = [];
-
-  POSITION_PROFILES.forEach((profile, profileIndex) => {
-    for (let positionIndex = 0; positionIndex < profile.count; positionIndex += 1) {
-      const globalIndex = generated.length;
-      const team = NFL_TEAMS[(globalIndex + profileIndex * 3) % NFL_TEAMS.length]!;
-      const displayName = buildDisplayName(profile.position, positionIndex, globalIndex);
-      const marketScore =
-        profile.marketStart - profile.marketStep * positionIndex + ((positionIndex % 5) - 2) * 0.18;
-
-      generated.push({
-        canonical_player_id: `demo-${profile.position.toLowerCase()}-${positionIndex + 1}`,
-        display_name: displayName,
-        position: profile.position,
-        nfl_team: team,
-        bye_week: 5 + ((globalIndex + profileIndex) % 10),
-        overall_rank: null,
-        position_rank: positionIndex + 1,
-        adp: null,
-        projected_points: round(
-          Math.max(65, profile.projectionStart - profile.projectionStep * positionIndex),
-        ),
-        tier: Math.floor(positionIndex / profile.tierSize) + 1,
-        risk_score: 18 + ((globalIndex * 17 + profileIndex *
 
 [TRUNCATED]
 ```
@@ -6760,6 +6719,97 @@ def test_builds_stable_identity_and_prior_season_summaries() -> None:
 [TRUNCATED]
 ```
 
+### `tests/test_nflverse_release_filter.py`
+
+```text
+from __future__ import annotations
+
+import polars as pl
+import pytest
+
+from packages.data.nflverse_release_filter import (
+    filter_to_draft_relevant_players,
+    repair_current_roster_identities,
+)
+
+
+def test_keeps_current_roster_and_prior_season_contributors() -> None:
+    release = {
+        "schema_version": "1.0",
+        "players": [
+            {
+                "nflverse_player_id": "current-rookie",
+                "current_team": "NYG",
+                "prior_season_stats": None,
+            },
+            {
+                "nflverse_player_id": "veteran-free-agent",
+                "current_team": None,
+                "prior_season_stats": {"games": 12},
+            },
+            {
+                "nflverse_player_id": "college-only",
+                "current_team": None,
+                "prior_season_stats": None,
+            },
+        ],
+    }
+
+    filtered = filter_to_draft_relevant_players(release)
+
+    assert [player["nflverse_player_id"] for player in filtered["players"]] == [
+        "current-rookie",
+        "veteran-free-agent",
+    ]
+    assert len(release["players"]) == 3
+
+
+def test_deduplicates_stable_ids_without_name_guessing() -> None:
+    player = {
+        "nflverse_player_id": "00-001",
+        "current_team": "DET",
+        "prior_season_stats": None,
+    }
+    filtered = filter_to_draft_relevant_players({"players": [player, dict(player)]})
+
+    assert filtered["players"] == [player]
+
+
+def test_repairs_missing_roster_ids_positions_and_aliases() -> None:
+    release = {
+        "schema_version": "1.0",
+        "prior_season": 2025,
+        "roster_season": 2026,
+        "players": [
+            _release_player("BEC122142", "Carson Beck", "QB"),
+            _release_player("00-0035662", "Marquise Brown", "WR", team="PHI"),
+        ],
+    }
+    players = pl.DataFrame(
+        {
+            "gsis_id": ["BEC122142", "00-0040718", "00-0035662"],
+            "display_name": ["Carson Beck", "Travis Hunter", "Marquise Brown"],
+            "position": ["QB", "CB", "WR"],
+        }
+    )
+    rosters = pl.DataFrame(
+        {
+            "season": [2026, 2026, 2026],
+            "gsis_id": [None, "00-0040718", "00-0035662"],
+            "full_name": ["Carson Beck", "Travis Hunter", "Marquise Brown"],
+            "position": ["QB", "WR", "WR"],
+            "team": ["ARI", "JAX", "PHI"],
+            "status": ["RES", "ACT", "ACT"],
+        }
+    )
+    stats = pl.DataFrame(
+        {
+            "season": [2025],
+            "season_type
+
+[TRUNCATED]
+```
+
 ### `tests/test_smoke.py`
 
 ```text
@@ -7446,105 +7496,6 @@ describe("draft state transitions", () => {
     const undone = undoLastPick(afterTwo);
 
     exp
-
-[TRUNCATED]
-```
-
-### `packages/recommendation-engine/tests/evaluation.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import type { DraftState, PlayerPosition } from "@fdi/shared-types";
-import type {
-  PlayerRecommendation,
-  RecommendationComponent,
-  RecommendationMetrics,
-  RecommendationOptions,
-  RecommendationResult,
-} from "../src/index.js";
-import {
-  createRecommendationSnapshotManifest,
-  formatRecommendationEvaluationReport,
-  runRecommendationEvaluation,
-  type RecommendationRunner,
-  type RecommendationScenario,
-  type RecommendationWeightProfile,
-} from "../src/evaluation.js";
-
-const components: RecommendationComponent[] = [
-  "baseValue",
-  "valueOverReplacement",
-  "tierUrgency",
-  "rosterNeed",
-  "adpValue",
-  "expectedAvailability",
-  "upside",
-  "riskSafety",
-];
-
-function metrics(overrides: Partial<RecommendationMetrics> = {}): RecommendationMetrics {
-  return {
-    baseValue: 50,
-    valueOverReplacement: 50,
-    tierUrgency: 50,
-    rosterNeed: 50,
-    adpValue: 50,
-    expectedAvailability: 50,
-    upside: 50,
-    riskSafety: 50,
-    ...overrides,
-  };
-}
-
-function recommendation(
-  rank: number,
-  playerId: string,
-  score: number,
-  position: PlayerPosition = "RB",
-  metricOverrides: Partial<RecommendationMetrics> = {},
-  reasons: string[] = ["Balanced recommendation."],
-): PlayerRecommendation {
-  return {
-    rank,
-    playerId,
-    displayName: playerId,
-    position,
-    score,
-    metrics: metrics(metricOverrides),
-    context: {
-      currentOverallPick: 1,
-      nextUserPick: 8,
-      picksUntilNextUserPick: 7,
-      replacementRank: 4,
-      replacementProjectedPoints: 150,
-      projectedPointsAboveReplacement: 30,
-      sameTierRemaining: 1,
-    },
-    primaryReason: reasons[0]!,
-    reasons,
-  };
-}
-
-const fakeRunner: RecommendationRunner = (
-  _state: DraftState,
-  options: RecommendationOptions = {},
-): RecommendationResult => {
-  const riskWeight = options.weights?.riskSafety ?? 0.05;
-  const upsideWeight = options.weights?.upside ?? 0.05;
-  const rosterWeight = options.weights?.rosterNeed ?? 0.18;
-  let recommendations: PlayerRecommendation[];
-
-  if (riskWeight > 0.5) {
-    recommendations = [
-      recommendation(1, "safe", 82, "RB", { riskSafety: 100 }, ["Safer than the pool."]),
-      recommendation(2, "boom", 61, "RB", { riskSafety: 0, upside: 100 }),
-    ];
-  } else if (upsideWeight > 0.5) {
-    recommendations = [
-      recommendation(1, "boom", 88, "RB", { upside: 100 }, ["Above-average upside."]),
-      recommendation(2, "safe", 60, "RB", { riskSafety: 100 }),
-    ];
-  } else if (
 
 [TRUNCATED]
 ```
