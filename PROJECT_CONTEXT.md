@@ -35,6 +35,7 @@ The repository includes:
 - position-aware roster allocation
 - versioned draft export/import
 - a deterministic explainable recommendation engine
+- named recommendation scenarios and weight-comparison reports
 - full-draft and recommendation regression tests
 
 ## Target application
@@ -69,6 +70,7 @@ See:
 - [`docs/draft-engine.md`](docs/draft-engine.md)
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
+- [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 
 ## Python setup
 
@@ -105,6 +107,8 @@ npm run typecheck
 npm test
 npm run test:watch
 npm run build
+npm run evaluate:recommendations
+npm run evaluate:recommendations:json
 ```
 
 ## Current project structure
@@ -116,8 +120,8 @@ packages/
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
-  recommendation-engine/ # Explainable TypeScript recommendation scoring
-scripts/                 # Python pipeline entrypoints
+  recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
+scripts/                 # Data entrypoints and recommendation evaluation command
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
 docs/                    # Product and technical documentation
@@ -127,7 +131,7 @@ docs/                    # Product and technical documentation
 
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** in progress
+- **M3 — Recommendation engine v1:** evaluation in progress
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
 
@@ -152,6 +156,8 @@ npm run typecheck
 npm test
 npm run test:watch
 npm run build
+npm run evaluate:recommendations
+npm run evaluate:recommendations:json
 shared-types/          # TypeScript contracts and runtime release validation
 tests/                   # Python tests
 [build-system]
@@ -203,6 +209,7 @@ test:
 │   ├── MASTER_PROJECT_PLAN.md
 │   ├── product-requirements.md
 │   ├── recommendation-engine.md
+│   ├── recommendation-evaluation.md
 │   ├── release-criteria.md
 │   ├── repository-audit.md
 │   ├── roadmap.md
@@ -245,8 +252,11 @@ test:
 │   │   └── baseline.py
 │   ├── recommendation-engine
 │   │   ├── src
+│   │   │   ├── benchmarks.ts
+│   │   │   ├── evaluation.ts
 │   │   │   └── index.ts
 │   │   ├── tests
+│   │   │   ├── evaluation.test.ts
 │   │   │   ├── fixtures.ts
 │   │   │   └── recommendation.test.ts
 │   │   ├── package.json
@@ -265,6 +275,7 @@ test:
 │   ├── bootstrap.py
 │   ├── build_player_reference.py
 │   ├── build_player_season_warehouse.py
+│   ├── evaluate_recommendations.mjs
 │   ├── ingest_adp.py
 │   ├── ingest_nflverse.py
 │   └── validate_data.py
@@ -327,6 +338,7 @@ The repository includes:
 - position-aware roster allocation
 - versioned draft export/import
 - a deterministic explainable recommendation engine
+- named recommendation scenarios and weight-comparison reports
 - full-draft and recommendation regression tests
 
 ## Target application
@@ -361,6 +373,7 @@ See:
 - [`docs/draft-engine.md`](docs/draft-engine.md)
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
+- [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 
 ## Python setup
 
@@ -397,6 +410,8 @@ npm run typecheck
 npm test
 npm run test:watch
 npm run build
+npm run evaluate:recommendations
+npm run evaluate:recommendations:json
 ```
 
 ## Current project structure
@@ -408,8 +423,8 @@ packages/
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
-  recommendation-engine/ # Explainable TypeScript recommendation scoring
-scripts/                 # Python pipeline entrypoints
+  recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
+scripts/                 # Data entrypoints and recommendation evaluation command
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
 docs/                    # Product and technical documentation
@@ -419,7 +434,7 @@ docs/                    # Product and technical documentation
 
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** in progress
+- **M3 — Recommendation engine v1:** evaluation in progress
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
 ```
@@ -1778,6 +1793,133 @@ The focused regression suite covers:
 - invalid configuration rejection
 ```
 
+### `docs/recommendation-evaluation.md`
+
+```text
+# Recommendation Evaluation Harness
+
+## Purpose
+
+Recommendation Engine v1 is deterministic, but deterministic output is not automatically good output. The evaluation harness turns draft strategy assumptions into named, repeatable scenarios so weight changes can be measured before they reach the live draft room.
+
+The harness is deliberately separate from the graphical interface. It can run in Codespaces, on a local laptop, or in CI using only the TypeScript packages.
+
+## Commands
+
+Run the complete evaluation report:
+
+```bash
+npm run evaluate:recommendations
+```
+
+Return the complete report as JSON:
+
+```bash
+npm run evaluate:recommendations:json
+```
+
+Write a deterministic score snapshot manifest while producing the normal report:
+
+```bash
+npm run evaluate:recommendations -- --write-snapshots=artifacts/recommendation-snapshots.json
+```
+
+The command exits with a nonzero status when any behavioral expectation fails.
+
+## Built-in scenarios
+
+The initial suite covers six strategic questions:
+
+1. **Elite value:** Does an elite player clearly separate from the remaining pool?
+2. **Open starter:** Does a roster-focused profile fill a missing starter before adding redundant depth?
+3. **Tier cliff:** Does an urgency-focused profile recognize the final player before a meaningful positional tier drop?
+4. **Will not return:** Does the engine distinguish between taking a player now and waiting until the user's next selection?
+5. **Risk versus reward:** Do safety-first and upside-first profiles make intentionally different choices?
+6. **Drafted-player filter:** Is a previously selected player excluded from every recommendation list?
+
+These are synthetic benchmark states. They are small enough to understand by inspection and stable enough to identify regressions.
+
+## Weight profiles
+
+The harness compares the same scenario under multiple named profiles:
+
+- `default`
+- `value-heavy`
+- `roster-first`
+- `urgency-first`
+- `upside-first`
+- `safety-first`
+
+Profiles are not user-facing strategy presets yet. They are diagnostic tools that show whether a component actually influences the ranking in the expected direction.
+
+## Expectations
+
+A scenario can assert:
+
+- the top-ranked player
+- the first players in ranking order
+- one player ranking before another
+- inclusion or exclusion
+- explanation text
+- minimum or maximum component scores
+- an allowed total-score range
+
+Expectations without a `profileId` apply to the configured baseline profile. Profile-specific expectations apply only to that named weight profile.
+
+## Score snapshots
+
+Each scenario/profile evaluation captures a JSON-safe snapshot containing:
+
+- recommendation order
+- total scores
+- all eight component scores
+- replacement and next-pick context
+- primary explanation
+- full explanation list
+
+Snapshot output contains no generated timestamp, so the same engine and inputs produce identical JSON. A saved manifest can therefore be diffed in Git when intentional tuning changes the score surface.
+
+## Weight comparison report
+
+The Markdown report displays the leading recommendation for every scenario/profile pair and explicitly identifies scenarios where the top player changes between profiles.
+
+This does not declare one profile correct. It exposes sensitivity. A profile that never changes a ranking may have weights too weak to matter; a profile that changes every scenario may be overpowered.
+
+## Tuning workflow
+
+1. Add or update a named scenario that represents the strategic behavior being discussed.
+2. Add a narrow expectation describing the intended outcome.
+3. Run the evaluation suite using the current weights.
+4. Adjust one component or profile at a time.
+5. Review failed expectations and score snapshots.
+6. Commit the scenario, rationale, and intentional snapshot changes together.
+
+Do not tune weights solely to make one anecdotal scenario pass. A change should improve the intended behavior without causing unrelated scenarios to regress.
+
+## Public API
+
+```ts
+const report = runRecommendationEvaluation(scenarios, {
+  profiles,
+  baselineProfileId: "default",
+});
+
+const markdown = formatRecommendationEvaluationReport(report);
+const snapshots = createRecommendationSnapshotManifest(report);
+```
+
+The evaluator accepts an injectable recommendation runner. Production use defaults to `recommendPlayers`; tests may inject a controlled runner so expectation and reporting behavior can be validated independently.
+
+## Current limits
+
+- Scenarios are synthetic and do not yet replay historical drafts.
+- Expected availability still uses the v1 ADP-window heuristic.
+- The harness measures recommendation behavior, not eventual fantasy points or league win probability.
+- Exact-score snapshots should support review, not replace behavioral expectations.
+
+The next evaluation layer will replay larger mock drafts and compare roster outcomes across strategies.
+```
+
 ### `docs/release-criteria.md`
 
 ```text
@@ -1896,7 +2038,7 @@ The baseline exit criteria are covered by the draft-engine, roster-allocation, p
 
 ## M3 — Recommendation engine v1
 
-**Status:** Baseline scoring implementation in progress
+**Status:** Baseline scoring and evaluation harness implemented
 
 **Goal:** Return explainable recommendations after every pick.
 
@@ -1912,16 +2054,18 @@ The baseline exit criteria are covered by the draft-engine, roster-allocation, p
 8. Expected-availability estimate
 9. Risk and upside inputs
 10. Recommendation explanations
-11. Historical and simulated evaluation harness
+11. Named scenario and weight-comparison evaluation harness
+12. Larger mock-draft and historical replay evaluation
 
 ### Exit criteria
 
 - Recommendations change logically with roster and draft state.
 - Every recommendation has a structured explanation.
 - Engine output is deterministic for fixed inputs.
-- Repeatable mock-draft scenarios expose scoring behavior for tuning.
+- Repeatable scenarios expose scoring behavior for tuning.
+- Recommendation behavior can be checked in CI before interface changes merge.
 
-The baseline engine now covers items 1 through 10. The remaining M3 work is the repeatable simulation and evaluation harness used to tune weights before the graphical interface depends on them.
+Items 1 through 11 now have baseline implementations. The remaining calibration work is broader mock-draft and historical replay analysis using real preseason player releases. That work can continue alongside the interface because the scenario harness now protects the stable public API and core behavioral expectations.
 
 ## M4 — Local draft-room interface
 
@@ -1979,7 +2123,7 @@ After v1.0:
 - best ball
 - automated mock opponents
 - Monte Carlo availability modeling
-- strategy profiles
+- user-facing strategy profiles
 - draft replay and post-draft grading
 
 ## Implementation order
@@ -1990,11 +2134,12 @@ The active build sequence is:
 2. Enforce position-aware roster legality.
 3. Add versioned export and restoration.
 4. Implement Recommendation Engine v1.
-5. Add repeatable recommendation simulation and evaluation fixtures.
+5. Add named recommendation scenarios, score snapshots, and weight comparisons.
 6. Build the React draft-room interface against stable engine APIs.
-7. Add SQLite autosave and Tauri desktop packaging.
+7. Expand evaluation with full mock drafts and historical player releases.
+8. Add SQLite autosave and Tauri desktop packaging.
 
-Interface implementation begins only after the recommendation evaluation harness demonstrates stable, explainable behavior across representative draft scenarios.
+The next primary product increment is the React draft-room shell and setup flow. Recommendation calibration remains test-driven through the evaluation harness rather than blocking all interface progress.
 ```
 
 ### `docs/testing-strategy.md`
@@ -2547,18 +2692,41 @@ if __name__ == "__main__":
 ### `tests/test_smoke.py`
 
 ```text
-from packages.data.ingest.adp import fetch_historical_adp
-from packages.data.ingest.nflverse import fetch_weekly_player_data
+import pandas as pd
+import polars as pl
+
+from packages.data.ingest import adp as adp_module
+from packages.data.ingest import nflverse as nflverse_module
 
 
-def test_fetch_historical_adp_returns_dataframe() -> None:
-    df = fetch_historical_adp()
-    assert not df.empty
+def test_fetch_historical_adp_returns_dataframe(monkeypatch) -> None:
+    expected = pd.DataFrame({"season": [2024], "player_name": ["Test Player"]})
+
+    monkeypatch.setattr(
+        adp_module,
+        "ingest_historical_adp",
+        lambda config: expected,
+    )
+
+    result = adp_module.fetch_historical_adp()
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.equals(expected)
 
 
-def test_fetch_weekly_player_data_returns_dataframe() -> None:
-    df = fetch_weekly_player_data([2024])
-    assert not df.is_empty()
+def test_fetch_weekly_player_data_returns_dataframe(monkeypatch) -> None:
+    expected = pl.DataFrame({"season": [2024], "week": [1]})
+
+    monkeypatch.setattr(
+        nflverse_module,
+        "load_weekly_player_stats",
+        lambda years: expected,
+    )
+
+    result = nflverse_module.fetch_weekly_player_data([2024])
+
+    assert isinstance(result, pl.DataFrame)
+    assert result.equals(expected)
 ```
 
 ### `tests/test_validation.py`
@@ -5407,18 +5575,41 @@ def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFra
 ### `tests/test_smoke.py`
 
 ```text
-from packages.data.ingest.adp import fetch_historical_adp
-from packages.data.ingest.nflverse import fetch_weekly_player_data
+import pandas as pd
+import polars as pl
+
+from packages.data.ingest import adp as adp_module
+from packages.data.ingest import nflverse as nflverse_module
 
 
-def test_fetch_historical_adp_returns_dataframe() -> None:
-    df = fetch_historical_adp()
-    assert not df.empty
+def test_fetch_historical_adp_returns_dataframe(monkeypatch) -> None:
+    expected = pd.DataFrame({"season": [2024], "player_name": ["Test Player"]})
+
+    monkeypatch.setattr(
+        adp_module,
+        "ingest_historical_adp",
+        lambda config: expected,
+    )
+
+    result = adp_module.fetch_historical_adp()
+
+    assert isinstance(result, pd.DataFrame)
+    assert result.equals(expected)
 
 
-def test_fetch_weekly_player_data_returns_dataframe() -> None:
-    df = fetch_weekly_player_data([2024])
-    assert not df.is_empty()
+def test_fetch_weekly_player_data_returns_dataframe(monkeypatch) -> None:
+    expected = pl.DataFrame({"season": [2024], "week": [1]})
+
+    monkeypatch.setattr(
+        nflverse_module,
+        "load_weekly_player_stats",
+        lambda years: expected,
+    )
+
+    result = nflverse_module.fetch_weekly_player_data([2024])
+
+    assert isinstance(result, pl.DataFrame)
+    assert result.equals(expected)
 ```
 
 ### `tests/test_validation.py`
@@ -5751,6 +5942,105 @@ describe("draft state transitions", () => {
     const undone = undoLastPick(afterTwo);
 
     exp
+
+[TRUNCATED]
+```
+
+### `packages/recommendation-engine/tests/evaluation.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import type { DraftState, PlayerPosition } from "@fdi/shared-types";
+import type {
+  PlayerRecommendation,
+  RecommendationComponent,
+  RecommendationMetrics,
+  RecommendationOptions,
+  RecommendationResult,
+} from "../src/index.js";
+import {
+  createRecommendationSnapshotManifest,
+  formatRecommendationEvaluationReport,
+  runRecommendationEvaluation,
+  type RecommendationRunner,
+  type RecommendationScenario,
+  type RecommendationWeightProfile,
+} from "../src/evaluation.js";
+
+const components: RecommendationComponent[] = [
+  "baseValue",
+  "valueOverReplacement",
+  "tierUrgency",
+  "rosterNeed",
+  "adpValue",
+  "expectedAvailability",
+  "upside",
+  "riskSafety",
+];
+
+function metrics(overrides: Partial<RecommendationMetrics> = {}): RecommendationMetrics {
+  return {
+    baseValue: 50,
+    valueOverReplacement: 50,
+    tierUrgency: 50,
+    rosterNeed: 50,
+    adpValue: 50,
+    expectedAvailability: 50,
+    upside: 50,
+    riskSafety: 50,
+    ...overrides,
+  };
+}
+
+function recommendation(
+  rank: number,
+  playerId: string,
+  score: number,
+  position: PlayerPosition = "RB",
+  metricOverrides: Partial<RecommendationMetrics> = {},
+  reasons: string[] = ["Balanced recommendation."],
+): PlayerRecommendation {
+  return {
+    rank,
+    playerId,
+    displayName: playerId,
+    position,
+    score,
+    metrics: metrics(metricOverrides),
+    context: {
+      currentOverallPick: 1,
+      nextUserPick: 8,
+      picksUntilNextUserPick: 7,
+      replacementRank: 4,
+      replacementProjectedPoints: 150,
+      projectedPointsAboveReplacement: 30,
+      sameTierRemaining: 1,
+    },
+    primaryReason: reasons[0]!,
+    reasons,
+  };
+}
+
+const fakeRunner: RecommendationRunner = (
+  _state: DraftState,
+  options: RecommendationOptions = {},
+): RecommendationResult => {
+  const riskWeight = options.weights?.riskSafety ?? 0.05;
+  const upsideWeight = options.weights?.upside ?? 0.05;
+  const rosterWeight = options.weights?.rosterNeed ?? 0.18;
+  let recommendations: PlayerRecommendation[];
+
+  if (riskWeight > 0.5) {
+    recommendations = [
+      recommendation(1, "safe", 82, "RB", { riskSafety: 100 }, ["Safer than the pool."]),
+      recommendation(2, "boom", 61, "RB", { riskSafety: 0, upside: 100 }),
+    ];
+  } else if (upsideWeight > 0.5) {
+    recommendations = [
+      recommendation(1, "boom", 88, "RB", { upside: 100 }, ["Above-average upside."]),
+      recommendation(2, "safe", 60, "RB", { riskSafety: 100 }),
+    ];
+  } else if (
 
 [TRUNCATED]
 ```
@@ -6210,90 +6500,6 @@ def test_ingest_requires_expected_columns(monkeypatch, tmp_path: Path) -> None:
 
     with pytest.raises(ValueError):
         ingest_nflverse_weekly_players(config)
-```
-
-### `tests/data/test_player_ids.py`
-
-```text
-from __future__ import annotations
-
-import pandas as pd
-import polars as pl
-
-from packages.data.player_ids import (
-    attach_canonical_ids_pandas,
-    attach_canonical_ids_polars,
-    build_canonical_player_id,
-    build_player_reference_table,
-    normalize_dst_name,
-    normalize_player_name,
-)
-
-
-def test_normalize_player_name_removes_punctuation_and_suffix() -> None:
-    assert normalize_player_name("D.J. Moore") == "dj_moore"
-    assert normalize_player_name("Kenneth Walker III") == "kenneth_walker"
-    assert normalize_player_name("Brian Thomas Jr.") == "brian_thomas"
-
-
-def test_normalize_dst_name_handles_abbreviation_and_tokens() -> None:
-    assert normalize_dst_name("DAL") == "dallas_cowboys"
-    assert normalize_dst_name("Dallas Cowboys DST") == "dallas_cowboys"
-    assert normalize_dst_name("Dallas Cowboys D/ST") == "dallas_cowboys"
-
-
-def test_build_canonical_player_id_is_stable() -> None:
-    assert build_canonical_player_id("D.J. Moore", "WR") == "player:dj_moore:WR"
-    assert build_canonical_player_id("Kenneth Walker III", "RB") == "player:kenneth_walker:RB"
-    assert build_canonical_player_id("Dallas Cowboys DST", "DST") == "dst:dallas_cowboys:DST"
-
-
-def test_attach_canonical_ids_pandas() -> None:
-    df = pd.DataFrame(
-        {
-            "player_name": ["D.J. Moore", "Kenneth Walker III"],
-            "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    out = attach_canonical_ids_pandas(df)
-
-    assert "canonical_player_id" in out.columns
-    assert out.loc[0, "canonical_player_id"] == "player:dj_moore:WR"
-    assert out.loc[1, "canonical_player_id"] == "player:kenneth_walker:RB"
-
-
-def test_attach_canonical_ids_polars() -> None:
-    df = pl.DataFrame(
-        {
-            "player_name": ["Dallas Cowboys DST"],
-            "position": ["DST"],
-            "source_name": ["fantasypros"],
-        }
-    )
-
-    out = attach_canonical_ids_polars(df)
-
-    assert "canonical_player_id" in out.columns
-    assert out["canonical_player_id"].to_list() == ["dst:dallas_cowboys:DST"]
-
-
-def test_build_player_reference_table_unifies_cross_source_names() -> None:
-    adp = pd.DataFrame(
-        {
-            "player_name": ["D.J. Moore", "Kenneth Walker III"],
-            "position": ["WR", "RB"],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    nflverse = pd.DataFrame(
-        {
-            "player_name": ["DJ Moore", "Kenneth Walker"],
-            "position": ["WR", "
-
-[TRUNCATED]
 ```
 
 ## Open Implementation Notes
