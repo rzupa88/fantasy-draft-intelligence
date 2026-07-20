@@ -32,6 +32,8 @@ The repository includes:
 - Parquet-based intermediate datasets
 - a TypeScript shared-contract package
 - a deterministic snake-draft engine
+- position-aware roster allocation
+- versioned draft export/import
 - full-draft simulation tests
 
 ## Target application
@@ -64,6 +66,7 @@ See:
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/draft-engine.md`](docs/draft-engine.md)
+- [`docs/draft-persistence.md`](docs/draft-persistence.md)
 
 ## Python setup
 
@@ -191,6 +194,7 @@ test:
 │   ├── data-contract.md
 │   ├── decision-log.md
 │   ├── draft-engine.md
+│   ├── draft-persistence.md
 │   ├── local-development.md
 │   ├── m2-backlog.md
 │   ├── MASTER_PROJECT_PLAN.md
@@ -223,10 +227,12 @@ test:
 │   │   │   ├── errors.ts
 │   │   │   ├── index.ts
 │   │   │   ├── order.ts
+│   │   │   ├── serialization.ts
 │   │   │   └── state.ts
 │   │   ├── tests
 │   │   │   ├── fixtures.ts
 │   │   │   ├── order.test.ts
+│   │   │   ├── serialization.test.ts
 │   │   │   └── state.test.ts
 │   │   ├── package.json
 │   │   └── tsconfig.json
@@ -306,6 +312,8 @@ The repository includes:
 - Parquet-based intermediate datasets
 - a TypeScript shared-contract package
 - a deterministic snake-draft engine
+- position-aware roster allocation
+- versioned draft export/import
 - full-draft simulation tests
 
 ## Target application
@@ -338,6 +346,7 @@ See:
 - [`docs/architecture.md`](docs/architecture.md)
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/draft-engine.md`](docs/draft-engine.md)
+- [`docs/draft-persistence.md`](docs/draft-persistence.md)
 
 ## Python setup
 
@@ -1162,23 +1171,36 @@ Parquet remains appropriate for intermediate and research datasets. The final de
 
 ## Scope
 
-Milestone 2 begins with a deterministic TypeScript domain engine. It has no dependency on React, Tauri, SQLite, or a recommendation model.
+Milestone 2 uses a deterministic TypeScript domain engine with no dependency on React, Tauri, SQLite, or a recommendation model.
 
 ## Packages
 
-- `@fdi/shared-types` owns the versioned player-data contract and shared league/draft types.
-- `@fdi/draft-engine` owns snake order, pick transitions, availability, roster assignment, undo, and correction.
+- `@fdi/shared-types` owns the versioned player-data contract and shared league/draft/export types.
+- `@fdi/draft-engine` owns snake order, pick transitions, player availability, roster allocation, undo, correction, and draft serialization.
 
 ## State invariants
 
 1. Draft order contains exactly `teamCount * rounds` slots.
-2. Every order slot has a unique overall pick.
-3. Pick history is always a contiguous prefix of the generated order.
-4. A player can appear in pick history at most once.
-5. Available players are derived from the immutable initial player pool minus drafted players.
-6. Undo and correction return a new state and do not mutate prior state.
-7. `nextOverallPick` is `null` only when the draft is complete.
-8. State transitions increment `revision`.
+2. Roster capacity per team equals the configured number of rounds.
+3. Every order slot has a unique overall pick.
+4. Pick history is always a contiguous prefix of the generated order.
+5. A player can appear in pick history at most once.
+6. Every drafted player exists in the loaded player-data release.
+7. Every pick is assigned to one legal roster slot for that player's position.
+8. Available players are derived from the immutable initial player pool minus drafted players.
+9. Undo and correction return a new state and do not mutate prior state.
+10. `nextOverallPick` is `null` only when the draft is complete.
+11. State transitions increment `revision`.
+
+## Roster allocation
+
+Roster assignment is treated as a bipartite matching problem rather than a first-fit list.
+
+For each fantasy team, the engine expands configured roster rules into concrete slots such as `RB #1`, `RB #2`, `FLEX #1`, and `BENCH #1`. It then finds a complete legal matching between drafted players and those slots.
+
+This prevents a flexible player from occupying a scarce slot when a later, more constrained player needs it. For example, a wide receiver drafted before a running back can be moved to FLEX so the running back can occupy the dedicated RB slot.
+
+If no complete legal assignment exists, the pick or correction fails with `ROSTER_INVALID` and the previous state remains unchanged.
 
 ## Public operations
 
@@ -1189,15 +1211,15 @@ Milestone 2 begins with a deterministic TypeScript domain engine. It has no depe
 - `undoLastPick`
 - `correctPick`
 - `getCurrentOrderSlot`
+- `getPlayerById`
 - `buildRosters`
+- `buildRosterAssignments`
+- `serializeDraftState`
+- `deserializeDraftState`
 
 ## Error behavior
 
-Expected domain failures use `DraftEngineError` with a stable code. Examples include invalid settings, duplicate or unavailable players, missing picks, and attempts to continue a completed draft.
-
-## Current limits
-
-This first core tracks players by canonical ID and roster by team. Position-slot legality and lineup allocation are intentionally deferred to the next draft-engine increment, when the engine consumes the full player catalog rather than IDs alone.
+Expected domain failures use `DraftEngineError` with stable codes. Current codes include invalid settings, invalid player data, duplicate or unavailable players, illegal roster construction, missing picks, completed drafts, invalid draft exports, and unsupported export schema versions.
 
 ## Validation
 
@@ -1205,14 +1227,103 @@ The regression suite includes:
 
 - odd/even snake order
 - user-team identification
-- invalid league settings
+- roster-capacity validation
 - pick sequencing
 - duplicate prevention
-- roster assignment
+- position-aware roster allocation
+- constrained-versus-flexible maximum matching
+- illegal-position rejection
 - undo
 - earlier-pick correction
+- versioned export/import round trips
+- malformed and tampered export rejection
 - a complete 12-team, 16-round, 192-pick simulation
 - player-data release validation
+```
+
+### `docs/draft-persistence.md`
+
+```text
+# Draft Persistence Contract
+
+## Purpose
+
+A live draft must survive application closure without depending on a remote service. The draft engine therefore provides a versioned, self-contained JSON export that can later be stored in SQLite, written to disk, or used for manual backup.
+
+## Schema version
+
+The current export schema is `1.0`.
+
+Unsupported schema versions are rejected explicitly rather than being interpreted optimistically.
+
+## Export envelope
+
+```json
+{
+  "schema_version": "1.0",
+  "exported_at": "2026-07-16T15:30:00Z",
+  "draft": {
+    "draftId": "example-draft",
+    "settings": {},
+    "teams": [],
+    "playerDataRelease": {},
+    "pickPlayerIds": [],
+    "revision": 0
+  }
+}
+```
+
+## Stored versus derived data
+
+The export stores only the authoritative inputs required to reproduce the draft:
+
+- draft ID
+- league settings
+- fantasy teams
+- full versioned player-data release
+- ordered canonical player IDs for completed picks
+- revision number
+
+The following fields are deliberately not stored because they are deterministic and can be rebuilt:
+
+- snake-draft order
+- roster-slot assignments
+- available-player IDs
+- current pick
+- draft status
+
+## Import behavior
+
+Import does not trust derived state from a file. It:
+
+1. Validates the export envelope and schema version.
+2. Validates league settings, teams, and player data.
+3. Creates a fresh draft state.
+4. Replays every pick through the normal draft engine.
+5. Recomputes roster allocation, availability, status, and the next pick.
+6. Restores the saved revision after confirming it is valid.
+
+This replay model catches duplicate players, unknown players, illegal roster construction, corrupt team settings, and altered pick histories.
+
+## API
+
+```ts
+const json = serializeDraftState(state);
+const restoredState = deserializeDraftState(json);
+```
+
+`serializeDraftState` also refuses to export an internally inconsistent in-memory state. This protects future persistence adapters from silently saving corrupted data.
+
+## Future storage adapters
+
+The desktop application can use the same serialization boundary for:
+
+- SQLite autosave records
+- `.json` backup files
+- crash-recovery snapshots
+- draft duplication and archival
+
+Storage technology may change without changing the draft engine's persistence contract.
 ```
 
 ### `docs/local-development.md`
@@ -2636,8 +2747,11 @@ export type DraftEngineErrorCode =
   | "INVALID_PLAYER_POOL"
   | "DRAFT_COMPLETE"
   | "PLAYER_UNAVAILABLE"
+  | "ROSTER_INVALID"
   | "NO_PICKS_TO_UNDO"
-  | "PICK_NOT_FOUND";
+  | "PICK_NOT_FOUND"
+  | "INVALID_DRAFT_EXPORT"
+  | "UNSUPPORTED_SCHEMA_VERSION";
 
 export class DraftEngineError extends Error {
   readonly code: DraftEngineErrorCode;
@@ -2659,11 +2773,14 @@ export {
   generateSnakeDraftOrder,
   validateLeagueSettings,
 } from "./order.js";
+export { deserializeDraftState, serializeDraftState } from "./serialization.js";
 export {
+  buildRosterAssignments,
   buildRosters,
   correctPick,
   createDraftState,
   getCurrentOrderSlot,
+  getPlayerById,
   makePick,
   undoLastPick,
   type CreateDraftStateInput,
@@ -2673,7 +2790,15 @@ export {
 ### `packages/draft-engine/src/order.ts`
 
 ```text
-import type { DraftOrderSlot, DraftTeam, LeagueSettings } from "@fdi/shared-types";
+import {
+  PLAYER_POSITIONS,
+  ROSTER_SLOT_TYPES,
+  type DraftOrderSlot,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerPosition,
+  type RosterSlotType,
+} from "@fdi/shared-types";
 import { DraftEngineError } from "./errors.js";
 
 export function validateLeagueSettings(settings: LeagueSettings): void {
@@ -2702,15 +2827,27 @@ export function validateLeagueSettings(settings: LeagueSettings): void {
     );
   }
 
-  if (settings.rosterSlots.length === 0) {
+  if (!Array.isArray(settings.rosterSlots) || settings.rosterSlots.length === 0) {
     throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
   }
 
+  let rosterCapacity = 0;
   for (const rule of settings.rosterSlots) {
+    if (!ROSTER_SLOT_TYPES.includes(rule.slot as RosterSlotType)) {
+      throw new DraftEngineError("INVALID_SETTINGS", `Unsupported roster slot: ${String(rule.slot)}`);
+    }
+
     if (!Number.isInteger(rule.count) || rule.count < 0) {
       throw new DraftEngineError(
         "INVALID_SETTINGS",
         `Roster slot ${rule.slot} must have a non-negative integer count.`,
+      );
+    }
+
+    if (!Array.isArray(rule.eligiblePositions)) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must define eligible positions.`,
       );
     }
 
@@ -2720,6 +2857,32 @@ export function validateLeagueSettings(settings: LeagueSettings): void {
         `Roster slot ${rule.slot} must define eligible positions.`,
       );
     }
+
+    const uniquePositions = new Set<PlayerPosition>();
+    for (const position of rule.eligiblePositions) {
+      if (!PLAYER_POSITIONS.includes(position as PlayerPosition)) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          `Roster slot ${rule.slot} contains unsupported position ${String(position)}.`,
+        );
+      }
+      if (uniquePositions.has(position)) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          `Roster slot ${rule.slot} contains duplicate eligible position ${position}.`,
+        );
+      }
+      uniquePositions.add(position);
+    }
+
+    rosterCapacity += rule.count;
+  }
+
+  if (rosterCapacity !== settings.rounds) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      `Roster capacity (${rosterCapacity}) must equal configured rounds (${settings.rounds}).`,
+    );
   }
 }
 
@@ -2739,54 +2902,128 @@ export function createDraftTeams(settings: LeagueSettings, teamNames?: string[])
 
     return {
       teamId: `team-${draftSlot}`,
-      name: providedName && providedName.length > 0 ? providedName : `Team ${draftSlot}`,
-      draftSlot,
-      isUser: draftSlot === settings.userDraftSlot,
-    };
-  });
-}
 
-export function generateSnakeDraftOrder(
-  settings: LeagueSettings,
-  teams: DraftTeam[] = createDraftTeams(settings),
-): DraftOrderSlot[] {
-  validateLeagueSettings(settings);
-  validateTeams(settings, teams);
+[TRUNCATED]
+```
 
-  const teamsByDraftSlot = [...teams].sort((left, right) => left.draftSlot - right.draftSlot);
-  const order: DraftOrderSlot[] = [];
+### `packages/draft-engine/src/serialization.ts`
 
-  for (let round = 1; round <= settings.rounds; round += 1) {
-    const roundTeams = round % 2 === 1 ? teamsByDraftSlot : [...teamsByDraftSlot].reverse();
+```text
+import {
+  DRAFT_EXPORT_SCHEMA_VERSION,
+  assertPlayerDataRelease,
+  isPlayerPosition,
+  isRosterSlotType,
+  type DraftExportEnvelope,
+  type DraftExportPayload,
+  type DraftState,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerDataRelease,
+  type RosterSlotRule,
+  type ScoringSettings,
+} from "@fdi/shared-types";
+import { DraftEngineError } from "./errors.js";
+import { validateLeagueSettings } from "./order.js";
+import { createDraftState, makePick } from "./state.js";
 
-    roundTeams.forEach((team, index) => {
-      order.push({
-        overallPick: order.length + 1,
-        round,
-        pickInRound: index + 1,
-        teamId: team.teamId,
-        draftSlot: team.draftSlot,
-      });
-    });
-  }
+const SCORING_PRESETS = ["standard", "half_ppr", "ppr", "custom"] as const;
+const SCORING_NUMBER_FIELDS = [
+  "passingYardsPerPoint",
+  "passingTouchdown",
+  "interception",
+  "rushingYardsPerPoint",
+  "rushingTouchdown",
+  "receivingYardsPerPoint",
+  "receivingTouchdown",
+  "reception",
+  "fumbleLost",
+] as const;
 
-  return order;
-}
+export function serializeDraftState(
+  state: DraftState,
+  exportedAt: string = new Date().toISOString(),
+): string {
+  assertIsoTimestamp(exportedAt, "exportedAt");
 
-function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
-  if (teams.length !== settings.teamCount) {
+  const payload = toExportPayload(state);
+  const restored = restoreDraftExportPayload(payload);
+  if (stateSignature(restored) !== stateSignature(state)) {
     throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "The number of teams must match league settings.",
+      "INVALID_DRAFT_EXPORT",
+      "Draft state is internally inconsistent and cannot be exported safely.",
     );
   }
 
-  const teamIds = new Set<string>();
-  const draftSlots = new Set<number>();
+  const envelope: DraftExportEnvelope = {
+    schema_version: DRAFT_EXPORT_SCHEMA_VERSION,
+    exported_at: exportedAt,
+    draft: payload,
+  };
 
-  for (const team of teams) {
-    if (teamIds.has(team.teamId)) {
-      throw new DraftEngineError("INVALID_SETTINGS", `Duplicate teamId: ${team.te
+  return JSON.stringify(envelope, null, 2);
+}
+
+export function deserializeDraftState(serialized: string): DraftState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serialized);
+  } catch {
+    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export is not valid JSON.");
+  }
+
+  const envelope = parseDraftExportEnvelope(parsed);
+  return restoreDraftExportPayload(envelope.draft);
+}
+
+function restoreDraftExportPayload(payload: DraftExportPayload): DraftState {
+  let state: DraftState;
+  try {
+    state = createDraftState({
+      draftId: payload.draftId,
+      settings: payload.settings,
+      teams: payload.teams,
+      playerDataRelease: payload.playerDataRelease,
+    });
+
+    for (const playerId of payload.pickPlayerIds) {
+      state = makePick(state, playerId);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Draft state could not be restored.";
+    throw new DraftEngineError("INVALID_DRAFT_EXPORT", `Draft export is invalid: ${message}`);
+  }
+
+  if (!Number.isInteger(payload.revision) || payload.revision < state.picks.length) {
+    throw new DraftEngineError(
+      "INVALID_DRAFT_EXPORT",
+      "Draft revision must be an integer at least as large as the current pick count.",
+    );
+  }
+
+  return { ...state, revision: payload.revision };
+}
+
+function toExportPayload(state: DraftState): DraftExportPayload {
+  return {
+    draftId: state.draftId,
+    settings: structuredClone(state.settings),
+    teams: state.teams.map((team) => ({ ...team })),
+    playerDataRelease: structuredClone(state.playerDataRelease),
+    pickPlayerIds: state.picks.map((pick) => pick.playerId),
+    revision: state.revision,
+  };
+}
+
+function parseDraftExportEnvelope(value: unknown): DraftExportEnvelope {
+  if (!isRecord(value)) {
+    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export must be an object.");
+  }
+
+  if (value.schema_version !== DRAFT_EXPORT_SCHEMA_VERSION) {
+    throw new DraftEngineError(
+      "UNSUPPORTED_SCHEMA_VERSION",
+      `Unsupported draft export schema version: ${String(value
 
 [TRUNCATED]
 ```
@@ -2794,23 +3031,38 @@ function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
 ### `packages/draft-engine/src/state.ts`
 
 ```text
-import type {
-  DraftOrderSlot,
-  DraftPick,
-  DraftState,
-  DraftStatus,
-  DraftTeam,
-  LeagueSettings,
+import {
+  assertPlayerDataRelease,
+  type DraftOrderSlot,
+  type DraftPick,
+  type DraftState,
+  type DraftStatus,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerDataRecord,
+  type PlayerDataRelease,
+  type PlayerPosition,
+  type RosterSlotRule,
+  type RosterSlotType,
 } from "@fdi/shared-types";
 import { DraftEngineError } from "./errors.js";
-import { createDraftTeams, generateSnakeDraftOrder } from "./order.js";
+import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "./order.js";
 
 export interface CreateDraftStateInput {
   draftId: string;
   settings: LeagueSettings;
-  playerPoolIds: string[];
+  playerDataRelease: PlayerDataRelease;
   teamNames?: string[];
   teams?: DraftTeam[];
+}
+
+type PendingDraftPick = DraftOrderSlot & { playerId: string };
+
+interface ConcreteRosterSlot {
+  slot: RosterSlotType;
+  slotIndex: number;
+  eligiblePositions: PlayerPosition[];
+  ruleOrder: number;
 }
 
 export function createDraftState(input: CreateDraftStateInput): DraftState {
@@ -2819,15 +3071,25 @@ export function createDraftState(input: CreateDraftStateInput): DraftState {
     throw new DraftEngineError("INVALID_SETTINGS", "draftId must be a non-empty string.");
   }
 
-  const playerPoolIds = normalizePlayerPool(input.playerPoolIds);
+  validateLeagueSettings(input.settings);
+  const playerDataRelease = normalizePlayerDataRelease(input.playerDataRelease);
   const teams = input.teams ?? createDraftTeams(input.settings, input.teamNames);
   const order = generateSnakeDraftOrder(input.settings, teams);
+  const playerPoolIds = playerDataRelease.players.map((player) => player.canonical_player_id);
+
+  if (playerPoolIds.length < order.length) {
+    throw new DraftEngineError(
+      "INVALID_PLAYER_POOL",
+      `The player pool contains ${playerPoolIds.length} players but the draft requires ${order.length} picks.`,
+    );
+  }
 
   return {
     draftId,
     settings: structuredClone(input.settings),
     teams: structuredClone(teams),
     order,
+    playerDataRelease,
     playerPoolIds,
     availablePlayerIds: [...playerPoolIds],
     picks: [],
@@ -2857,8 +3119,8 @@ export function makePick(state: DraftState, playerId: string): DraftState {
     throw new DraftEngineError("DRAFT_COMPLETE", "The draft order has no remaining picks.");
   }
 
-  const pick: DraftPick = { ...orderSlot, playerId: normalizedPlayerId };
-  return rebuildState(state, [...state.picks, pick]);
+  const pick: PendingDraftPick = { ...orderSlot, playerId: normalizedPlayerId };
+  return rebuildState(state, [...state.picks.map(toPendingPick), pick]);
 }
 
 export function undoLastPick(state: DraftState): DraftState {
@@ -2868,7 +3130,7 @@ export function undoLastPick(state: DraftState): DraftState {
     throw new DraftEngineError("NO_PICKS_TO_UNDO", "There are no picks to undo.");
   }
 
-  return rebuildState(state, state.picks.slice(0, -1));
+  return rebuildState(state, state.picks.slice(0, -1).map(toPendingPick));
 }
 
 export function correctPick(
@@ -2883,34 +3145,7 @@ export function correctPick(
   }
 
   const normalizedPlayerId = replacementPlayerId.trim();
-  const existingPick = state.picks[overallPick - 1]!;
-
-  if (normalizedPlayerId === existingPick.playerId) {
-    return cloneState(state);
-  }
-
-  const draftedElsewhere = state.picks.some(
-    (pick) => pick.overallPick !== overallPick && pick.playerId === normalizedPlayerId,
-  );
-  if (!state.playerPoolIds.includes(normalizedPlayerId) || draftedElsewhere) {
-    throw new DraftEngineError(
-      "PLAYER_UNAVAILABLE",
-      `Player ${normalizedPlayerId || "<empty>"} is not available as a replacement.`,
-    );
-  }
-
-  const correctedPicks = state.picks.map((pick) =>
-    pick.overallPick === overallPick ? { ...pick, playerId: normalizedPlayerId } : { ...pick },
-  );
-
-  return rebuildState(state, correctedPicks);
-}
-
-export function getCurrentOrderSlot(state: DraftState): DraftOrderSlot | null {
-  if (state.nextOverallPick === null) {
-    return null;
-  }
-  return state.ord
+  const existingPi
 
 [TRUNCATED]
 ```
@@ -2918,14 +3153,25 @@ export function getCurrentOrderSlot(state: DraftState): DraftOrderSlot | null {
 ### `packages/draft-engine/tests/fixtures.ts`
 
 ```text
-import type { LeagueSettings } from "@fdi/shared-types";
+import type {
+  LeagueSettings,
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+  RosterSlotRule,
+} from "@fdi/shared-types";
+
+const ALL_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
 export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
+  const rounds = overrides.rounds ?? 16;
+  const rosterSlots = overrides.rosterSlots ?? defaultRosterSlots(rounds);
+
   return {
     leagueName: "Test League",
     teamCount: 12,
     userDraftSlot: 6,
-    rounds: 16,
+    rounds,
     scoring: {
       preset: "half_ppr",
       passingYardsPerPoint: 25,
@@ -2938,22 +3184,99 @@ export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueS
       reception: 0.5,
       fumbleLost: -2,
     },
-    rosterSlots: [
-      { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-      { slot: "RB", count: 2, eligiblePositions: ["RB"] },
-      { slot: "WR", count: 2, eligiblePositions: ["WR"] },
-      { slot: "TE", count: 1, eligiblePositions: ["TE"] },
-      { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-      { slot: "K", count: 1, eligiblePositions: ["K"] },
-      { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-      { slot: "BENCH", count: 7, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
-    ],
+    rosterSlots,
     ...overrides,
   };
 }
 
-export function playerPool(count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `player-${index + 1}`);
+export function playerRecord(
+  canonicalPlayerId: string,
+  position: PlayerPosition,
+  displayName: string = canonicalPlayerId,
+): PlayerDataRecord {
+  return {
+    canonical_player_id: canonicalPlayerId,
+    display_name: displayName,
+    position,
+    nfl_team: "TST",
+    bye_week: 7,
+    overall_rank: null,
+    position_rank: null,
+    adp: null,
+    projected_points: null,
+    tier: null,
+    risk_score: null,
+    upside_score: null,
+    availability_status: "active",
+  };
+}
+
+export function playerDataRelease(players: PlayerDataRecord[]): PlayerDataRelease {
+  return {
+    schema_version: "1.0",
+    season: 2026,
+    release_id: "test-release-v1",
+    generated_at: "2026-07-16T12:00:00Z",
+    sources: ["test-fixture"],
+    players,
+  };
+}
+
+export function generatedPlayerRelease(
+  count: number,
+  positions: PlayerPosition[] = ALL_POSITIONS,
+): PlayerDataRelease {
+  return playerDataRelease(
+    Array.from({ length: count }, (_, index) =>
+      playerRecord(`player-${index + 1}`, positions[index % positions.length]!),
+    ),
+  );
+}
+
+export function fullDraftPlayerRelease(settings: LeagueSettings): PlayerDataRelease {
+  const standardRoundPositions: PlayerPosition[] = [
+    "QB",
+    "RB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "RB",
+    "K",
+    "DST",
+    "QB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "RB",
+    "WR",
+  ];
+
+  const requiredPlayers = settings.teamCount * settings.rounds;
+  const players = Array.from({ length: requiredPlayers + 20 }, (_, index) => {
+    const round = Math.floor(index / settings.teamCount);
+    const position = standardRoundPositions[round] ?? ALL_POSITIONS[index % ALL_POSITIONS.length]!;
+    return playerRecord(`player-${index + 1}`, position);
+  });
+  return playerDataRelease(players);
+}
+
+function defaultRosterSlots(rounds: number): RosterSlotRule[] {
+  if (rounds !== 16) {
+    return [{ slot: "BENCH", count: rounds, eligiblePositions: [...ALL_POSITIONS] }];
+  }
+
+  return [
+    { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+    { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+    { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+    { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+    { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+    { slot: "K", count: 1, eligiblePositions: ["K"] },
+    { slot: "DST", count: 1, eligiblePositions: ["DST"] },
+    { slot: "BENCH", count: 7, eligiblePositions: [...ALL_POSITIONS] },
+  ];
 }
 ```
 
@@ -2987,118 +3310,16 @@ describe("snake draft order", () => {
 
     expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
   });
+
+  it("requires roster capacity to equal the configured rounds", () => {
+    const settings = leagueSettings({
+      rounds: 3,
+      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
+    });
+
+    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
+  });
 });
-```
-
-### `packages/draft-engine/tests/state.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import {
-  buildRosters,
-  correctPick,
-  createDraftState,
-  getCurrentOrderSlot,
-  makePick,
-  undoLastPick,
-} from "@fdi/draft-engine";
-import { leagueSettings, playerPool } from "./fixtures.js";
-
-describe("draft state transitions", () => {
-  it("creates a deterministic initial state", () => {
-    const state = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
-      playerPoolIds: playerPool(20),
-    });
-
-    expect(state.status).toBe("not_started");
-    expect(state.nextOverallPick).toBe(1);
-    expect(state.picks).toEqual([]);
-    expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
-  });
-
-  it("records picks, advances the clock, and updates rosters", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-
-    const afterOne = makePick(initial, "player-1");
-    const afterTwo = makePick(afterOne, "player-2");
-
-    expect(initial.picks).toHaveLength(0);
-    expect(afterTwo.status).toBe("in_progress");
-    expect(afterTwo.nextOverallPick).toBe(3);
-    expect(afterTwo.availablePlayerIds).not.toContain("player-1");
-    expect(buildRosters(afterTwo)).toEqual({
-      "team-1": ["player-1"],
-      "team-2": ["player-2"],
-      "team-3": [],
-      "team-4": [],
-    });
-  });
-
-  it("prevents a player from being selected twice", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-    const afterOne = makePick(initial, "player-1");
-
-    expect(() => makePick(afterOne, "player-1")).toThrow(/not available/);
-  });
-
-  it("undoes the most recent pick and restores availability", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-    const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
-    const undone = undoLastPick(afterTwo);
-
-    expect(undone.picks.map((pick) => pick.playerId)).toEqual(["player-1"]);
-    expect(undone.availablePlayerIds).toContain("player-2");
-    expect(undone.nextOverallPick).toBe(2);
-  });
-
-  it("corrects an earlier pick without changing its board position", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-    const afterThree = makePick(
-      makePick(makePick(initial, "player-1"), "player-2"),
-      "player-3",
-    );
-    const corrected = correctPick(afterThree, 1, "player-4");
-
-    expect(corrected.picks[0]).toMatchObject({
-      overallPick: 1,
-      teamId: "team-1",
-      playerId: "player-4",
-    });
-    expect(corrected.availablePlayerIds).toContain("player-1");
-    expect(corrected.availablePlayerIds).not.toContain("player-4");
-    expect(corrected.nextOverallPick).toBe(4);
-  });
-
-  it("runs a complete twelve-team, sixteen-round draft", () => {
-    const settings = leagueSettings();
-    const players = playerPool(settings.teamCount * settings.rounds + 20);
-    let state = createDraftState({
-      draftId: "full-simulation",
-      settings,
-      playerPoolIds: players,
-    });
-
-    for (let index = 0; i
-
-[TRUNCATED]
 ```
 
 ## Fantasy Domain Logic Files
@@ -3515,8 +3736,11 @@ export type DraftEngineErrorCode =
   | "INVALID_PLAYER_POOL"
   | "DRAFT_COMPLETE"
   | "PLAYER_UNAVAILABLE"
+  | "ROSTER_INVALID"
   | "NO_PICKS_TO_UNDO"
-  | "PICK_NOT_FOUND";
+  | "PICK_NOT_FOUND"
+  | "INVALID_DRAFT_EXPORT"
+  | "UNSUPPORTED_SCHEMA_VERSION";
 
 export class DraftEngineError extends Error {
   readonly code: DraftEngineErrorCode;
@@ -3538,11 +3762,14 @@ export {
   generateSnakeDraftOrder,
   validateLeagueSettings,
 } from "./order.js";
+export { deserializeDraftState, serializeDraftState } from "./serialization.js";
 export {
+  buildRosterAssignments,
   buildRosters,
   correctPick,
   createDraftState,
   getCurrentOrderSlot,
+  getPlayerById,
   makePick,
   undoLastPick,
   type CreateDraftStateInput,
@@ -3552,7 +3779,15 @@ export {
 ### `packages/draft-engine/src/order.ts`
 
 ```text
-import type { DraftOrderSlot, DraftTeam, LeagueSettings } from "@fdi/shared-types";
+import {
+  PLAYER_POSITIONS,
+  ROSTER_SLOT_TYPES,
+  type DraftOrderSlot,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerPosition,
+  type RosterSlotType,
+} from "@fdi/shared-types";
 import { DraftEngineError } from "./errors.js";
 
 export function validateLeagueSettings(settings: LeagueSettings): void {
@@ -3581,15 +3816,27 @@ export function validateLeagueSettings(settings: LeagueSettings): void {
     );
   }
 
-  if (settings.rosterSlots.length === 0) {
+  if (!Array.isArray(settings.rosterSlots) || settings.rosterSlots.length === 0) {
     throw new DraftEngineError("INVALID_SETTINGS", "At least one roster slot rule is required.");
   }
 
+  let rosterCapacity = 0;
   for (const rule of settings.rosterSlots) {
+    if (!ROSTER_SLOT_TYPES.includes(rule.slot as RosterSlotType)) {
+      throw new DraftEngineError("INVALID_SETTINGS", `Unsupported roster slot: ${String(rule.slot)}`);
+    }
+
     if (!Number.isInteger(rule.count) || rule.count < 0) {
       throw new DraftEngineError(
         "INVALID_SETTINGS",
         `Roster slot ${rule.slot} must have a non-negative integer count.`,
+      );
+    }
+
+    if (!Array.isArray(rule.eligiblePositions)) {
+      throw new DraftEngineError(
+        "INVALID_SETTINGS",
+        `Roster slot ${rule.slot} must define eligible positions.`,
       );
     }
 
@@ -3599,6 +3846,32 @@ export function validateLeagueSettings(settings: LeagueSettings): void {
         `Roster slot ${rule.slot} must define eligible positions.`,
       );
     }
+
+    const uniquePositions = new Set<PlayerPosition>();
+    for (const position of rule.eligiblePositions) {
+      if (!PLAYER_POSITIONS.includes(position as PlayerPosition)) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          `Roster slot ${rule.slot} contains unsupported position ${String(position)}.`,
+        );
+      }
+      if (uniquePositions.has(position)) {
+        throw new DraftEngineError(
+          "INVALID_SETTINGS",
+          `Roster slot ${rule.slot} contains duplicate eligible position ${position}.`,
+        );
+      }
+      uniquePositions.add(position);
+    }
+
+    rosterCapacity += rule.count;
+  }
+
+  if (rosterCapacity !== settings.rounds) {
+    throw new DraftEngineError(
+      "INVALID_SETTINGS",
+      `Roster capacity (${rosterCapacity}) must equal configured rounds (${settings.rounds}).`,
+    );
   }
 }
 
@@ -3618,54 +3891,128 @@ export function createDraftTeams(settings: LeagueSettings, teamNames?: string[])
 
     return {
       teamId: `team-${draftSlot}`,
-      name: providedName && providedName.length > 0 ? providedName : `Team ${draftSlot}`,
-      draftSlot,
-      isUser: draftSlot === settings.userDraftSlot,
-    };
-  });
-}
 
-export function generateSnakeDraftOrder(
-  settings: LeagueSettings,
-  teams: DraftTeam[] = createDraftTeams(settings),
-): DraftOrderSlot[] {
-  validateLeagueSettings(settings);
-  validateTeams(settings, teams);
+[TRUNCATED]
+```
 
-  const teamsByDraftSlot = [...teams].sort((left, right) => left.draftSlot - right.draftSlot);
-  const order: DraftOrderSlot[] = [];
+### `packages/draft-engine/src/serialization.ts`
 
-  for (let round = 1; round <= settings.rounds; round += 1) {
-    const roundTeams = round % 2 === 1 ? teamsByDraftSlot : [...teamsByDraftSlot].reverse();
+```text
+import {
+  DRAFT_EXPORT_SCHEMA_VERSION,
+  assertPlayerDataRelease,
+  isPlayerPosition,
+  isRosterSlotType,
+  type DraftExportEnvelope,
+  type DraftExportPayload,
+  type DraftState,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerDataRelease,
+  type RosterSlotRule,
+  type ScoringSettings,
+} from "@fdi/shared-types";
+import { DraftEngineError } from "./errors.js";
+import { validateLeagueSettings } from "./order.js";
+import { createDraftState, makePick } from "./state.js";
 
-    roundTeams.forEach((team, index) => {
-      order.push({
-        overallPick: order.length + 1,
-        round,
-        pickInRound: index + 1,
-        teamId: team.teamId,
-        draftSlot: team.draftSlot,
-      });
-    });
-  }
+const SCORING_PRESETS = ["standard", "half_ppr", "ppr", "custom"] as const;
+const SCORING_NUMBER_FIELDS = [
+  "passingYardsPerPoint",
+  "passingTouchdown",
+  "interception",
+  "rushingYardsPerPoint",
+  "rushingTouchdown",
+  "receivingYardsPerPoint",
+  "receivingTouchdown",
+  "reception",
+  "fumbleLost",
+] as const;
 
-  return order;
-}
+export function serializeDraftState(
+  state: DraftState,
+  exportedAt: string = new Date().toISOString(),
+): string {
+  assertIsoTimestamp(exportedAt, "exportedAt");
 
-function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
-  if (teams.length !== settings.teamCount) {
+  const payload = toExportPayload(state);
+  const restored = restoreDraftExportPayload(payload);
+  if (stateSignature(restored) !== stateSignature(state)) {
     throw new DraftEngineError(
-      "INVALID_SETTINGS",
-      "The number of teams must match league settings.",
+      "INVALID_DRAFT_EXPORT",
+      "Draft state is internally inconsistent and cannot be exported safely.",
     );
   }
 
-  const teamIds = new Set<string>();
-  const draftSlots = new Set<number>();
+  const envelope: DraftExportEnvelope = {
+    schema_version: DRAFT_EXPORT_SCHEMA_VERSION,
+    exported_at: exportedAt,
+    draft: payload,
+  };
 
-  for (const team of teams) {
-    if (teamIds.has(team.teamId)) {
-      throw new DraftEngineError("INVALID_SETTINGS", `Duplicate teamId: ${team.te
+  return JSON.stringify(envelope, null, 2);
+}
+
+export function deserializeDraftState(serialized: string): DraftState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(serialized);
+  } catch {
+    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export is not valid JSON.");
+  }
+
+  const envelope = parseDraftExportEnvelope(parsed);
+  return restoreDraftExportPayload(envelope.draft);
+}
+
+function restoreDraftExportPayload(payload: DraftExportPayload): DraftState {
+  let state: DraftState;
+  try {
+    state = createDraftState({
+      draftId: payload.draftId,
+      settings: payload.settings,
+      teams: payload.teams,
+      playerDataRelease: payload.playerDataRelease,
+    });
+
+    for (const playerId of payload.pickPlayerIds) {
+      state = makePick(state, playerId);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Draft state could not be restored.";
+    throw new DraftEngineError("INVALID_DRAFT_EXPORT", `Draft export is invalid: ${message}`);
+  }
+
+  if (!Number.isInteger(payload.revision) || payload.revision < state.picks.length) {
+    throw new DraftEngineError(
+      "INVALID_DRAFT_EXPORT",
+      "Draft revision must be an integer at least as large as the current pick count.",
+    );
+  }
+
+  return { ...state, revision: payload.revision };
+}
+
+function toExportPayload(state: DraftState): DraftExportPayload {
+  return {
+    draftId: state.draftId,
+    settings: structuredClone(state.settings),
+    teams: state.teams.map((team) => ({ ...team })),
+    playerDataRelease: structuredClone(state.playerDataRelease),
+    pickPlayerIds: state.picks.map((pick) => pick.playerId),
+    revision: state.revision,
+  };
+}
+
+function parseDraftExportEnvelope(value: unknown): DraftExportEnvelope {
+  if (!isRecord(value)) {
+    throw new DraftEngineError("INVALID_DRAFT_EXPORT", "Draft export must be an object.");
+  }
+
+  if (value.schema_version !== DRAFT_EXPORT_SCHEMA_VERSION) {
+    throw new DraftEngineError(
+      "UNSUPPORTED_SCHEMA_VERSION",
+      `Unsupported draft export schema version: ${String(value
 
 [TRUNCATED]
 ```
@@ -3673,23 +4020,38 @@ function validateTeams(settings: LeagueSettings, teams: DraftTeam[]): void {
 ### `packages/draft-engine/src/state.ts`
 
 ```text
-import type {
-  DraftOrderSlot,
-  DraftPick,
-  DraftState,
-  DraftStatus,
-  DraftTeam,
-  LeagueSettings,
+import {
+  assertPlayerDataRelease,
+  type DraftOrderSlot,
+  type DraftPick,
+  type DraftState,
+  type DraftStatus,
+  type DraftTeam,
+  type LeagueSettings,
+  type PlayerDataRecord,
+  type PlayerDataRelease,
+  type PlayerPosition,
+  type RosterSlotRule,
+  type RosterSlotType,
 } from "@fdi/shared-types";
 import { DraftEngineError } from "./errors.js";
-import { createDraftTeams, generateSnakeDraftOrder } from "./order.js";
+import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "./order.js";
 
 export interface CreateDraftStateInput {
   draftId: string;
   settings: LeagueSettings;
-  playerPoolIds: string[];
+  playerDataRelease: PlayerDataRelease;
   teamNames?: string[];
   teams?: DraftTeam[];
+}
+
+type PendingDraftPick = DraftOrderSlot & { playerId: string };
+
+interface ConcreteRosterSlot {
+  slot: RosterSlotType;
+  slotIndex: number;
+  eligiblePositions: PlayerPosition[];
+  ruleOrder: number;
 }
 
 export function createDraftState(input: CreateDraftStateInput): DraftState {
@@ -3698,15 +4060,25 @@ export function createDraftState(input: CreateDraftStateInput): DraftState {
     throw new DraftEngineError("INVALID_SETTINGS", "draftId must be a non-empty string.");
   }
 
-  const playerPoolIds = normalizePlayerPool(input.playerPoolIds);
+  validateLeagueSettings(input.settings);
+  const playerDataRelease = normalizePlayerDataRelease(input.playerDataRelease);
   const teams = input.teams ?? createDraftTeams(input.settings, input.teamNames);
   const order = generateSnakeDraftOrder(input.settings, teams);
+  const playerPoolIds = playerDataRelease.players.map((player) => player.canonical_player_id);
+
+  if (playerPoolIds.length < order.length) {
+    throw new DraftEngineError(
+      "INVALID_PLAYER_POOL",
+      `The player pool contains ${playerPoolIds.length} players but the draft requires ${order.length} picks.`,
+    );
+  }
 
   return {
     draftId,
     settings: structuredClone(input.settings),
     teams: structuredClone(teams),
     order,
+    playerDataRelease,
     playerPoolIds,
     availablePlayerIds: [...playerPoolIds],
     picks: [],
@@ -3736,8 +4108,8 @@ export function makePick(state: DraftState, playerId: string): DraftState {
     throw new DraftEngineError("DRAFT_COMPLETE", "The draft order has no remaining picks.");
   }
 
-  const pick: DraftPick = { ...orderSlot, playerId: normalizedPlayerId };
-  return rebuildState(state, [...state.picks, pick]);
+  const pick: PendingDraftPick = { ...orderSlot, playerId: normalizedPlayerId };
+  return rebuildState(state, [...state.picks.map(toPendingPick), pick]);
 }
 
 export function undoLastPick(state: DraftState): DraftState {
@@ -3747,7 +4119,7 @@ export function undoLastPick(state: DraftState): DraftState {
     throw new DraftEngineError("NO_PICKS_TO_UNDO", "There are no picks to undo.");
   }
 
-  return rebuildState(state, state.picks.slice(0, -1));
+  return rebuildState(state, state.picks.slice(0, -1).map(toPendingPick));
 }
 
 export function correctPick(
@@ -3762,34 +4134,7 @@ export function correctPick(
   }
 
   const normalizedPlayerId = replacementPlayerId.trim();
-  const existingPick = state.picks[overallPick - 1]!;
-
-  if (normalizedPlayerId === existingPick.playerId) {
-    return cloneState(state);
-  }
-
-  const draftedElsewhere = state.picks.some(
-    (pick) => pick.overallPick !== overallPick && pick.playerId === normalizedPlayerId,
-  );
-  if (!state.playerPoolIds.includes(normalizedPlayerId) || draftedElsewhere) {
-    throw new DraftEngineError(
-      "PLAYER_UNAVAILABLE",
-      `Player ${normalizedPlayerId || "<empty>"} is not available as a replacement.`,
-    );
-  }
-
-  const correctedPicks = state.picks.map((pick) =>
-    pick.overallPick === overallPick ? { ...pick, playerId: normalizedPlayerId } : { ...pick },
-  );
-
-  return rebuildState(state, correctedPicks);
-}
-
-export function getCurrentOrderSlot(state: DraftState): DraftOrderSlot | null {
-  if (state.nextOverallPick === null) {
-    return null;
-  }
-  return state.ord
+  const existingPi
 
 [TRUNCATED]
 ```
@@ -3797,14 +4142,25 @@ export function getCurrentOrderSlot(state: DraftState): DraftOrderSlot | null {
 ### `packages/draft-engine/tests/fixtures.ts`
 
 ```text
-import type { LeagueSettings } from "@fdi/shared-types";
+import type {
+  LeagueSettings,
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+  RosterSlotRule,
+} from "@fdi/shared-types";
+
+const ALL_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
 export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
+  const rounds = overrides.rounds ?? 16;
+  const rosterSlots = overrides.rosterSlots ?? defaultRosterSlots(rounds);
+
   return {
     leagueName: "Test League",
     teamCount: 12,
     userDraftSlot: 6,
-    rounds: 16,
+    rounds,
     scoring: {
       preset: "half_ppr",
       passingYardsPerPoint: 25,
@@ -3817,22 +4173,99 @@ export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueS
       reception: 0.5,
       fumbleLost: -2,
     },
-    rosterSlots: [
-      { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-      { slot: "RB", count: 2, eligiblePositions: ["RB"] },
-      { slot: "WR", count: 2, eligiblePositions: ["WR"] },
-      { slot: "TE", count: 1, eligiblePositions: ["TE"] },
-      { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-      { slot: "K", count: 1, eligiblePositions: ["K"] },
-      { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-      { slot: "BENCH", count: 7, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
-    ],
+    rosterSlots,
     ...overrides,
   };
 }
 
-export function playerPool(count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `player-${index + 1}`);
+export function playerRecord(
+  canonicalPlayerId: string,
+  position: PlayerPosition,
+  displayName: string = canonicalPlayerId,
+): PlayerDataRecord {
+  return {
+    canonical_player_id: canonicalPlayerId,
+    display_name: displayName,
+    position,
+    nfl_team: "TST",
+    bye_week: 7,
+    overall_rank: null,
+    position_rank: null,
+    adp: null,
+    projected_points: null,
+    tier: null,
+    risk_score: null,
+    upside_score: null,
+    availability_status: "active",
+  };
+}
+
+export function playerDataRelease(players: PlayerDataRecord[]): PlayerDataRelease {
+  return {
+    schema_version: "1.0",
+    season: 2026,
+    release_id: "test-release-v1",
+    generated_at: "2026-07-16T12:00:00Z",
+    sources: ["test-fixture"],
+    players,
+  };
+}
+
+export function generatedPlayerRelease(
+  count: number,
+  positions: PlayerPosition[] = ALL_POSITIONS,
+): PlayerDataRelease {
+  return playerDataRelease(
+    Array.from({ length: count }, (_, index) =>
+      playerRecord(`player-${index + 1}`, positions[index % positions.length]!),
+    ),
+  );
+}
+
+export function fullDraftPlayerRelease(settings: LeagueSettings): PlayerDataRelease {
+  const standardRoundPositions: PlayerPosition[] = [
+    "QB",
+    "RB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "RB",
+    "K",
+    "DST",
+    "QB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "RB",
+    "WR",
+  ];
+
+  const requiredPlayers = settings.teamCount * settings.rounds;
+  const players = Array.from({ length: requiredPlayers + 20 }, (_, index) => {
+    const round = Math.floor(index / settings.teamCount);
+    const position = standardRoundPositions[round] ?? ALL_POSITIONS[index % ALL_POSITIONS.length]!;
+    return playerRecord(`player-${index + 1}`, position);
+  });
+  return playerDataRelease(players);
+}
+
+function defaultRosterSlots(rounds: number): RosterSlotRule[] {
+  if (rounds !== 16) {
+    return [{ slot: "BENCH", count: rounds, eligiblePositions: [...ALL_POSITIONS] }];
+  }
+
+  return [
+    { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+    { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+    { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+    { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+    { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+    { slot: "K", count: 1, eligiblePositions: ["K"] },
+    { slot: "DST", count: 1, eligiblePositions: ["DST"] },
+    { slot: "BENCH", count: 7, eligiblePositions: [...ALL_POSITIONS] },
+  ];
 }
 ```
 
@@ -3866,133 +4299,94 @@ describe("snake draft order", () => {
 
     expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
   });
+
+  it("requires roster capacity to equal the configured rounds", () => {
+    const settings = leagueSettings({
+      rounds: 3,
+      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
+    });
+
+    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
+  });
 });
 ```
 
-### `packages/draft-engine/tests/state.test.ts`
+### `packages/draft-engine/tests/serialization.test.ts`
 
 ```text
 import { describe, expect, it } from "vitest";
 import {
-  buildRosters,
   correctPick,
   createDraftState,
-  getCurrentOrderSlot,
+  deserializeDraftState,
   makePick,
+  serializeDraftState,
   undoLastPick,
 } from "@fdi/draft-engine";
-import { leagueSettings, playerPool } from "./fixtures.js";
+import { generatedPlayerRelease, leagueSettings } from "./fixtures.js";
 
-describe("draft state transitions", () => {
-  it("creates a deterministic initial state", () => {
-    const state = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
-      playerPoolIds: playerPool(20),
-    });
-
-    expect(state.status).toBe("not_started");
-    expect(state.nextOverallPick).toBe(1);
-    expect(state.picks).toEqual([]);
-    expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
+function draftWithHistory() {
+  let state = createDraftState({
+    draftId: "export-test",
+    settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+    playerDataRelease: generatedPlayerRelease(12),
   });
-
-  it("records picks, advances the clock, and updates rosters", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-
-    const afterOne = makePick(initial, "player-1");
-    const afterTwo = makePick(afterOne, "player-2");
-
-    expect(initial.picks).toHaveLength(0);
-    expect(afterTwo.status).toBe("in_progress");
-    expect(afterTwo.nextOverallPick).toBe(3);
-    expect(afterTwo.availablePlayerIds).not.toContain("player-1");
-    expect(buildRosters(afterTwo)).toEqual({
-      "team-1": ["player-1"],
-      "team-2": ["player-2"],
-      "team-3": [],
-      "team-4": [],
-    });
-  });
-
-  it("prevents a player from being selected twice", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-    const afterOne = makePick(initial, "player-1");
-
-    expect(() => makePick(afterOne, "player-1")).toThrow(/not available/);
-  });
-
-  it("undoes the most recent pick and restores availability", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-    const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
-    const undone = undoLastPick(afterTwo);
-
-    expect(undone.picks.map((pick) => pick.playerId)).toEqual(["player-1"]);
-    expect(undone.availablePlayerIds).toContain("player-2");
-    expect(undone.nextOverallPick).toBe(2);
-  });
-
-  it("corrects an earlier pick without changing its board position", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
-    });
-    const afterThree = makePick(
-      makePick(makePick(initial, "player-1"), "player-2"),
-      "player-3",
-    );
-    const corrected = correctPick(afterThree, 1, "player-4");
-
-    expect(corrected.picks[0]).toMatchObject({
-      overallPick: 1,
-      teamId: "team-1",
-      playerId: "player-4",
-    });
-    expect(corrected.availablePlayerIds).toContain("player-1");
-    expect(corrected.availablePlayerIds).not.toContain("player-4");
-    expect(corrected.nextOverallPick).toBe(4);
-  });
-
-  it("runs a complete twelve-team, sixteen-round draft", () => {
-    const settings = leagueSettings();
-    const players = playerPool(settings.teamCount * settings.rounds + 20);
-    let state = createDraftState({
-      draftId: "full-simulation",
-      settings,
-      playerPoolIds: players,
-    });
-
-    for (let index = 0; i
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/tsconfig.json`
-
-```text
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
-  },
-  "include": ["src/**/*.ts"],
-  "references": [{ "path": "../shared-types" }]
+  state = makePick(state, "player-1");
+  state = makePick(state, "player-2");
+  state = makePick(state, "player-3");
+  state = correctPick(state, 1, "player-4");
+  return undoLastPick(state);
 }
+
+describe("draft export and import", () => {
+  it("round-trips a draft through a versioned JSON export", () => {
+    const state = draftWithHistory();
+    const serialized = serializeDraftState(state, "2026-07-16T15:30:00Z");
+    const restored = deserializeDraftState(serialized);
+
+    expect(restored).toEqual(state);
+    expect(restored.revision).toBeGreaterThan(restored.picks.length);
+  });
+
+  it("stores only source inputs and pick IDs in the export payload", () => {
+    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
+    const envelope = JSON.parse(serialized) as Record<string, unknown>;
+    const draft = envelope.draft as Record<string, unknown>;
+
+    expect(envelope.schema_version).toBe("1.0");
+    expect(draft.pickPlayerIds).toEqual(["player-4", "player-2"]);
+    expect(draft).not.toHaveProperty("availablePlayerIds");
+    expect(draft).not.toHaveProperty("order");
+    expect(draft).not.toHaveProperty("status");
+  });
+
+  it("rejects malformed JSON", () => {
+    expect(() => deserializeDraftState("{broken-json")).toThrow(/not valid JSON/);
+  });
+
+  it("rejects unsupported schema versions", () => {
+    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
+    const envelope = JSON.parse(serialized) as Record<string, unknown>;
+    envelope.schema_version = "2.0";
+
+    expect(() => deserializeDraftState(JSON.stringify(envelope))).toThrow(/Unsupported/);
+  });
+
+  it("rejects a tampered export containing duplicate picks", () => {
+    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
+    const envelope = JSON.parse(serialized) as { draft: { pickPlayerIds: string[] } };
+    envelope.draft.pickPlayerIds = ["player-4", "player-4"];
+
+    expect(() => deserializeDraftState(JSON.stringify(envelope))).toThrow(/not available/);
+  });
+
+  it("refuses to serialize an internally inconsistent state", () => {
+    const state = draftWithHistory();
+    const tampered = { ...state, availablePlayerIds: [...state.availablePlayerIds, "player-4"] };
+
+    expect(() => serializeDraftState(tampered)).toThrow(/internally inconsistent/);
+  });
+});
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -4889,14 +5283,25 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
 ### `packages/draft-engine/tests/fixtures.ts`
 
 ```text
-import type { LeagueSettings } from "@fdi/shared-types";
+import type {
+  LeagueSettings,
+  PlayerDataRecord,
+  PlayerDataRelease,
+  PlayerPosition,
+  RosterSlotRule,
+} from "@fdi/shared-types";
+
+const ALL_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
 export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
+  const rounds = overrides.rounds ?? 16;
+  const rosterSlots = overrides.rosterSlots ?? defaultRosterSlots(rounds);
+
   return {
     leagueName: "Test League",
     teamCount: 12,
     userDraftSlot: 6,
-    rounds: 16,
+    rounds,
     scoring: {
       preset: "half_ppr",
       passingYardsPerPoint: 25,
@@ -4909,23 +5314,81 @@ export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueS
       reception: 0.5,
       fumbleLost: -2,
     },
-    rosterSlots: [
-      { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-      { slot: "RB", count: 2, eligiblePositions: ["RB"] },
-      { slot: "WR", count: 2, eligiblePositions: ["WR"] },
-      { slot: "TE", count: 1, eligiblePositions: ["TE"] },
-      { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-      { slot: "K", count: 1, eligiblePositions: ["K"] },
-      { slot: "DST", count: 1, eligiblePositions: ["DST"] },
-      { slot: "BENCH", count: 7, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
-    ],
+    rosterSlots,
     ...overrides,
   };
 }
 
-export function playerPool(count: number): string[] {
-  return Array.from({ length: count }, (_, index) => `player-${index + 1}`);
+export function playerRecord(
+  canonicalPlayerId: string,
+  position: PlayerPosition,
+  displayName: string = canonicalPlayerId,
+): PlayerDataRecord {
+  return {
+    canonical_player_id: canonicalPlayerId,
+    display_name: displayName,
+    position,
+    nfl_team: "TST",
+    bye_week: 7,
+    overall_rank: null,
+    position_rank: null,
+    adp: null,
+    projected_points: null,
+    tier: null,
+    risk_score: null,
+    upside_score: null,
+    availability_status: "active",
+  };
 }
+
+export function playerDataRelease(players: PlayerDataRecord[]): PlayerDataRelease {
+  return {
+    schema_version: "1.0",
+    season: 2026,
+    release_id: "test-release-v1",
+    generated_at: "2026-07-16T12:00:00Z",
+    sources: ["test-fixture"],
+    players,
+  };
+}
+
+export function generatedPlayerRelease(
+  count: number,
+  positions: PlayerPosition[] = ALL_POSITIONS,
+): PlayerDataRelease {
+  return playerDataRelease(
+    Array.from({ length: count }, (_, index) =>
+      playerRecord(`player-${index + 1}`, positions[index % positions.length]!),
+    ),
+  );
+}
+
+export function fullDraftPlayerRelease(settings: LeagueSettings): PlayerDataRelease {
+  const standardRoundPositions: PlayerPosition[] = [
+    "QB",
+    "RB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "RB",
+    "K",
+    "DST",
+    "QB",
+    "RB",
+    "WR",
+    "WR",
+    "TE",
+    "RB",
+    "WR",
+  ];
+
+  const requiredPlayers = settings.teamCount * settings.rounds;
+  const players = Array.from({ length: requiredPlayers + 20 }, (_, index) => {
+    const round = Math.floor(index / settings.teamCount);
+    const position = standardRoundPositions[round] ?? ALL_POSITIONS[index % ALL_
+
+[TRUNCATED]
 ```
 
 ### `packages/draft-engine/tests/order.test.ts`
@@ -4958,7 +5421,87 @@ describe("snake draft order", () => {
 
     expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
   });
+
+  it("requires roster capacity to equal the configured rounds", () => {
+    const settings = leagueSettings({
+      rounds: 3,
+      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
+    });
+
+    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
+  });
 });
+```
+
+### `packages/draft-engine/tests/serialization.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import {
+  correctPick,
+  createDraftState,
+  deserializeDraftState,
+  makePick,
+  serializeDraftState,
+  undoLastPick,
+} from "@fdi/draft-engine";
+import { generatedPlayerRelease, leagueSettings } from "./fixtures.js";
+
+function draftWithHistory() {
+  let state = createDraftState({
+    draftId: "export-test",
+    settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
+    playerDataRelease: generatedPlayerRelease(12),
+  });
+  state = makePick(state, "player-1");
+  state = makePick(state, "player-2");
+  state = makePick(state, "player-3");
+  state = correctPick(state, 1, "player-4");
+  return undoLastPick(state);
+}
+
+describe("draft export and import", () => {
+  it("round-trips a draft through a versioned JSON export", () => {
+    const state = draftWithHistory();
+    const serialized = serializeDraftState(state, "2026-07-16T15:30:00Z");
+    const restored = deserializeDraftState(serialized);
+
+    expect(restored).toEqual(state);
+    expect(restored.revision).toBeGreaterThan(restored.picks.length);
+  });
+
+  it("stores only source inputs and pick IDs in the export payload", () => {
+    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
+    const envelope = JSON.parse(serialized) as Record<string, unknown>;
+    const draft = envelope.draft as Record<string, unknown>;
+
+    expect(envelope.schema_version).toBe("1.0");
+    expect(draft.pickPlayerIds).toEqual(["player-4", "player-2"]);
+    expect(draft).not.toHaveProperty("availablePlayerIds");
+    expect(draft).not.toHaveProperty("order");
+    expect(draft).not.toHaveProperty("status");
+  });
+
+  it("rejects malformed JSON", () => {
+    expect(() => deserializeDraftState("{broken-json")).toThrow(/not valid JSON/);
+  });
+
+  it("rejects unsupported schema versions", () => {
+    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
+    const envelope = JSON.parse(serialized) as Record<string, unknown>;
+    envelope.schema_version = "2.0";
+
+    expect(() => deserializeDraftState(JSON.stringify(envelope))).toThrow(/Unsupported/);
+  });
+
+  it("rejects a tampered export containing duplicate picks", () => {
+    const serialized = serializeDraftState(draftWithHistory(), "2026-07-16T15:30:00Z");
+    const envelope = JSON.parse(serialized) as { draft: { pickPlayerIds: string[] } };
+    envelope.draft.pickPlayerIds = ["player-4", "player-4"];
+
+    expect(() => deserializeDraftState(JSON.stringify(env
+
+[TRUNCATED]
 ```
 
 ### `packages/draft-engine/tests/state.test.ts`
@@ -4966,34 +5509,43 @@ describe("snake draft order", () => {
 ```text
 import { describe, expect, it } from "vitest";
 import {
+  buildRosterAssignments,
   buildRosters,
   correctPick,
   createDraftState,
   getCurrentOrderSlot,
+  getPlayerById,
   makePick,
   undoLastPick,
 } from "@fdi/draft-engine";
-import { leagueSettings, playerPool } from "./fixtures.js";
+import {
+  fullDraftPlayerRelease,
+  generatedPlayerRelease,
+  leagueSettings,
+  playerDataRelease,
+  playerRecord,
+} from "./fixtures.js";
 
 describe("draft state transitions", () => {
   it("creates a deterministic initial state", () => {
     const state = createDraftState({
       draftId: "draft-1",
       settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
-      playerPoolIds: playerPool(20),
+      playerDataRelease: generatedPlayerRelease(20),
     });
 
     expect(state.status).toBe("not_started");
     expect(state.nextOverallPick).toBe(1);
     expect(state.picks).toEqual([]);
     expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
+    expect(getPlayerById(state, "player-1")?.canonical_player_id).toBe("player-1");
   });
 
   it("records picks, advances the clock, and updates rosters", () => {
     const initial = createDraftState({
       draftId: "draft-1",
       settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
+      playerDataRelease: generatedPlayerRelease(12),
     });
 
     const afterOne = makePick(initial, "player-1");
@@ -5015,7 +5567,7 @@ describe("draft state transitions", () => {
     const initial = createDraftState({
       draftId: "draft-1",
       settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
+      playerDataRelease: generatedPlayerRelease(12),
     });
     const afterOne = makePick(initial, "player-1");
 
@@ -5026,18 +5578,12 @@ describe("draft state transitions", () => {
     const initial = createDraftState({
       draftId: "draft-1",
       settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerPoolIds: playerPool(12),
+      playerDataRelease: generatedPlayerRelease(12),
     });
     const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
     const undone = undoLastPick(afterTwo);
 
-    expect(undone.picks.map((pick) => pick.playerId)).toEqual(["player-1"]);
-    expect(undone.availablePlayerIds).toContain("player-2");
-    expect(undone.nextOverallPick).toBe(2);
-  });
-
-  it("corrects an earlier pick without changing its board position", () => {
-    const in
+    exp
 
 [TRUNCATED]
 ```
