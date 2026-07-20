@@ -12,16 +12,19 @@ import {
   setRosterCount,
 } from "../src/draft-factory.js";
 
+
 describe("draft room application shell", () => {
-  it("renders league, recovery, and custom roster controls", () => {
+  it("renders league, UDK, recovery, and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
+    expect(html).toContain("Import UDK ZIP");
+    expect(html).toContain("ADP market");
     expect(html).toContain("Roster configuration");
     expect(html).toContain("Superflex");
-    expect(html).toContain("Autosaved after every change");
+    expect(html).toContain("Demonstration release");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
@@ -50,21 +53,17 @@ describe("draft room application shell", () => {
   });
 
   it("maps every configurable roster slot to engine eligibility", () => {
-    const rosterSlots = createRosterSlots({
+    const rosterCounts = {
       ...DEFAULT_ROSTER_COUNTS,
       SUPERFLEX: 1,
       K: 0,
       DST: 0,
-    });
+    };
+    const rosterSlots = createRosterSlots(rosterCounts);
     const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
     const superflex = rosterSlots.find((rule) => rule.slot === "SUPERFLEX");
 
-    expect(capacity).toBe(getRosterCapacity({
-      ...DEFAULT_ROSTER_COUNTS,
-      SUPERFLEX: 1,
-      K: 0,
-      DST: 0,
-    }));
+    expect(capacity).toBe(getRosterCapacity(rosterCounts));
     expect(superflex?.eligiblePositions).toEqual(["QB", "RB", "WR", "TE"]);
   });
 

@@ -7,28 +7,50 @@ import {
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import {
+  UDK_ADP_SOURCES,
+  type UdkAdpSource,
+  type UdkBuildReport,
+} from "../udk-importer.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
+import { UdkImportCard } from "./UdkImportCard.js";
 
 interface RecoverySetupScreenProps {
   setup: DraftSetup;
   recoveredDraft: DraftState | null;
+  udkReport: UdkBuildReport | null;
+  udkFilename: string | null;
   errorMessage: string | null;
   onSetupChange: (setup: DraftSetup) => void;
   onStartDraft: () => void;
   onResumeDraft: () => void;
   onDiscardRecovery: () => void;
   onImportDraft: (file: File) => Promise<boolean>;
+  onImportUdk: (file: File) => Promise<void>;
+  onClearUdk: () => void;
 }
+
+const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
+  average: "Average market",
+  sleeper: "Sleeper",
+  espn: "ESPN",
+  yahoo: "Yahoo",
+  underdog: "Underdog",
+};
 
 export function RecoverySetupScreen({
   setup,
   recoveredDraft,
+  udkReport,
+  udkFilename,
   errorMessage,
   onSetupChange,
   onStartDraft,
   onResumeDraft,
   onDiscardRecovery,
   onImportDraft,
+  onImportUdk,
+  onClearUdk,
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
@@ -56,15 +78,15 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, restore a saved draft, and run the entire snake draft
-          from one laptop. No platform login. No live sync dependency.
+          Configure the league and roster, load fresh UDK data, restore a saved draft, and run the
+          entire snake draft from one laptop. No platform login. No live sync dependency.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>UDK projections</span>
           <span>Custom rosters</span>
           <span>Automatic recovery</span>
           <span>Live recommendations</span>
-          <span>Every roster tracked</span>
         </div>
       </section>
 
@@ -202,7 +224,37 @@ export function RecoverySetupScreen({
             </div>
           </fieldset>
 
+          <label className="field field-wide adp-market-field">
+            <span>ADP market</span>
+            <select
+              value={setup.adpSource}
+              onChange={(event) =>
+                onSetupChange({
+                  ...setup,
+                  adpSource: event.target.value as UdkAdpSource,
+                })
+              }
+            >
+              {UDK_ADP_SOURCES.map((source) => (
+                <option key={source} value={source}>
+                  {ADP_SOURCE_LABELS[source]}
+                </option>
+              ))}
+            </select>
+            <small>
+              UDK round-and-pick values are converted using this league's {setup.teamCount}-team
+              size.
+            </small>
+          </label>
+
           <RosterConfigurator setup={setup} onSetupChange={onSetupChange} />
+
+          <UdkImportCard
+            report={udkReport}
+            filename={udkFilename}
+            onImport={onImportUdk}
+            onClear={onClearUdk}
+          />
 
           <div className="setup-summary field-wide">
             <div>
@@ -220,8 +272,8 @@ export function RecoverySetupScreen({
               </strong>
             </div>
             <div>
-              <span>Recovery</span>
-              <strong>Autosaved after every change</strong>
+              <span>Player source</span>
+              <strong>{udkReport === null ? "Demonstration release" : `UDK ${udkReport.season}`}</strong>
             </div>
           </div>
 
