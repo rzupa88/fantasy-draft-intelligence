@@ -2,20 +2,20 @@
 
 ## Purpose
 
-The draft room can build a local player-data release directly from a Fantasy Footballers Ultimate Draft Kit ZIP package. This supports a simple draft-day refresh workflow without scraping the UDK website, uploading files to a server, or committing proprietary exports to Git.
+The draft room can build a local player-data release directly from Fantasy Footballers Ultimate Draft Kit exports. It accepts either one UDK ZIP package or a batch selection of the individual CSV and PDF files, without scraping the UDK website, uploading files to a server, or committing proprietary exports to Git.
 
 ## Draft-day workflow
 
-1. Download fresh UDK CSV exports shortly before the draft.
-2. Keep the exported folder structure and compress the files into one ZIP archive.
-3. Open Fantasy Draft Intelligence.
-4. Configure league size, scoring, roster slots, and the preferred ADP market.
-5. Select **Import UDK ZIP** and choose the archive.
+1. Download fresh UDK exports shortly before the draft.
+2. Open Fantasy Draft Intelligence.
+3. Configure league size, scoring, roster slots, and the preferred ADP market.
+4. Select **Import UDK files**.
+5. Choose either the UDK ZIP or select all exported CSV and PDF files together.
 6. Review the recognized-file, player, projection, and ADP coverage summary.
 7. Resolve any import notes that materially affect the player pool.
 8. Start the draft.
 
-The archive is processed inside the browser. The original ZIP is not uploaded anywhere and is not written into the repository.
+When loose exports are selected, the browser combines them into a temporary in-memory ZIP and passes that package through the same validated importer. The original files and temporary package are not uploaded or written into the repository.
 
 ## Recognized files
 
@@ -32,7 +32,7 @@ The importer recognizes these UDK exports by filename:
 - Career Snapshot / Consistency Chart CSVs
 - Value Scout CSV
 
-The cheat-sheet PDF is intentionally ignored. The CSV files are the authoritative machine-readable source.
+The cheat-sheet PDF may be selected with the other files but is intentionally ignored. The CSV files are the authoritative machine-readable source.
 
 ## Projection calculation
 
@@ -45,7 +45,7 @@ The normalized player projection is:
 - the available analyst projection when only one is present;
 - the UDK position-ranking projection when no analyst stat line is available.
 
-Changing Standard, Half PPR, or Full PPR after importing rebuilds the release from the same UDK stat lines. A second upload is not required.
+Changing Standard, Half PPR, or Full PPR after importing rebuilds the release from the same UDK stat lines. A second import is not required.
 
 ## ADP conversion
 
@@ -75,7 +75,7 @@ The generated `PlayerDataRelease` includes:
 - upside score
 - release season, timestamp, source labels, and release ID
 
-The provisional UDK IDs are deterministic name-and-position identifiers. A later NFLverse identity step will replace or map them to stable cross-source player IDs.
+When NFLverse history is also imported, deterministic matches replace the provisional IDs with stable NFLverse identities and add prior-season production.
 
 ## Validation and error handling
 
@@ -90,7 +90,7 @@ The importer reports:
 - projection or ADP rows that did not match a ranking row
 - malformed or unsupported rows
 
-A ZIP without any UDK position-ranking CSVs is rejected. A release that contains fewer players than the configured draft requires cannot start the draft.
+A selection without any UDK position-ranking CSVs is rejected. A release that contains fewer players than the configured draft requires cannot start the draft.
 
 ## Privacy and repository rules
 
@@ -100,8 +100,11 @@ UDK content is for the member's private local use.
 - Do not bundle UDK data into a public installer.
 - Do not publish normalized UDK releases.
 - Tests use synthetic fixtures only.
-- Application code may be versioned; proprietary source data must remain local.
+- Application code may be versioned; proprietary source data remains local.
 
-## Current limitation
+## Supported intake modes
 
-The UDK import supplies the projection, ranking, tier, risk, upside, and market layers. Prior-year NFL statistics and stable NFLverse player IDs are not yet merged into this release. That is the next data-development increment.
+- One `.zip` containing the UDK exports
+- Multiple `.csv` and `.pdf` files selected in one file-picker operation
+
+Both modes use the same recognition, validation, scoring, ADP conversion, and NFLverse enrichment pipeline.

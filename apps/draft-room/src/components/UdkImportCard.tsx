@@ -1,4 +1,5 @@
 import { useRef, type ChangeEvent } from "react";
+import { zipSync } from "fflate";
 import type { UdkBuildReport } from "../udk-importer.js";
 
 interface UdkImportCardProps {
@@ -12,9 +13,20 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (file !== undefined) {
-      await onImport(file);
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 1 && /\.zip$/i.test(files[0]!.name)) {
+      await onImport(files[0]!);
+    } else if (files.length > 0) {
+      const archive: Record<string, Uint8Array> = {};
+      for (const [index, file] of files.entries()) {
+        const originalPath = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
+        const path = archive[originalPath] === undefined ? originalPath : `selected-${index + 1}/${file.name}`;
+        archive[path] = new Uint8Array(await file.arrayBuffer());
+      }
+      const bundled = new File([zipSync(archive, { level: 0 })], `udk-${files.length}-files.zip`, {
+        type: "application/zip",
+      });
+      await onImport(bundled);
     }
     event.target.value = "";
   }
@@ -26,13 +38,13 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
           <p className="eyebrow">Player data</p>
           <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
           <p>
-            Upload the fresh ZIP from the UDK. Rankings, analyst projections, and platform ADP are
-            recognized locally and never sent to a server.
+            Choose the UDK ZIP, or select all exported CSV and PDF files together. The files are
+            recognized locally, combined in memory when needed, and never sent to a server.
           </p>
         </div>
         <div className="udk-import-actions">
           <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            {report === null ? "Import UDK ZIP" : "Replace UDK ZIP"}
+            {report === null ? "Import UDK files" : "Replace UDK files"}
           </button>
           {report === null ? null : (
             <button className="ghost-button" type="button" onClick={onClear}>
@@ -44,7 +56,8 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
             data-testid="udk-file-input"
             className="sr-only"
             type="file"
-            accept="application/zip,.zip"
+            accept="application/zip,.zip,text/csv,.csv,application/pdf,.pdf"
+            multiple
             onChange={(event) => void handleImport(event)}
           />
         </div>
@@ -53,7 +66,7 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
       {report === null ? (
         <div className="udk-empty-state">
           <strong>Demo player data is active.</strong>
-          <span>Importing a UDK ZIP replaces the fictional pool when the draft begins.</span>
+          <span>Import a ZIP or select the loose UDK exports to replace the fictional pool.</span>
         </div>
       ) : (
         <div className="udk-preview" role="status">
