@@ -31,6 +31,7 @@ The repository includes:
 - canonical player ID normalization
 - cross-source player reference data
 - Parquet-based intermediate datasets
+- a compact NFLverse identity and prior-season history release builder
 - a TypeScript shared-contract package
 - a deterministic snake-draft engine
 - position-aware roster allocation
@@ -39,6 +40,7 @@ The repository includes:
 - named recommendation scenarios and weight-comparison reports
 - a React/Vite live draft room with local recovery
 - Fantasy Footballers UDK ZIP import and release normalization
+- deterministic UDK-to-NFLverse matching and review reporting
 - Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
@@ -53,6 +55,11 @@ The React interface currently supports:
 - UDK Andy, Jason, and Mike statistical projections recalculated for the selected scoring format
 - Average, Sleeper, ESPN, Yahoo, and Underdog ADP markets
 - UDK rankings, tiers, risk scores, upside scores, and bye weeks
+- import of a compact NFLverse identity and prior-season history JSON release
+- deterministic name, position, alias, and team-assisted player matching
+- stable NFLverse IDs for matched players
+- prior-season Standard, Half PPR, and Full PPR production
+- a visible unmatched and ambiguous-player review list
 - an offline deterministic demo release when no UDK package is loaded
 - manual entry for every team selection
 - automatic snake-order advancement
@@ -64,20 +71,35 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
+- browser-tested recovery, backup, custom-roster, UDK-upload, and NFLverse-enrichment workflows
 
-The next data increment is matching the UDK release to stable NFLverse player IDs and prior-year statistics. SQLite persistence and Tauri desktop packaging follow.
+The next data increment is generating and inspecting a real preseason history release, resolving any real-world identity exceptions, and expanding historical replay evaluation. SQLite persistence and Tauri desktop packaging follow.
 
-## Draft-day UDK refresh
+## Draft-day data refresh
+
+Generate the open NFLverse history release before the draft:
+
+```bash
+python scripts/build_nflverse_history_release.py \
+  --prior-season 2025 \
+  --roster-season 2026
+```
+
+Then:
 
 1. Download fresh UDK CSV exports.
 2. Keep the exported folder structure and compress the files into one ZIP.
 3. Configure scoring, league size, roster slots, and the desired ADP market.
-4. Select **Import UDK ZIP**.
-5. Review the coverage report.
+4. Import the NFLverse history JSON and UDK ZIP in either order.
+5. Review UDK coverage and NFLverse identity matches.
 6. Start the draft.
 
-All ZIP processing happens locally in the browser. See [`docs/udk-import.md`](docs/udk-import.md) for recognized files, projection math, ADP conversion, and privacy rules.
+NFLverse generation requires a network connection, but the completed JSON file and all draft-room processing work offline. UDK ZIP processing and NFLverse matching happen locally in the browser.
+
+See:
+
+- [`docs/udk-import.md`](docs/udk-import.md) for recognized UDK files, projection math, ADP conversion, and privacy rules.
+- [`docs/nflverse-history.md`](docs/nflverse-history.md) for history generation, match rules, release fields, and limitations.
 
 ## Target application
 
@@ -113,6 +135,7 @@ See:
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 - [`docs/udk-import.md`](docs/udk-import.md)
+- [`docs/nflverse-history.md`](docs/nflverse-history.md)
 
 ## Run the draft room
 
@@ -142,12 +165,13 @@ source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-Run the existing data pipeline and tests:
+Run the data pipeline and tests:
 
 ```bash
 python scripts/ingest_adp.py
 python scripts/ingest_nflverse.py
 python scripts/build_player_reference.py
+python scripts/build_nflverse_history_release.py --prior-season 2025 --roster-season 2026
 pytest
 ```
 
@@ -167,16 +191,16 @@ npm run test:e2e
 
 ```text
 apps/
-  draft-room/            # React/Vite live draft interface and UDK importer
+  draft-room/            # React/Vite interface, UDK importer, and NFLverse matcher
 e2e/                     # Playwright browser workflows
 packages/
-  data/                  # Python ingestion and identity logic
+  data/                  # Python ingestion, identity, and history-release logic
   modeling/              # Python modeling package
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
   recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
-scripts/                 # Data entrypoints and recommendation evaluation command
+scripts/                 # Data and recommendation entrypoints
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
 docs/                    # Product and technical documentation
@@ -187,7 +211,7 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** functional, recoverable, roster-configurable, and UDK-enabled; NFLverse enrichment remains
+- **M4 — Local draft-room interface:** functional, recoverable, roster-configurable, UDK-enabled, and NFLverse-enriched
 - **M5 — Desktop packaging and release**
 
 ## Quickstart and Useful Commands
@@ -197,8 +221,10 @@ Potentially useful commands and setup hints found in project files:
 ```text
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
+- a compact NFLverse identity and prior-season history release builder
 - Vitest and Playwright regression coverage
-- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
+- browser-tested recovery, backup, custom-roster, UDK-upload, and NFLverse-enrichment workflows
+python scripts/build_nflverse_history_release.py \
 6. Start the draft.
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
@@ -210,8 +236,9 @@ Build the browser application:
 npm run build
 npm run preview
 pip install -e ".[dev]"
-Run the existing data pipeline and tests:
+Run the data pipeline and tests:
 python scripts/build_player_reference.py
+python scripts/build_nflverse_history_release.py --prior-season 2025 --roster-season 2026
 pytest
 npm run typecheck
 npm test
@@ -248,6 +275,8 @@ test:
 │   │   │   ├── draft-factory.ts
 │   │   │   ├── draft-storage.ts
 │   │   │   ├── main.tsx
+│   │   │   ├── nflverse-history.css
+│   │   │   ├── nflverse-history.ts
 │   │   │   ├── recovery.css
 │   │   │   ├── roster-config.css
 │   │   │   ├── styles.css
@@ -255,6 +284,7 @@ test:
 │   │   │   └── udk-importer.ts
 │   │   ├── tests
 │   │   │   ├── app.test.tsx
+│   │   │   ├── nflverse-history.test.ts
 │   │   │   ├── recovery.test.ts
 │   │   │   └── udk-importer.test.ts
 │   │   ├── index.html
@@ -289,6 +319,7 @@ test:
 │   ├── local-development.md
 │   ├── m2-backlog.md
 │   ├── MASTER_PROJECT_PLAN.md
+│   ├── nflverse-history.md
 │   ├── product-requirements.md
 │   ├── recommendation-engine.md
 │   ├── recommendation-evaluation.md
@@ -316,6 +347,7 @@ test:
 │   │   ├── __init__.py
 │   │   ├── constants.py
 │   │   ├── io.py
+│   │   ├── nflverse_history.py
 │   │   ├── player_ids.py
 │   │   └── validation.py
 │   ├── draft-engine
@@ -358,6 +390,7 @@ test:
 │       └── tsconfig.json
 ├── scripts
 │   ├── bootstrap.py
+│   ├── build_nflverse_history_release.py
 │   ├── build_player_reference.py
 │   ├── build_player_season_warehouse.py
 │   ├── evaluate_recommendations.mjs
@@ -372,6 +405,7 @@ test:
 │   │   ├── test_player_ids.py
 │   │   ├── test_player_season_warehouse.py
 │   │   └── test_player_season_warehouse.py:146:5
+│   ├── test_nflverse_history.py
 │   ├── test_smoke.py
 │   └── test_validation.py
 ├── tools
@@ -420,6 +454,7 @@ The repository includes:
 - canonical player ID normalization
 - cross-source player reference data
 - Parquet-based intermediate datasets
+- a compact NFLverse identity and prior-season history release builder
 - a TypeScript shared-contract package
 - a deterministic snake-draft engine
 - position-aware roster allocation
@@ -428,6 +463,7 @@ The repository includes:
 - named recommendation scenarios and weight-comparison reports
 - a React/Vite live draft room with local recovery
 - Fantasy Footballers UDK ZIP import and release normalization
+- deterministic UDK-to-NFLverse matching and review reporting
 - Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
@@ -442,6 +478,11 @@ The React interface currently supports:
 - UDK Andy, Jason, and Mike statistical projections recalculated for the selected scoring format
 - Average, Sleeper, ESPN, Yahoo, and Underdog ADP markets
 - UDK rankings, tiers, risk scores, upside scores, and bye weeks
+- import of a compact NFLverse identity and prior-season history JSON release
+- deterministic name, position, alias, and team-assisted player matching
+- stable NFLverse IDs for matched players
+- prior-season Standard, Half PPR, and Full PPR production
+- a visible unmatched and ambiguous-player review list
 - an offline deterministic demo release when no UDK package is loaded
 - manual entry for every team selection
 - automatic snake-order advancement
@@ -453,20 +494,35 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
+- browser-tested recovery, backup, custom-roster, UDK-upload, and NFLverse-enrichment workflows
 
-The next data increment is matching the UDK release to stable NFLverse player IDs and prior-year statistics. SQLite persistence and Tauri desktop packaging follow.
+The next data increment is generating and inspecting a real preseason history release, resolving any real-world identity exceptions, and expanding historical replay evaluation. SQLite persistence and Tauri desktop packaging follow.
 
-## Draft-day UDK refresh
+## Draft-day data refresh
+
+Generate the open NFLverse history release before the draft:
+
+```bash
+python scripts/build_nflverse_history_release.py \
+  --prior-season 2025 \
+  --roster-season 2026
+```
+
+Then:
 
 1. Download fresh UDK CSV exports.
 2. Keep the exported folder structure and compress the files into one ZIP.
 3. Configure scoring, league size, roster slots, and the desired ADP market.
-4. Select **Import UDK ZIP**.
-5. Review the coverage report.
+4. Import the NFLverse history JSON and UDK ZIP in either order.
+5. Review UDK coverage and NFLverse identity matches.
 6. Start the draft.
 
-All ZIP processing happens locally in the browser. See [`docs/udk-import.md`](docs/udk-import.md) for recognized files, projection math, ADP conversion, and privacy rules.
+NFLverse generation requires a network connection, but the completed JSON file and all draft-room processing work offline. UDK ZIP processing and NFLverse matching happen locally in the browser.
+
+See:
+
+- [`docs/udk-import.md`](docs/udk-import.md) for recognized UDK files, projection math, ADP conversion, and privacy rules.
+- [`docs/nflverse-history.md`](docs/nflverse-history.md) for history generation, match rules, release fields, and limitations.
 
 ## Target application
 
@@ -488,46 +544,7 @@ The initial tested format is a 12-team redraft snake league with configurable sc
 - **Data preparation:** Python, Polars/Pandas, DuckDB, Parquet
 - **Draft and recommendation engines:** TypeScript
 - **Interface:** React and Vite
-- **Desktop packaging:** Tauri
-- **Local persistence:** browser recovery now; SQLite for the desktop release
-- **Testing:** pytest, Vitest, Playwright
-
-See:
-
-- [`docs/product-requirements.md`](docs/product-requirements.md)
-- [`docs/architecture.md`](docs/architecture.md)
-- [`docs/roadmap.md`](docs/roadmap.md)
-- [`docs/draft-engine.md`](docs/draft-engine.md)
-- [`docs/draft-persistence.md`](docs/draft-persistence.md)
-- [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
-- [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
-- [`docs/udk-import.md`](docs/udk-import.md)
-
-## Run the draft room
-
-Requires Node.js 22 and npm 10 or later.
-
-```bash
-npm install
-npm run dev
-```
-
-Vite serves the local app at `http://localhost:5173` by default. In GitHub Codespaces, open the forwarded port when prompted.
-
-Build the browser application:
-
-```bash
-npm run build
-npm run preview
-```
-
-## Python setup
-
-Requires Python 3.11 or later.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activat
+- **Desktop
 
 [TRUNCATED]
 ```
@@ -1589,6 +1606,110 @@ M2 is complete only when:
 - README commands match the actual workspace commands.
 ```
 
+### `docs/nflverse-history.md`
+
+```text
+# NFLverse Identity and History Enrichment
+
+## Purpose
+
+The NFLverse history release adds stable player identity and objective prior-season production to the local UDK draft release.
+
+The source responsibilities remain deliberately separate:
+
+- **Fantasy Footballers UDK:** projections, rankings, tiers, risk, upside, bye weeks, and market ADP
+- **NFLverse:** stable player IDs, current team/status, aliases, and prior-season statistics
+- **Fantasy Draft Intelligence:** matching, roster context, replacement value, scarcity, expected availability, and final recommendations
+
+No UDK projection value is overwritten by NFLverse history.
+
+## Generate the history release
+
+Install the Python dependencies, then run:
+
+```bash
+python scripts/build_nflverse_history_release.py \
+  --prior-season 2025 \
+  --roster-season 2026
+```
+
+The default output is:
+
+```text
+data/processed/nflverse_history_2025_2026.json
+```
+
+A different output path can be supplied:
+
+```bash
+python scripts/build_nflverse_history_release.py \
+  --prior-season 2025 \
+  --roster-season 2026 \
+  --output /path/to/nflverse-history.json
+```
+
+Generation requires an internet connection because `nflreadpy` downloads the source datasets. The completed JSON file is self-contained and can be imported and used offline during the draft.
+
+## Data included
+
+Each identity record can contain:
+
+- NFLverse/GSIS player ID
+- stable canonical ID in the form `nflverse:<player-id>`
+- current display name
+- normalized name and known aliases
+- position
+- current team
+- roster status
+- prior-season games
+- Standard, Half PPR, and Full PPR fantasy points
+- points per game for each scoring format
+- Half PPR weekly scoring standard deviation
+- passing, rushing, and receiving volume and production
+- fumbles lost
+
+Current players without prior-season statistics, including rookies, still receive stable identities and a null history record.
+
+Team defenses remain UDK team records because the NFLverse release is player-oriented.
+
+## Matching rules
+
+The browser joins UDK and NFLverse records without aggressive guessing.
+
+1. Normalize the player name and position.
+2. Automatically accept one exact normalized-name and position match.
+3. When multiple players share a normalized name, use current team only when it resolves to one candidate.
+4. Never automatically accept a fuzzy name match.
+5. Surface fuzzy candidates, collisions, and unmatched players in the setup review panel.
+6. Prevent the same NFLverse player ID from being assigned to more than one UDK player.
+
+A player keeps the temporary UDK ID unless a deterministic NFLverse match is found.
+
+## Draft-day workflow
+
+1. Generate or obtain the latest NFLverse history JSON.
+2. Download fresh UDK files and create one ZIP.
+3. Open the draft assistant.
+4. Import the NFLverse JSON and UDK ZIP in either order.
+5. Select league scoring, team count, roster configuration, and ADP market.
+6. Review match coverage and any players needing attention.
+7. Start the draft.
+
+The combined release is rebuilt automatically when scoring, team count, or ADP market changes.
+
+## Privacy and storage
+
+- UDK files remain local and are never committed.
+- NFLverse history is stored separately from proprietary projections.
+- Browser import does not upload either file to a server.
+- The combined player release is embedded in the local draft state and its JSON backup.
+- Repository tests use synthetic UDK and NFLverse fixtures only.
+
+## Current limitation
+
+The review panel reports ambiguous and unmatched players but does not yet provide a manual candidate-selection control. Those players remain valid UDK draft records with temporary IDs and no NFLverse history. A later calibration increment can add saved manual overrides after the first real 2025/2026 release is inspected.
+```
+
 ### `docs/product-requirements.md`
 
 ```text
@@ -2162,7 +2283,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** Functional, recoverable, roster-configurable, and UDK-enabled browser application implemented
+**Status:** Functional, recoverable, roster-configurable, UDK-enabled, and NFLverse-enriched browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -2181,7 +2302,8 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 11. Playwright end-to-end tests — baseline complete
 12. Custom roster editor — complete
 13. Fantasy Footballers UDK ZIP import — complete
-14. NFLverse identity and prior-year-stat enrichment — pending
+14. NFLverse identity and prior-year-stat enrichment — baseline complete
+15. Real preseason release calibration and saved identity overrides — pending
 
 ### Current behavior
 
@@ -2200,8 +2322,13 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Andy, Jason, and Mike stat lines are rescored for Standard, Half PPR, or Full PPR and combined by median.
 - Average, Sleeper, ESPN, Yahoo, and Underdog ADP can be selected and converted to overall picks using league size.
 - Import coverage and unmatched rows are shown before the draft starts.
-- The UDK release replaces the fictional player pool while remaining local to the user's device.
-- Playwright validates keyboard drafting, recovery, correction, undo, export, import, custom roster setup, and synthetic UDK ZIP upload in Chromium.
+- A compact NFLverse JSON release supplies stable IDs, aliases, current teams, roster status, and prior-season statistics.
+- UDK players are matched deterministically by normalized name and position, with team used only to resolve collisions.
+- Fuzzy and ambiguous matches are reported for review rather than accepted automatically.
+- Rookies and current players without prior-year statistics can still receive stable identities.
+- UDK remains authoritative for projections, rankings, tiers, risk, upside, and ADP.
+- The combined release replaces the fictional player pool while remaining local to the user's device.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, import, custom roster setup, UDK ZIP upload, NFLverse import, stable-ID matching, and combined draft creation in Chromium.
 
 ### Exit criteria
 
@@ -2210,8 +2337,9 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
 - A fresh day-of-draft UDK package can replace the demonstration release without code changes.
+- UDK players can be enriched with stable NFLverse identities and prior-year history without changing UDK projections.
 
-The interface, resilience, roster, and UDK import exit criteria are covered. Remaining M4 data work is stable NFLverse identity matching and prior-year-stat enrichment.
+The interface, resilience, roster, UDK import, and NFLverse enrichment baseline criteria are covered. Remaining M4 data work is real-release calibration, manual identity overrides for genuine exceptions, and broader historical replay evaluation.
 
 ## M5 — Local persistence and desktop release
 
@@ -2266,65 +2394,9 @@ The active build sequence is:
 8. Add custom roster editing.
 9. Add day-of-draft UDK ZIP import and normalization.
 10. Match UDK players to NFLverse identities and prior-year statistics.
-11. Expand evaluation with full mock drafts and historical player releases.
-12. Add SQLite autosave and Tauri desktop packaging.
-```
+11. Generate and calibrate a real preseason re
 
-### `docs/testing-strategy.md`
-
-```text
-# Testing Strategy
-
-## Python data layer
-
-- ingestion fixtures
-- canonical identity edge cases
-- required-column validation
-- uniqueness constraints
-- app-ready release schema validation
-
-## TypeScript draft engine
-
-- snake-order boundaries
-- pick sequencing
-- duplicate rejection
-- roster assignment
-- FLEX eligibility
-- undo and correction
-- serialization round trips
-- unsupported schema versions
-
-## Recommendation engine
-
-- deterministic scores for fixed inputs
-- roster-need response
-- tier-drop response
-- positional-run response
-- ADP value response
-- explanation completeness
-
-## Interface
-
-- new-draft setup
-- keyboard player search
-- pick entry
-- undo and correction
-- roster and board updates
-- save and restore
-- import and export
-
-## Desktop release
-
-- clean installation
-- launch without development tools
-- airplane-mode complete draft
-- forced close and recovery
-- corrupted import handling
-- player-data schema incompatibility
-
-## Required fixture
-
-A stable twelve-team, multi-round draft fixture will serve as the primary regression scenario across the draft engine, recommendation engine, interface, persistence, and desktop package.
+[TRUNCATED]
 ```
 
 ## Important Source Files
@@ -2817,6 +2889,125 @@ if __name__ == "__main__":
     main()
 ```
 
+### `tests/test_nflverse_history.py`
+
+```text
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from packages.data.nflverse_history import (
+    build_nflverse_history_release,
+    write_nflverse_history_release,
+)
+
+
+def _players() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "gsis_id": ["00-0039001", "00-0042002"],
+            "display_name": ["Amon-Ra St. Brown", "Rookie Runner Jr."],
+            "position": ["WR", "RB"],
+        }
+    )
+
+
+def _rosters() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2026, 2026],
+            "gsis_id": ["00-0039001", "00-0042002"],
+            "full_name": ["Amon-Ra St. Brown", "Rookie Runner"],
+            "position": ["WR", "RB"],
+            "team": ["DET", "NYG"],
+            "status": ["ACT", "ACT"],
+        }
+    )
+
+
+def _stats() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2025, 2025, 2024],
+            "season_type": ["REG", "REG", "REG"],
+            "week": [1, 2, 1],
+            "player_id": ["00-0039001", "00-0039001", "00-0039001"],
+            "fantasy_points": [10.0, 20.0, 99.0],
+            "fantasy_points_ppr": [15.0, 24.0, 109.0],
+            "attempts": [0.0, 0.0, 0.0],
+            "passing_yards": [0.0, 0.0, 0.0],
+            "passing_tds": [0.0, 0.0, 0.0],
+            "interceptions": [0.0, 0.0, 0.0],
+            "carries": [1.0, 2.0, 0.0],
+            "rushing_yards": [6.0, 12.0, 0.0],
+            "rushing_tds": [0.0, 0.0, 0.0],
+            "targets": [8.0, 7.0, 20.0],
+            "receptions": [5.0, 4.0, 10.0],
+            "receiving_yards": [70.0, 110.0, 200.0],
+            "receiving_tds": [0.0, 1.0, 2.0],
+            "passing_fumbles_lost": [0.0, 0.0, 0.0],
+            "rushing_fumbles_lost": [0.0, 1.0, 0.0],
+            "receiving_fumbles_lost": [0.0, 0.0, 0.0],
+        }
+    )
+
+
+def test_builds_stable_identity_and_prior_season_summaries() -> None:
+    release = build_nflverse_history_release(
+        players=_players(),
+        rosters=_rosters(),
+        stats=_stats(),
+        prior_season=2025,
+        roster_season=2026,
+        generated_at="2026-07-17T12:00:00+00:00",
+    )
+
+    assert release["schema_version"] == "1.0"
+    assert release["source"] == "nflverse"
+    assert release["prior_season"] == 2025
+    assert release["roster_season"] == 2026
+    assert len(release["players"]) == 2
+
+    veteran = next(
+        player for player in release["players"] if player["nflverse_player_id"] == "00-0039001"
+    )
+    assert veteran["canonical_player_id"] == "nflverse:00-0039001"
+    assert veteran["normalized_name"] == "amon_ra_st_brown"
+    assert veteran["current_team"] == "DET"
+    assert veteran["prior_season_stats"] == {
+        "season": 2025,
+        "games": 2,
+        "fantasy_points_standard": 30.0,
+        "fantasy_points_half_ppr": 34.5,
+        "fantasy_points_ppr": 39.0,
+        "points_per_game_standard": 15.0,
+        "points_per_game_half_ppr": 17.25,
+        "points_per_game_ppr": 19.5,
+        "weekly_points_stddev_half_ppr": 4.75,
+        "attempts": 0.0,
+        "passing_yards": 0.0,
+        "passing_tds": 0.0,
+        "interceptions": 0.0,
+        "carries": 3.0,
+        "rushing_yards": 18.0,
+        "rushing_tds": 0.0,
+        "targets": 15.0,
+        "receptions": 9.0,
+        "receiving_yards": 180.0,
+        "receiving_tds": 1.0,
+        "fumbles_lost": 1.0,
+    }
+
+    rookie = next(
+        player for player in release["players"] if player["nflverse_player_i
+
+[TRUNCATED]
+```
+
 ### `tests/test_smoke.py`
 
 ```text
@@ -2952,6 +3143,11 @@ import {
   saveDraftRecovery,
 } from "./draft-storage.js";
 import {
+  enrichPlayerDataReleaseWithNflverse,
+  importNflverseHistoryFile,
+  type NflverseHistoryRelease,
+} from "./nflverse-history.js";
+import {
   buildUdkPlayerDataRelease,
   parseUdkZip,
   type UdkImportPackage,
@@ -2964,6 +3160,8 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
+  const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
+  const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
@@ -2981,6 +3179,13 @@ export function App() {
     });
   }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
 
+  const historyBuild = useMemo(() => {
+    if (udkBuild === null || historyRelease === null) {
+      return null;
+    }
+    return enrichPlayerDataReleaseWithNflverse(udkBuild.release, historyRelease);
+  }, [historyRelease, udkBuild]);
+
   useEffect(() => {
     if (draftState === null) {
       return;
@@ -2991,10 +3196,10 @@ export function App() {
 
   function startDraft(): void {
     try {
-      const release = udkBuild?.release;
+      const release = historyBuild?.release ?? udkBuild?.release;
       if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
         throw new RangeError(
-          `The imported UDK package contains ${release.players.length} players, but this draft requires ${
+          `The imported player release contains ${release.players.length} players, but this draft requires ${
             setup.teamCount * setup.rounds
           } selections.`,
         );
@@ -3007,36 +3212,9 @@ export function App() {
       setNotice(
         release === undefined
           ? "Draft created with demonstration player data."
-          : `Draft created with the ${release.season} UDK release and ${release.players.length} players.`,
-      );
-    } catch (error) {
-      setErrorMessage(toErrorMessage(error));
-    }
-  }
-
-  async function importUdkPackage(file: File): Promise<void> {
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const parsed = parseUdkZip(bytes);
-      setUdkPackage(parsed);
-      setUdkFilename(file.name);
-      setErrorMessage(null);
-      setNotice(null);
-    } catch (error) {
-      setUdkPackage(null);
-      setUdkFilename(null);
-      setErrorMessage(toErrorMessage(error));
-    }
-  }
-
-  function clearUdkPackage(): void {
-    setUdkPackage(null);
-    setUdkFilename(null);
-    setErrorMessage(null);
-  }
-
-  function resumeDraft(): void {
-    if (recoveredD
+          : historyBuild === null
+            ? `Draft created with the ${release.season} UDK release and ${release.players.length} players.`
+            : `Draft created with UDK projections and ${historyBuild.re
 
 [TRUNCATED]
 ```
@@ -3369,6 +3547,103 @@ export function DraftWorkspace({
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/components/NflverseHistoryCard.tsx`
+
+```text
+import { useRef, type ChangeEvent } from "react";
+import type {
+  NflverseEnrichmentReport,
+  NflverseHistoryRelease,
+} from "../nflverse-history.js";
+
+interface NflverseHistoryCardProps {
+  history: NflverseHistoryRelease | null;
+  report: NflverseEnrichmentReport | null;
+  filename: string | null;
+  onImport: (file: File) => Promise<void>;
+  onClear: () => void;
+}
+
+export function NflverseHistoryCard({
+  history,
+  report,
+  filename,
+  onImport,
+  onClear,
+}: NflverseHistoryCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImport(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <section className="history-import-card field-wide" aria-labelledby="history-import-title">
+      <div className="history-import-heading">
+        <div>
+          <p className="eyebrow">Historical context</p>
+          <h3 id="history-import-title">NFLverse identity and prior-year stats</h3>
+          <p>
+            Load the compact JSON release generated from NFLverse. It supplies stable player IDs,
+            current teams, and prior-season production while UDK remains the projection source.
+          </p>
+        </div>
+        <div className="history-import-actions">
+          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
+            {history === null ? "Import NFLverse history" : "Replace history file"}
+          </button>
+          {history === null ? null : (
+            <button className="ghost-button" type="button" onClick={onClear}>
+              Clear history
+            </button>
+          )}
+          <input
+            ref={inputRef}
+            data-testid="nflverse-history-input"
+            className="sr-only"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+      </div>
+
+      {history === null ? (
+        <div className="history-empty-state">
+          <strong>Historical enrichment is optional.</strong>
+          <span>The UDK release can still run without it, but player IDs and prior-year context will be limited.</span>
+        </div>
+      ) : report === null ? (
+        <div className="history-ready-state" role="status">
+          <strong>NFLverse {history.prior_season} history is ready.</strong>
+          <span>{filename} · Import a UDK ZIP to match {history.players.length} identity records.</span>
+        </div>
+      ) : (
+        <div className="history-preview" role="status">
+          <div className="history-ready-row">
+            <span className="history-ready-badge">NFLverse {report.priorSeason} matched</span>
+            <span>{filename}</span>
+          </div>
+          <div className="history-metrics">
+            <Metric label="UDK matched" value={report.matchedPlayerCount} />
+            <Metric label="With prior stats" value={report.matchedWithHistoryCount} />
+            <Metric label="Exact names" value={report.exactMatchCount} />
+            <Metric label="Team resolved" value={report.teamDisambiguatedCount} />
+            <Metric
+              label="Needs review"
+              value={report.unmatchedPlayers.length + report.ambiguousPlayers.length}
+            />
+          </div>
+          <p className="history-preview-note">
+            {report.matchedPlayerCount} of {re
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
 
 ```text
@@ -3381,11 +3656,16 @@ import {
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import type {
+  NflverseEnrichmentReport,
+  NflverseHistoryRelease,
+} from "../nflverse-history.js";
 import {
   UDK_ADP_SOURCES,
   type UdkAdpSource,
   type UdkBuildReport,
 } from "../udk-importer.js";
+import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
 import { UdkImportCard } from "./UdkImportCard.js";
 
@@ -3394,6 +3674,9 @@ interface RecoverySetupScreenProps {
   recoveredDraft: DraftState | null;
   udkReport: UdkBuildReport | null;
   udkFilename: string | null;
+  history: NflverseHistoryRelease | null;
+  historyReport: NflverseEnrichmentReport | null;
+  historyFilename: string | null;
   errorMessage: string | null;
   onSetupChange: (setup: DraftSetup) => void;
   onStartDraft: () => void;
@@ -3402,6 +3685,8 @@ interface RecoverySetupScreenProps {
   onImportDraft: (file: File) => Promise<boolean>;
   onImportUdk: (file: File) => Promise<void>;
   onClearUdk: () => void;
+  onImportHistory: (file: File) => Promise<void>;
+  onClearHistory: () => void;
 }
 
 const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
@@ -3417,6 +3702,9 @@ export function RecoverySetupScreen({
   recoveredDraft,
   udkReport,
   udkFilename,
+  history,
+  historyReport,
+  historyFilename,
   errorMessage,
   onSetupChange,
   onStartDraft,
@@ -3425,6 +3713,8 @@ export function RecoverySetupScreen({
   onImportDraft,
   onImportUdk,
   onClearUdk,
+  onImportHistory,
+  onClearHistory,
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
@@ -3443,6 +3733,13 @@ export function RecoverySetupScreen({
     event.target.value = "";
   }
 
+  const sourceLabel =
+    udkReport === null
+      ? "Demonstration release"
+      : historyReport === null
+        ? `UDK ${udkReport.season}`
+        : `UDK ${udkReport.season} + NFLverse ${historyReport.priorSeason}`;
+
   return (
     <main className="setup-shell">
       <section className="setup-hero">
@@ -3452,42 +3749,21 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, load fresh UDK data, restore a saved draft, and run the
-          entire snake draft from one laptop. No platform login. No live sync dependency.
+          Configure the league and roster, load fresh UDK projections and NFLverse history, restore
+          a saved draft, and run the entire snake draft from one laptop.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
           <span>UDK projections</span>
+          <span>NFLverse history</span>
           <span>Custom rosters</span>
           <span>Automatic recovery</span>
-          <span>Live recommendations</span>
         </div>
       </section>
 
       <section className="setup-card" aria-labelledby="setup-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Draft control</p>
-            <h2 id="setup-title">League setup</h2>
-          </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => importInputRef.current?.click()}
-          >
-            Import backup
-          </button>
-          <input
-            ref={importInputRef}
-            className="sr-only"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void handleImport(event)}
-          />
-        </div>
-
-        {recoveredDraft === null ? null : (
-          <section className="recovery-card" aria-lab
 
 [TRUNCATED]
 ```
@@ -4015,166 +4291,6 @@ export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDa
         risk_score: 18 + ((globalIndex * 17 + profileIndex *
 
 [TRUNCATED]
-```
-
-### `apps/draft-room/src/draft-factory.ts`
-
-```text
-import { createDraftState } from "@fdi/draft-engine";
-import type {
-  DraftState,
-  LeagueSettings,
-  PlayerDataRelease,
-  PlayerPosition,
-  RosterSlotRule,
-  RosterSlotType,
-  ScoringPreset,
-  ScoringSettings,
-} from "@fdi/shared-types";
-import { createDemoPlayerDataRelease } from "./demo-data.js";
-import { UDK_ADP_SOURCES, type UdkAdpSource } from "./udk-importer.js";
-
-export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
-export type RosterCounts = Record<RosterSlotType, number>;
-
-export interface DraftSetup {
-  leagueName: string;
-  teamCount: number;
-  userDraftSlot: number;
-  rounds: number;
-  scoringPreset: SupportedScoringPreset;
-  adpSource: UdkAdpSource;
-  rosterCounts: RosterCounts;
-}
-
-export interface RosterSlotOption {
-  slot: RosterSlotType;
-  label: string;
-  description: string;
-  min: number;
-  max: number;
-  eligiblePositions: PlayerPosition[];
-}
-
-export const ROSTER_SLOT_OPTIONS: RosterSlotOption[] = [
-  { slot: "QB", label: "Quarterback", description: "Dedicated QB starters", min: 0, max: 3, eligiblePositions: ["QB"] },
-  { slot: "RB", label: "Running back", description: "Dedicated RB starters", min: 0, max: 6, eligiblePositions: ["RB"] },
-  { slot: "WR", label: "Wide receiver", description: "Dedicated WR starters", min: 0, max: 6, eligiblePositions: ["WR"] },
-  { slot: "TE", label: "Tight end", description: "Dedicated TE starters", min: 0, max: 3, eligiblePositions: ["TE"] },
-  { slot: "FLEX", label: "Flex", description: "RB, WR, or TE", min: 0, max: 4, eligiblePositions: ["RB", "WR", "TE"] },
-  { slot: "SUPERFLEX", label: "Superflex", description: "QB, RB, WR, or TE", min: 0, max: 3, eligiblePositions: ["QB", "RB", "WR", "TE"] },
-  { slot: "K", label: "Kicker", description: "Dedicated kicker slot", min: 0, max: 1, eligiblePositions: ["K"] },
-  { slot: "DST", label: "Defense", description: "Team defense / special teams", min: 0, max: 1, eligiblePositions: ["DST"] },
-  { slot: "BENCH", label: "Bench", description: "Any offensive player, K, or DST", min: 0, max: 16, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
-];
-
-export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
-  QB: 1,
-  RB: 2,
-  WR: 2,
-  TE: 1,
-  FLEX: 1,
-  SUPERFLEX: 0,
-  K: 1,
-  DST: 1,
-  BENCH: 7,
-};
-
-export const DEFAULT_DRAFT_SETUP: DraftSetup = {
-  leagueName: "Friday Night League",
-  teamCount: 12,
-  userDraftSlot: 6,
-  rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
-  scoringPreset: "half_ppr",
-  adpSource: "sleeper",
-  rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
-};
-
-export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
-export const ROUND_OPTIONS = [14, 15, 16, 17, 18] as const;
-
-export const SCORING_OPTIONS: Array<{
-  value: SupportedScoringPreset;
-  label: string;
-  description: string;
-}> = [
-  { value: "standard", label: "Standard", description: "No points per reception" },
-  { value: "half_ppr", label: "Half PPR", description: "0.5 points per reception" },
-  { value: "ppr", label: "Full PPR", description: "1 point per reception" },
-];
-
-export function createDraftFromSetup(
-  setup: DraftSetup,
-  draftId = createDraftId(setup.leagueName),
-  playerDataRelease?: PlayerDataRelease,
-): DraftState {
-  validateDraftSetup(setup);
-  const settings = createLeagueSettings(setup);
-  const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
-
-  return createDraftState({
-    draftId,
-    settings,
-    teamNames,
-    playerDataRelease:
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/draft-storage.ts`
-
-```text
-import { deserializeDraftState, serializeDraftState } from "@fdi/draft-engine";
-import type { DraftState } from "@fdi/shared-types";
-
-export const DRAFT_RECOVERY_STORAGE_KEY = "fdi.draft-room.recovery.v1";
-
-type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-
-export function loadDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): DraftState | null {
-  if (storage === null) {
-    return null;
-  }
-
-  const serialized = storage.getItem(DRAFT_RECOVERY_STORAGE_KEY);
-  if (serialized === null) {
-    return null;
-  }
-
-  try {
-    return deserializeDraftState(serialized);
-  } catch {
-    storage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
-    return null;
-  }
-}
-
-export function saveDraftRecovery(
-  state: DraftState,
-  storage: DraftStorage | null = getBrowserStorage(),
-): void {
-  if (storage === null) {
-    return;
-  }
-  storage.setItem(DRAFT_RECOVERY_STORAGE_KEY, serializeDraftState(state));
-}
-
-export function clearDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): void {
-  storage?.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
-}
-
-export async function importDraftFile(file: Pick<File, "text">): Promise<DraftState> {
-  return deserializeDraftState(await file.text());
-}
-
-function getBrowserStorage(): Storage | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return window.localStorage;
-}
 ```
 
 ## Fantasy Domain Logic Files
@@ -4344,6 +4460,11 @@ import {
   saveDraftRecovery,
 } from "./draft-storage.js";
 import {
+  enrichPlayerDataReleaseWithNflverse,
+  importNflverseHistoryFile,
+  type NflverseHistoryRelease,
+} from "./nflverse-history.js";
+import {
   buildUdkPlayerDataRelease,
   parseUdkZip,
   type UdkImportPackage,
@@ -4356,6 +4477,8 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
+  const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
+  const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
@@ -4373,6 +4496,13 @@ export function App() {
     });
   }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
 
+  const historyBuild = useMemo(() => {
+    if (udkBuild === null || historyRelease === null) {
+      return null;
+    }
+    return enrichPlayerDataReleaseWithNflverse(udkBuild.release, historyRelease);
+  }, [historyRelease, udkBuild]);
+
   useEffect(() => {
     if (draftState === null) {
       return;
@@ -4383,10 +4513,10 @@ export function App() {
 
   function startDraft(): void {
     try {
-      const release = udkBuild?.release;
+      const release = historyBuild?.release ?? udkBuild?.release;
       if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
         throw new RangeError(
-          `The imported UDK package contains ${release.players.length} players, but this draft requires ${
+          `The imported player release contains ${release.players.length} players, but this draft requires ${
             setup.teamCount * setup.rounds
           } selections.`,
         );
@@ -4399,36 +4529,9 @@ export function App() {
       setNotice(
         release === undefined
           ? "Draft created with demonstration player data."
-          : `Draft created with the ${release.season} UDK release and ${release.players.length} players.`,
-      );
-    } catch (error) {
-      setErrorMessage(toErrorMessage(error));
-    }
-  }
-
-  async function importUdkPackage(file: File): Promise<void> {
-    try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      const parsed = parseUdkZip(bytes);
-      setUdkPackage(parsed);
-      setUdkFilename(file.name);
-      setErrorMessage(null);
-      setNotice(null);
-    } catch (error) {
-      setUdkPackage(null);
-      setUdkFilename(null);
-      setErrorMessage(toErrorMessage(error));
-    }
-  }
-
-  function clearUdkPackage(): void {
-    setUdkPackage(null);
-    setUdkFilename(null);
-    setErrorMessage(null);
-  }
-
-  function resumeDraft(): void {
-    if (recoveredD
+          : historyBuild === null
+            ? `Draft created with the ${release.season} UDK release and ${release.players.length} players.`
+            : `Draft created with UDK projections and ${historyBuild.re
 
 [TRUNCATED]
 ```
@@ -4761,6 +4864,103 @@ export function DraftWorkspace({
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/components/NflverseHistoryCard.tsx`
+
+```text
+import { useRef, type ChangeEvent } from "react";
+import type {
+  NflverseEnrichmentReport,
+  NflverseHistoryRelease,
+} from "../nflverse-history.js";
+
+interface NflverseHistoryCardProps {
+  history: NflverseHistoryRelease | null;
+  report: NflverseEnrichmentReport | null;
+  filename: string | null;
+  onImport: (file: File) => Promise<void>;
+  onClear: () => void;
+}
+
+export function NflverseHistoryCard({
+  history,
+  report,
+  filename,
+  onImport,
+  onClear,
+}: NflverseHistoryCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImport(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <section className="history-import-card field-wide" aria-labelledby="history-import-title">
+      <div className="history-import-heading">
+        <div>
+          <p className="eyebrow">Historical context</p>
+          <h3 id="history-import-title">NFLverse identity and prior-year stats</h3>
+          <p>
+            Load the compact JSON release generated from NFLverse. It supplies stable player IDs,
+            current teams, and prior-season production while UDK remains the projection source.
+          </p>
+        </div>
+        <div className="history-import-actions">
+          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
+            {history === null ? "Import NFLverse history" : "Replace history file"}
+          </button>
+          {history === null ? null : (
+            <button className="ghost-button" type="button" onClick={onClear}>
+              Clear history
+            </button>
+          )}
+          <input
+            ref={inputRef}
+            data-testid="nflverse-history-input"
+            className="sr-only"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+      </div>
+
+      {history === null ? (
+        <div className="history-empty-state">
+          <strong>Historical enrichment is optional.</strong>
+          <span>The UDK release can still run without it, but player IDs and prior-year context will be limited.</span>
+        </div>
+      ) : report === null ? (
+        <div className="history-ready-state" role="status">
+          <strong>NFLverse {history.prior_season} history is ready.</strong>
+          <span>{filename} · Import a UDK ZIP to match {history.players.length} identity records.</span>
+        </div>
+      ) : (
+        <div className="history-preview" role="status">
+          <div className="history-ready-row">
+            <span className="history-ready-badge">NFLverse {report.priorSeason} matched</span>
+            <span>{filename}</span>
+          </div>
+          <div className="history-metrics">
+            <Metric label="UDK matched" value={report.matchedPlayerCount} />
+            <Metric label="With prior stats" value={report.matchedWithHistoryCount} />
+            <Metric label="Exact names" value={report.exactMatchCount} />
+            <Metric label="Team resolved" value={report.teamDisambiguatedCount} />
+            <Metric
+              label="Needs review"
+              value={report.unmatchedPlayers.length + report.ambiguousPlayers.length}
+            />
+          </div>
+          <p className="history-preview-note">
+            {report.matchedPlayerCount} of {re
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
 
 ```text
@@ -4773,11 +4973,16 @@ import {
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
+import type {
+  NflverseEnrichmentReport,
+  NflverseHistoryRelease,
+} from "../nflverse-history.js";
 import {
   UDK_ADP_SOURCES,
   type UdkAdpSource,
   type UdkBuildReport,
 } from "../udk-importer.js";
+import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
 import { UdkImportCard } from "./UdkImportCard.js";
 
@@ -4786,6 +4991,9 @@ interface RecoverySetupScreenProps {
   recoveredDraft: DraftState | null;
   udkReport: UdkBuildReport | null;
   udkFilename: string | null;
+  history: NflverseHistoryRelease | null;
+  historyReport: NflverseEnrichmentReport | null;
+  historyFilename: string | null;
   errorMessage: string | null;
   onSetupChange: (setup: DraftSetup) => void;
   onStartDraft: () => void;
@@ -4794,6 +5002,8 @@ interface RecoverySetupScreenProps {
   onImportDraft: (file: File) => Promise<boolean>;
   onImportUdk: (file: File) => Promise<void>;
   onClearUdk: () => void;
+  onImportHistory: (file: File) => Promise<void>;
+  onClearHistory: () => void;
 }
 
 const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
@@ -4809,6 +5019,9 @@ export function RecoverySetupScreen({
   recoveredDraft,
   udkReport,
   udkFilename,
+  history,
+  historyReport,
+  historyFilename,
   errorMessage,
   onSetupChange,
   onStartDraft,
@@ -4817,6 +5030,8 @@ export function RecoverySetupScreen({
   onImportDraft,
   onImportUdk,
   onClearUdk,
+  onImportHistory,
+  onClearHistory,
 }: RecoverySetupScreenProps) {
   const importInputRef = useRef<HTMLInputElement>(null);
   const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
@@ -4835,6 +5050,13 @@ export function RecoverySetupScreen({
     event.target.value = "";
   }
 
+  const sourceLabel =
+    udkReport === null
+      ? "Demonstration release"
+      : historyReport === null
+        ? `UDK ${udkReport.season}`
+        : `UDK ${udkReport.season} + NFLverse ${historyReport.priorSeason}`;
+
   return (
     <main className="setup-shell">
       <section className="setup-hero">
@@ -4844,42 +5066,21 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, load fresh UDK data, restore a saved draft, and run the
-          entire snake draft from one laptop. No platform login. No live sync dependency.
+          Configure the league and roster, load fresh UDK projections and NFLverse history, restore
+          a saved draft, and run the entire snake draft from one laptop.
         </p>
 
         <div className="feature-strip" aria-label="Draft room capabilities">
           <span>UDK projections</span>
+          <span>NFLverse history</span>
           <span>Custom rosters</span>
           <span>Automatic recovery</span>
-          <span>Live recommendations</span>
         </div>
       </section>
 
       <section className="setup-card" aria-labelledby="setup-title">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Draft control</p>
-            <h2 id="setup-title">League setup</h2>
-          </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => importInputRef.current?.click()}
-          >
-            Import backup
-          </button>
-          <input
-            ref={importInputRef}
-            className="sr-only"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void handleImport(event)}
-          />
-        </div>
-
-        {recoveredDraft === null ? null : (
-          <section className="recovery-card" aria-lab
 
 [TRUNCATED]
 ```
@@ -5405,60 +5606,6 @@ export function createDraftFromSetup(
     playerDataRelease:
 
 [TRUNCATED]
-```
-
-### `apps/draft-room/src/draft-storage.ts`
-
-```text
-import { deserializeDraftState, serializeDraftState } from "@fdi/draft-engine";
-import type { DraftState } from "@fdi/shared-types";
-
-export const DRAFT_RECOVERY_STORAGE_KEY = "fdi.draft-room.recovery.v1";
-
-type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-
-export function loadDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): DraftState | null {
-  if (storage === null) {
-    return null;
-  }
-
-  const serialized = storage.getItem(DRAFT_RECOVERY_STORAGE_KEY);
-  if (serialized === null) {
-    return null;
-  }
-
-  try {
-    return deserializeDraftState(serialized);
-  } catch {
-    storage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
-    return null;
-  }
-}
-
-export function saveDraftRecovery(
-  state: DraftState,
-  storage: DraftStorage | null = getBrowserStorage(),
-): void {
-  if (storage === null) {
-    return;
-  }
-  storage.setItem(DRAFT_RECOVERY_STORAGE_KEY, serializeDraftState(state));
-}
-
-export function clearDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): void {
-  storage?.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
-}
-
-export async function importDraftFile(file: Pick<File, "text">): Promise<DraftState> {
-  return deserializeDraftState(await file.text());
-}
-
-function getBrowserStorage(): Storage | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return window.localStorage;
-}
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -6524,6 +6671,95 @@ VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}
 
 ## Testing and Quality Signals
 
+### `tests/test_nflverse_history.py`
+
+```text
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from packages.data.nflverse_history import (
+    build_nflverse_history_release,
+    write_nflverse_history_release,
+)
+
+
+def _players() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "gsis_id": ["00-0039001", "00-0042002"],
+            "display_name": ["Amon-Ra St. Brown", "Rookie Runner Jr."],
+            "position": ["WR", "RB"],
+        }
+    )
+
+
+def _rosters() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2026, 2026],
+            "gsis_id": ["00-0039001", "00-0042002"],
+            "full_name": ["Amon-Ra St. Brown", "Rookie Runner"],
+            "position": ["WR", "RB"],
+            "team": ["DET", "NYG"],
+            "status": ["ACT", "ACT"],
+        }
+    )
+
+
+def _stats() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "season": [2025, 2025, 2024],
+            "season_type": ["REG", "REG", "REG"],
+            "week": [1, 2, 1],
+            "player_id": ["00-0039001", "00-0039001", "00-0039001"],
+            "fantasy_points": [10.0, 20.0, 99.0],
+            "fantasy_points_ppr": [15.0, 24.0, 109.0],
+            "attempts": [0.0, 0.0, 0.0],
+            "passing_yards": [0.0, 0.0, 0.0],
+            "passing_tds": [0.0, 0.0, 0.0],
+            "interceptions": [0.0, 0.0, 0.0],
+            "carries": [1.0, 2.0, 0.0],
+            "rushing_yards": [6.0, 12.0, 0.0],
+            "rushing_tds": [0.0, 0.0, 0.0],
+            "targets": [8.0, 7.0, 20.0],
+            "receptions": [5.0, 4.0, 10.0],
+            "receiving_yards": [70.0, 110.0, 200.0],
+            "receiving_tds": [0.0, 1.0, 2.0],
+            "passing_fumbles_lost": [0.0, 0.0, 0.0],
+            "rushing_fumbles_lost": [0.0, 1.0, 0.0],
+            "receiving_fumbles_lost": [0.0, 0.0, 0.0],
+        }
+    )
+
+
+def test_builds_stable_identity_and_prior_season_summaries() -> None:
+    release = build_nflverse_history_release(
+        players=_players(),
+        rosters=_rosters(),
+        stats=_stats(),
+        prior_season=2025,
+        roster_season=2026,
+        generated_at="2026-07-17T12:00:00+00:00",
+    )
+
+    assert release["schema_version"] == "1.0"
+    assert release["source"] == "nflverse"
+    assert release["prior_season"] == 2025
+    assert release["roster_season"] == 2026
+    assert len(release["players"]) == 2
+
+    veteran = next(
+        player for player in release["players"] if player["nflverse_player_id"] == "00-003900
+
+[TRUNCATED]
+```
+
 ### `tests/test_smoke.py`
 
 ```text
@@ -6607,15 +6843,15 @@ import {
   setRosterCount,
 } from "../src/draft-factory.js";
 
-
 describe("draft room application shell", () => {
-  it("renders league, UDK, recovery, and custom roster controls", () => {
+  it("renders league, UDK, NFLverse, recovery, and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
     expect(html).toContain("Import UDK ZIP");
+    expect(html).toContain("Import NFLverse history");
     expect(html).toContain("ADP market");
     expect(html).toContain("Roster configuration");
     expect(html).toContain("Superflex");
@@ -6654,8 +6890,117 @@ describe("draft room application shell", () => {
       K: 0,
       DST: 0,
     };
-    const rosterSlots = createRosterSlots(rosterCounts);
-    const capacity = rosterSlots.reduce((sum, rule) =>
+    const rosterSlots = createRosterSlots(roster
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/tests/nflverse-history.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import type { PlayerDataRecord, PlayerDataRelease, PlayerSeasonHistory } from "@fdi/shared-types";
+import {
+  enrichPlayerDataReleaseWithNflverse,
+  parseNflverseHistoryJson,
+  type NflverseHistoryPlayer,
+  type NflverseHistoryRelease,
+} from "../src/nflverse-history.js";
+
+const HISTORY: PlayerSeasonHistory = {
+  season: 2025,
+  games: 17,
+  fantasy_points_standard: 220,
+  fantasy_points_half_ppr: 270,
+  fantasy_points_ppr: 320,
+  points_per_game_standard: 12.941,
+  points_per_game_half_ppr: 15.882,
+  points_per_game_ppr: 18.824,
+  weekly_points_stddev_half_ppr: 5.2,
+  attempts: 0,
+  passing_yards: 0,
+  passing_tds: 0,
+  interceptions: 0,
+  carries: 15,
+  rushing_yards: 90,
+  rushing_tds: 1,
+  targets: 140,
+  receptions: 100,
+  receiving_yards: 1250,
+  receiving_tds: 8,
+  fumbles_lost: 1,
+};
+
+function udkPlayer(
+  id: string,
+  name: string,
+  position: PlayerDataRecord["position"],
+  team: string | null,
+): PlayerDataRecord {
+  return {
+    canonical_player_id: id,
+    display_name: name,
+    position,
+    nfl_team: team,
+    bye_week: 8,
+    overall_rank: 1,
+    position_rank: 1,
+    adp: 2,
+    projected_points: 300,
+    tier: 1,
+    risk_score: 20,
+    upside_score: 80,
+    availability_status: "active",
+  };
+}
+
+function historyPlayer(
+  id: string,
+  name: string,
+  position: Exclude<PlayerDataRecord["position"], "DST">,
+  team: string | null,
+  aliases: string[] = [],
+  stats: PlayerSeasonHistory | null = HISTORY,
+): NflverseHistoryPlayer {
+  return {
+    nflverse_player_id: id,
+    canonical_player_id: `nflverse:${id}`,
+    display_name: name,
+    normalized_name: name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+    aliases: [name, ...aliases],
+    position,
+    current_team: team,
+    roster_status: "ACT",
+    prior_season_stats: stats,
+  };
+}
+
+function release(players: PlayerDataRecord[]): PlayerDataRelease {
+  return {
+    schema_version: "1.0",
+    season: 2026,
+    release_id: "udk-test",
+    generated_at: "2026-07-17T12:00:00.000Z",
+    sources: ["UDK"],
+    players,
+  };
+}
+
+function historyRelease(players: NflverseHistoryPlayer[]): NflverseHistoryRelease {
+  return {
+    schema_version: "1.0",
+    source: "nflverse",
+    prior_season: 2025,
+    roster_season: 2026,
+    generated_at: "2026-07-17T12:00:00.000Z",
+    players,
+  };
+}
+
+describe("NFLverse history enrichment", () => {
+  it("replaces temporary UDK IDs and attaches prior-season history", () => {
+    const source = release([
+      udkPlayer(
 
 [TRUNCATED]
 ```
@@ -7200,208 +7545,6 @@ const fakeRunner: RecommendationRunner = (
       recommendation(2, "safe", 60, "RB", { riskSafety: 100 }),
     ];
   } else if (
-
-[TRUNCATED]
-```
-
-### `packages/recommendation-engine/tests/fixtures.ts`
-
-```text
-import type {
-  DraftOrderSlot,
-  DraftPick,
-  DraftState,
-  PlayerDataRecord,
-  PlayerPosition,
-} from "@fdi/shared-types";
-
-export function player(
-  id: string,
-  position: PlayerPosition,
-  overrides: Partial<PlayerDataRecord> = {},
-): PlayerDataRecord {
-  return {
-    canonical_player_id: id,
-    display_name: id.toUpperCase(),
-    position,
-    nfl_team: "NYJ",
-    bye_week: 9,
-    overall_rank: 50,
-    position_rank: 10,
-    adp: 50,
-    projected_points: 150,
-    tier: 3,
-    risk_score: 50,
-    upside_score: 50,
-    availability_status: null,
-    ...overrides,
-  };
-}
-
-export function draftState(
-  players: PlayerDataRecord[],
-  options: {
-    picks?: DraftPick[];
-    nextOverallPick?: number;
-    teamCount?: number;
-    rounds?: number;
-  } = {},
-): DraftState {
-  const teamCount = options.teamCount ?? 4;
-  const rounds = options.rounds ?? 6;
-  const teams = Array.from({ length: teamCount }, (_, index) => ({
-    teamId: `team-${index + 1}`,
-    name: `Team ${index + 1}`,
-    draftSlot: index + 1,
-    isUser: index === 0,
-  }));
-  const order: DraftOrderSlot[] = [];
-
-  for (let round = 1; round <= rounds; round += 1) {
-    const slots = Array.from({ length: teamCount }, (_, index) => index + 1);
-    if (round % 2 === 0) {
-      slots.reverse();
-    }
-    slots.forEach((draftSlot, index) => {
-      order.push({
-        overallPick: order.length + 1,
-        round,
-        pickInRound: index + 1,
-        teamId: `team-${draftSlot}`,
-        draftSlot,
-      });
-    });
-  }
-
-  const picks = options.picks ?? [];
-  const availablePlayerIds = players
-    .map((item) => item.canonical_player_id)
-    .filter((id) => !picks.some((draftPick) => draftPick.playerId === id));
-
-  return {
-    draftId: "test-draft",
-    settings: {
-      leagueName: "Test League",
-      teamCount,
-      userDraftSlot: 1,
-      rounds,
-      scoring: {
-        preset: "half_ppr",
-        passingYardsPerPoint: 25,
-        passingTouchdown: 4,
-        interception: -2,
-        rushingYardsPerPoint: 10,
-        rushingTouchdown: 6,
-        receivingYardsPerPoint: 10,
-        receivingTouchdown: 6,
-        reception: 0.5,
-        fumbleLost: -2,
-      },
-      rosterSlots: [
-        { slot: "QB", count: 1, eligiblePositions: ["QB"] },
-        { slot: "RB", count: 1, eligiblePositions: ["RB"] },
-        { slot: "WR", count: 1, eligiblePositions: ["WR"] },
-        { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
-        {
-          slot: "BENCH",
-          count: 2,
-
-[TRUNCATED]
-```
-
-### `packages/recommendation-engine/tests/recommendation.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import {
-  DEFAULT_RECOMMENDATION_WEIGHTS,
-  getReplacementLevels,
-  recommendPlayers,
-  scorePlayer,
-  type RecommendationWeights,
-} from "@fdi/recommendation-engine";
-import { draftState, pick, player } from "./fixtures.js";
-
-function isolatedWeight(component: keyof RecommendationWeights): RecommendationWeights {
-  return {
-    baseValue: 0,
-    valueOverReplacement: 0,
-    tierUrgency: 0,
-    rosterNeed: 0,
-    adpValue: 0,
-    expectedAvailability: 0,
-    upside: 0,
-    riskSafety: 0,
-    [component]: 1,
-  };
-}
-
-describe("recommendation engine v1", () => {
-  it("ranks stronger projected and replacement value first", () => {
-    const players = [
-      player("rb-elite", "RB", {
-        projected_points: 260,
-        overall_rank: 4,
-        adp: 5,
-        tier: 1,
-      }),
-      player("rb-good", "RB", {
-        projected_points: 210,
-        overall_rank: 18,
-        adp: 20,
-        tier: 2,
-      }),
-      player("rb-replacement", "RB", {
-        projected_points: 150,
-        overall_rank: 45,
-        adp: 48,
-        tier: 4,
-      }),
-      player("wr-good", "WR", {
-        projected_points: 205,
-        overall_rank: 20,
-        adp: 21,
-        tier: 2,
-      }),
-      player("qb-one", "QB", {
-        projected_points: 280,
-        overall_rank: 35,
-        adp: 38,
-        tier: 3,
-      }),
-      player("te-one", "TE", {
-        projected_points: 145,
-        overall_rank: 55,
-        adp: 58,
-        tier: 4,
-      }),
-    ];
-
-    const result = recommendPlayers(draftState(players), { limit: 3 });
-
-    expect(result.recommendations[0]?.playerId).toBe("rb-elite");
-    expect(result.recommendations[0]?.context.projectedPointsAboveReplacement).toBeGreaterThan(0);
-  });
-
-  it("boosts a position with an unfilled dedicated starter slot", () => {
-    const existingRb = player("rb-rostered", "RB", { projected_points: 180 });
-    const wrCandidate = player("wr-candidate", "WR", { projected_points: 170 });
-    const rbCandidate = player("rb-candidate", "RB", { projected_points: 170 });
-    const state = draftState([existingRb, wrCandidate, rbCandidate], {
-      picks: [pick(1, existingRb.canonical_player_id, "team-1", "RB")],
-      nextOverallPick: 2,
-    });
-
-    const result = recommendPlayers(state, {
-      limit: 2,
-      weights: isolatedWeight("rosterNeed"),
-    });
-
-    expect(result.recommendations.map((item) => item.playerId)).toEqual([
-      "wr-candidate",
-      "rb-candidate",
-    ]);
-    ex
 
 [TRUNCATED]
 ```
