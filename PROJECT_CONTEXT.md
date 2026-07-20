@@ -34,7 +34,8 @@ The repository includes:
 - a deterministic snake-draft engine
 - position-aware roster allocation
 - versioned draft export/import
-- full-draft simulation tests
+- a deterministic explainable recommendation engine
+- full-draft and recommendation regression tests
 
 ## Target application
 
@@ -67,6 +68,7 @@ See:
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/draft-engine.md`](docs/draft-engine.md)
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
+- [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 
 ## Python setup
 
@@ -114,6 +116,7 @@ packages/
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
+  recommendation-engine/ # Explainable TypeScript recommendation scoring
 scripts/                 # Python pipeline entrypoints
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
@@ -123,8 +126,8 @@ docs/                    # Product and technical documentation
 ## Milestones
 
 - **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** in progress
-- **M3 — Recommendation engine v1**
+- **M2 — Offline draft engine foundation:** established
+- **M3 — Recommendation engine v1:** in progress
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
 
@@ -135,7 +138,7 @@ Potentially useful commands and setup hints found in project files:
 ```text
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
-- full-draft simulation tests
+- full-draft and recommendation regression tests
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 - **Testing:** pytest, Vitest, Playwright
@@ -199,6 +202,7 @@ test:
 │   ├── m2-backlog.md
 │   ├── MASTER_PROJECT_PLAN.md
 │   ├── product-requirements.md
+│   ├── recommendation-engine.md
 │   ├── release-criteria.md
 │   ├── repository-audit.md
 │   ├── roadmap.md
@@ -239,6 +243,14 @@ test:
 │   ├── modeling
 │   │   ├── __init__.py
 │   │   └── baseline.py
+│   ├── recommendation-engine
+│   │   ├── src
+│   │   │   └── index.ts
+│   │   ├── tests
+│   │   │   ├── fixtures.ts
+│   │   │   └── recommendation.test.ts
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   ├── shared
 │   │   ├── __init__.py
 │   │   └── logging.py
@@ -314,7 +326,8 @@ The repository includes:
 - a deterministic snake-draft engine
 - position-aware roster allocation
 - versioned draft export/import
-- full-draft simulation tests
+- a deterministic explainable recommendation engine
+- full-draft and recommendation regression tests
 
 ## Target application
 
@@ -347,6 +360,7 @@ See:
 - [`docs/roadmap.md`](docs/roadmap.md)
 - [`docs/draft-engine.md`](docs/draft-engine.md)
 - [`docs/draft-persistence.md`](docs/draft-persistence.md)
+- [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 
 ## Python setup
 
@@ -394,6 +408,7 @@ packages/
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
+  recommendation-engine/ # Explainable TypeScript recommendation scoring
 scripts/                 # Python pipeline entrypoints
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
@@ -403,8 +418,8 @@ docs/                    # Product and technical documentation
 ## Milestones
 
 - **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** in progress
-- **M3 — Recommendation engine v1**
+- **M2 — Offline draft engine foundation:** established
+- **M3 — Recommendation engine v1:** in progress
 - **M4 — Local draft-room interface**
 - **M5 — Desktop packaging and release**
 ```
@@ -1619,6 +1634,150 @@ The milestone is complete when:
 8. The packaged application completes a draft without network access.
 ```
 
+### `docs/recommendation-engine.md`
+
+```text
+# Recommendation Engine v1
+
+## Purpose
+
+The recommendation engine converts the current deterministic draft state into a ranked, explainable shortlist of available players. It has no dependency on React, Tauri, SQLite, a network service, or a machine-learning model.
+
+The first version is deliberately transparent. Every recommendation exposes its component scores, contextual values, and plain-language reasons so the weights can be evaluated and tuned through simulations.
+
+## Public API
+
+```ts
+const result = recommendPlayers(draftState, {
+  limit: 5,
+});
+
+const onePlayer = scorePlayer(draftState, "canonical-player-id");
+const replacementLevels = getReplacementLevels(draftState);
+```
+
+## Default scoring components
+
+Each component is normalized to a score from 0 through 100. The weighted result is also bounded from 0 through 100.
+
+| Component | Default weight | Purpose |
+|---|---:|---|
+| Base value | 22% | Blends projected points and overall rank among available players. |
+| Value over replacement | 20% | Measures projected production above the league-specific replacement player at the position. |
+| Roster need | 18% | Rewards players who fill open dedicated or flexible starting slots. |
+| Tier urgency | 12% | Identifies thinning tiers and the final available player in a tier. |
+| ADP value | 10% | Rewards players available later than market cost and penalizes reaches. |
+| Expected availability | 8% | Estimates whether the player is likely to survive until the user's next selection. |
+| Upside | 5% | Rewards stronger upside scores relative to the remaining player pool. |
+| Risk safety | 5% | Rewards lower risk scores relative to the remaining player pool. |
+
+Weights are configurable per call. They are validated and normalized before use, allowing simulations to isolate or tune individual components without changing engine code.
+
+## Replacement-level calculation
+
+Replacement rank is derived from the league's starting roster demand rather than a fixed universal position rank.
+
+For each position:
+
+1. Dedicated starting slots count fully.
+2. Flexible slots contribute fractionally across their eligible positions.
+3. Bench slots do not affect replacement demand.
+4. Per-team demand is multiplied by league size.
+5. The player at the resulting positional rank becomes the replacement baseline.
+
+Example: in a four-team league with one RB starter and one three-position FLEX, RB demand is approximately 1.33 players per team, producing an RB replacement rank of six.
+
+## Roster-need behavior
+
+The engine reads the roster slots already assigned by the draft engine.
+
+- An open dedicated starter position receives the strongest need score.
+- An open FLEX or SUPERFLEX opportunity receives a moderate need score.
+- A position that can only enter the bench receives a low need score.
+- A position with no remaining legal roster slot receives zero.
+
+This keeps recommendation logic aligned with the same roster rules that validate manual draft selections.
+
+## Tier urgency
+
+Tier urgency is based on the number of available players remaining at the candidate's position and tier.
+
+- One remaining player: maximum urgency
+- Two remaining: high urgency
+- Three remaining: moderate urgency
+- Four remaining: limited urgency
+- Larger tiers: low urgency
+
+A meaningful projected-points drop to the next tier adds urgency.
+
+## Expected availability
+
+The engine locates the user's next selection in the generated snake order and compares the player's ADP with that selection window.
+
+This is an intentionally simple deterministic estimate for v1. It does not yet simulate opponent behavior or produce a calibrated probability.
+
+## Explainability
+
+Each recommendation includes:
+
+- total recommendation score
+- all eight component scores
+- current overall pick
+- user's next pick
+- picks until the user's next pick
+- replacement rank and projected replacement value
+- projected points above replacement
+- number of same-tier players remaining
+- one primary reason
+- up to three ranked reasons
+
+Reason ordering considers both component strength and configured weight.
+
+## Determinism
+
+For a fixed draft state, player-data release, and weight configuration, output ordering is deterministic.
+
+Ties are resolved by:
+
+1. higher projected points
+2. better overall rank
+3. better ADP
+4. canonical player ID
+
+## Current limitations
+
+Recommendation Engine v1 is a baseline decision model, not the final strategy engine.
+
+It does not yet include:
+
+- opponent positional-need modeling
+- positional-run velocity
+- calibrated probability of surviving to the next pick
+- correlation or stacking strategy
+- playoff schedule context
+- historical backtesting against realized season outcomes
+- Monte Carlo draft simulations
+- learned or personalized weights
+
+These should be added only after the baseline model is exercised through repeatable mock-draft simulations.
+
+## Validation
+
+The focused regression suite covers:
+
+- projected value and value-over-replacement ordering
+- unfilled starter needs
+- final-player tier urgency
+- ADP fall and reach behavior
+- next-pick availability urgency
+- drafted-player exclusion
+- deterministic output
+- bounded scores and explanation presence
+- league-specific replacement ranks
+- custom weight isolation
+- invalid configuration rejection
+```
+
 ### `docs/release-criteria.md`
 
 ```text
@@ -1709,6 +1868,8 @@ The existing data foundation should be retained. The project should evolve incre
 
 ## M2 — Offline draft engine foundation
 
+**Status:** Baseline implementation complete
+
 **Goal:** Establish the domain model and run a complete draft without a graphical interface.
 
 ### Deliverables
@@ -1731,7 +1892,11 @@ The existing data foundation should be retained. The project should evolve incre
 - Undo and correction leave the state valid.
 - State can be serialized and restored without information loss.
 
+The baseline exit criteria are covered by the draft-engine, roster-allocation, persistence, and full-draft regression suites.
+
 ## M3 — Recommendation engine v1
+
+**Status:** Baseline scoring implementation in progress
 
 **Goal:** Return explainable recommendations after every pick.
 
@@ -1754,6 +1919,9 @@ The existing data foundation should be retained. The project should evolve incre
 - Recommendations change logically with roster and draft state.
 - Every recommendation has a structured explanation.
 - Engine output is deterministic for fixed inputs.
+- Repeatable mock-draft scenarios expose scoring behavior for tuning.
+
+The baseline engine now covers items 1 through 10. The remaining M3 work is the repeatable simulation and evaluation harness used to tune weights before the graphical interface depends on them.
 
 ## M4 — Local draft-room interface
 
@@ -1816,18 +1984,17 @@ After v1.0:
 
 ## Implementation order
 
-The next build sequence is:
+The active build sequence is:
 
-1. Define TypeScript domain schemas.
-2. Implement snake-order generation.
-3. Implement immutable draft-state transitions.
-4. Add roster validation.
-5. Add undo and correction.
-6. Add full-draft fixtures and tests.
-7. Define the app-ready player-data contract.
-8. Begin recommendation engine v1.
+1. Complete the deterministic draft-state engine.
+2. Enforce position-aware roster legality.
+3. Add versioned export and restoration.
+4. Implement Recommendation Engine v1.
+5. Add repeatable recommendation simulation and evaluation fixtures.
+6. Build the React draft-room interface against stable engine APIs.
+7. Add SQLite autosave and Tauri desktop packaging.
 
-No interface implementation should begin until the draft engine can complete deterministic simulated drafts.
+Interface implementation begins only after the recommendation evaluation harness demonstrates stable, explainable behavior across representative draft scenarios.
 ```
 
 ### `docs/testing-strategy.md`
@@ -5588,6 +5755,208 @@ describe("draft state transitions", () => {
 [TRUNCATED]
 ```
 
+### `packages/recommendation-engine/tests/fixtures.ts`
+
+```text
+import type {
+  DraftOrderSlot,
+  DraftPick,
+  DraftState,
+  PlayerDataRecord,
+  PlayerPosition,
+} from "@fdi/shared-types";
+
+export function player(
+  id: string,
+  position: PlayerPosition,
+  overrides: Partial<PlayerDataRecord> = {},
+): PlayerDataRecord {
+  return {
+    canonical_player_id: id,
+    display_name: id.toUpperCase(),
+    position,
+    nfl_team: "NYJ",
+    bye_week: 9,
+    overall_rank: 50,
+    position_rank: 10,
+    adp: 50,
+    projected_points: 150,
+    tier: 3,
+    risk_score: 50,
+    upside_score: 50,
+    availability_status: null,
+    ...overrides,
+  };
+}
+
+export function draftState(
+  players: PlayerDataRecord[],
+  options: {
+    picks?: DraftPick[];
+    nextOverallPick?: number;
+    teamCount?: number;
+    rounds?: number;
+  } = {},
+): DraftState {
+  const teamCount = options.teamCount ?? 4;
+  const rounds = options.rounds ?? 6;
+  const teams = Array.from({ length: teamCount }, (_, index) => ({
+    teamId: `team-${index + 1}`,
+    name: `Team ${index + 1}`,
+    draftSlot: index + 1,
+    isUser: index === 0,
+  }));
+  const order: DraftOrderSlot[] = [];
+
+  for (let round = 1; round <= rounds; round += 1) {
+    const slots = Array.from({ length: teamCount }, (_, index) => index + 1);
+    if (round % 2 === 0) {
+      slots.reverse();
+    }
+    slots.forEach((draftSlot, index) => {
+      order.push({
+        overallPick: order.length + 1,
+        round,
+        pickInRound: index + 1,
+        teamId: `team-${draftSlot}`,
+        draftSlot,
+      });
+    });
+  }
+
+  const picks = options.picks ?? [];
+  const availablePlayerIds = players
+    .map((item) => item.canonical_player_id)
+    .filter((id) => !picks.some((draftPick) => draftPick.playerId === id));
+
+  return {
+    draftId: "test-draft",
+    settings: {
+      leagueName: "Test League",
+      teamCount,
+      userDraftSlot: 1,
+      rounds,
+      scoring: {
+        preset: "half_ppr",
+        passingYardsPerPoint: 25,
+        passingTouchdown: 4,
+        interception: -2,
+        rushingYardsPerPoint: 10,
+        rushingTouchdown: 6,
+        receivingYardsPerPoint: 10,
+        receivingTouchdown: 6,
+        reception: 0.5,
+        fumbleLost: -2,
+      },
+      rosterSlots: [
+        { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+        { slot: "RB", count: 1, eligiblePositions: ["RB"] },
+        { slot: "WR", count: 1, eligiblePositions: ["WR"] },
+        { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+        {
+          slot: "BENCH",
+          count: 2,
+
+[TRUNCATED]
+```
+
+### `packages/recommendation-engine/tests/recommendation.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import {
+  DEFAULT_RECOMMENDATION_WEIGHTS,
+  getReplacementLevels,
+  recommendPlayers,
+  scorePlayer,
+  type RecommendationWeights,
+} from "@fdi/recommendation-engine";
+import { draftState, pick, player } from "./fixtures.js";
+
+function isolatedWeight(component: keyof RecommendationWeights): RecommendationWeights {
+  return {
+    baseValue: 0,
+    valueOverReplacement: 0,
+    tierUrgency: 0,
+    rosterNeed: 0,
+    adpValue: 0,
+    expectedAvailability: 0,
+    upside: 0,
+    riskSafety: 0,
+    [component]: 1,
+  };
+}
+
+describe("recommendation engine v1", () => {
+  it("ranks stronger projected and replacement value first", () => {
+    const players = [
+      player("rb-elite", "RB", {
+        projected_points: 260,
+        overall_rank: 4,
+        adp: 5,
+        tier: 1,
+      }),
+      player("rb-good", "RB", {
+        projected_points: 210,
+        overall_rank: 18,
+        adp: 20,
+        tier: 2,
+      }),
+      player("rb-replacement", "RB", {
+        projected_points: 150,
+        overall_rank: 45,
+        adp: 48,
+        tier: 4,
+      }),
+      player("wr-good", "WR", {
+        projected_points: 205,
+        overall_rank: 20,
+        adp: 21,
+        tier: 2,
+      }),
+      player("qb-one", "QB", {
+        projected_points: 280,
+        overall_rank: 35,
+        adp: 38,
+        tier: 3,
+      }),
+      player("te-one", "TE", {
+        projected_points: 145,
+        overall_rank: 55,
+        adp: 58,
+        tier: 4,
+      }),
+    ];
+
+    const result = recommendPlayers(draftState(players), { limit: 3 });
+
+    expect(result.recommendations[0]?.playerId).toBe("rb-elite");
+    expect(result.recommendations[0]?.context.projectedPointsAboveReplacement).toBeGreaterThan(0);
+  });
+
+  it("boosts a position with an unfilled dedicated starter slot", () => {
+    const existingRb = player("rb-rostered", "RB", { projected_points: 180 });
+    const wrCandidate = player("wr-candidate", "WR", { projected_points: 170 });
+    const rbCandidate = player("rb-candidate", "RB", { projected_points: 170 });
+    const state = draftState([existingRb, wrCandidate, rbCandidate], {
+      picks: [pick(1, existingRb.canonical_player_id, "team-1", "RB")],
+      nextOverallPick: 2,
+    });
+
+    const result = recommendPlayers(state, {
+      limit: 2,
+      weights: isolatedWeight("rosterNeed"),
+    });
+
+    expect(result.recommendations.map((item) => item.playerId)).toEqual([
+      "wr-candidate",
+      "rb-candidate",
+    ]);
+    ex
+
+[TRUNCATED]
+```
+
 ### `packages/shared-types/tests/player-data-release.test.ts`
 
 ```text
@@ -5923,94 +6292,6 @@ def test_build_player_reference_table_unifies_cross_source_names() -> None:
         {
             "player_name": ["DJ Moore", "Kenneth Walker"],
             "position": ["WR", "
-
-[TRUNCATED]
-```
-
-### `tests/data/test_player_season_warehouse.py`
-
-```text
-from __future__ import annotations
-
-import pandas as pd
-
-from packages.data.warehouse.player_season import (
-    aggregate_nflverse_to_player_season,
-    build_player_season_warehouse,
-    prepare_adp_player_season,
-)
-
-
-def test_aggregate_nflverse_to_player_season_rolls_up_weekly_rows():
-    nflverse_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "week": 1,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 10.0,
-                "receiving_yards": 50,
-            },
-            {
-                "season": 2024,
-                "week": 2,
-                "canonical_player_id": "player_1",
-                "player_name": "A Player",
-                "normalized_player_name": "a player",
-                "position": "WR",
-                "team": "BUF",
-                "fantasy_points_ppr": 20.0,
-                "receiving_yards": 100,
-            },
-        ]
-    )
-
-    result = aggregate_nflverse_to_player_season(nflverse_df)
-
-    assert len(result) == 1
-    assert result.loc[0, "games_played"] == 2
-    assert result.loc[0, "fantasy_points_ppr"] == 30.0
-    assert result.loc[0, "receiving_yards"] == 150
-    assert result.loc[0, "fantasy_points_per_game"] == 15.0
-
-
-def test_prepare_adp_player_season_adds_position_rank():
-    adp_df = pd.DataFrame(
-        [
-            {
-                "season": 2024,
-                "canonical_player_id": "rb_1",
-                "player_name": "RB One",
-                "normalized_player_name": "rb one",
-                "position": "RB",
-                "adp_overall": 5.0,
-                "source_name": "fantasypros",
-            },
-            {
-                "season": 2024,
-                "canonical_player_id": "rb_2",
-                "player_name": "RB Two",
-                "normalized_player_name": "rb two",
-                "position": "RB",
-                "adp_overall": 10.0,
-                "source_name": "fantasypros",
-            },
-        ]
-    )
-
-    result = prepare_adp_player_season(adp_df)
-
-    assert len(result) == 2
-    assert result.loc[result["canonical_player_id"] == "rb_1", "adp_pos_rank"].iloc[0] == 1
-    assert result.loc[result["canonical_player_id"] == "rb_2", "adp_pos_rank"].iloc[0] == 2
-
-
-def test_build_player_season_warehouse_merges_stats_and_adp():
-    nfl
 
 [TRUNCATED]
 ```
