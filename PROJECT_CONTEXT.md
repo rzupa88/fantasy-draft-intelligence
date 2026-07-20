@@ -36,8 +36,8 @@ The repository includes:
 - versioned draft export/import
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
-- a React/Vite live draft-room shell
-- full-draft, recommendation, and interface regression tests
+- a React/Vite live draft room with local recovery
+- Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
 
@@ -48,12 +48,16 @@ The React interface currently supports:
 - manual entry for every team selection
 - automatic snake-order advancement
 - search and position filters
+- keyboard-first search, navigation, selection, undo, and export
 - live recommendations for the user roster
 - team-by-team roster tracking
-- undo of the latest selection
-- JSON draft export
+- undo and historical pick correction
+- autosave after every state change
+- automatic restoration after refresh or browser closure
+- JSON draft export and import
+- browser-tested recovery and backup workflows
 
-The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
+The next primary increments are broader roster customization, production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
 
 ## Target application
 
@@ -76,7 +80,7 @@ The initial tested format is a 12-team redraft snake league with configurable sc
 - **Draft and recommendation engines:** TypeScript
 - **Interface:** React and Vite
 - **Desktop packaging:** Tauri
-- **Local persistence:** SQLite
+- **Local persistence:** browser recovery now; SQLite for the desktop release
 - **Testing:** pytest, Vitest, Playwright
 
 See:
@@ -132,8 +136,10 @@ pytest
 npm run typecheck
 npm test
 npm run check
+npm run build
 npm run evaluate:recommendations
-npm run evaluate:recommendations:json
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## Current project structure
@@ -141,6 +147,7 @@ npm run evaluate:recommendations:json
 ```text
 apps/
   draft-room/            # React/Vite live draft interface
+e2e/                     # Playwright browser workflows
 packages/
   data/                  # Python ingestion and identity logic
   modeling/              # Python modeling package
@@ -159,7 +166,7 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** active
+- **M4 — Local draft-room interface:** functional and recoverable; customization remains
 - **M5 — Desktop packaging and release**
 
 ## Quickstart and Useful Commands
@@ -169,9 +176,8 @@ Potentially useful commands and setup hints found in project files:
 ```text
 A local-first fantasy football draft assistant designed to run on a laptop without relying on Sleeper, Yahoo, ESPN, or another live draft platform.
 - Draft state, recommendation logic, and the user interface remain independently testable.
-- full-draft, recommendation, and interface regression tests
-- undo of the latest selection
-The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
+- Vitest and Playwright regression coverage
+- browser-tested recovery and backup workflows
 The completed product will be a locally installed desktop application with:
 The initial tested format is a 12-team redraft snake league with configurable scoring and roster settings.
 - **Testing:** pytest, Vitest, Playwright
@@ -189,7 +195,8 @@ npm run typecheck
 npm test
 npm run check
 npm run evaluate:recommendations
-npm run evaluate:recommendations:json
+npx playwright install chromium
+npm run test:e2e
 shared-types/          # TypeScript contracts and runtime release validation
 tests/                   # Python tests
 [build-system]
@@ -217,10 +224,13 @@ test:
 │   │   │   ├── App.tsx
 │   │   │   ├── demo-data.ts
 │   │   │   ├── draft-factory.ts
+│   │   │   ├── draft-storage.ts
 │   │   │   ├── main.tsx
+│   │   │   ├── recovery.css
 │   │   │   └── styles.css
 │   │   ├── tests
-│   │   │   └── app.test.tsx
+│   │   │   ├── app.test.tsx
+│   │   │   └── recovery.test.ts
 │   │   ├── index.html
 │   │   ├── package.json
 │   │   ├── tsconfig.json
@@ -261,6 +271,8 @@ test:
 │   ├── roadmap.md
 │   ├── SOURCE_INVENTORY.md
 │   └── testing-strategy.md
+├── e2e
+│   └── draft-room.spec.ts
 ├── notebooks
 │   ├── exploratory
 │   ├── modeling
@@ -340,6 +352,7 @@ test:
 ├── debug_adp.csv
 ├── Makefile
 ├── package.json
+├── playwright.config.ts
 ├── PROJECT_CONTEXT.md
 ├── pyproject.toml
 ├── README.md
@@ -385,8 +398,8 @@ The repository includes:
 - versioned draft export/import
 - a deterministic explainable recommendation engine
 - named recommendation scenarios and weight-comparison reports
-- a React/Vite live draft-room shell
-- full-draft, recommendation, and interface regression tests
+- a React/Vite live draft room with local recovery
+- Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
 
@@ -397,12 +410,16 @@ The React interface currently supports:
 - manual entry for every team selection
 - automatic snake-order advancement
 - search and position filters
+- keyboard-first search, navigation, selection, undo, and export
 - live recommendations for the user roster
 - team-by-team roster tracking
-- undo of the latest selection
-- JSON draft export
+- undo and historical pick correction
+- autosave after every state change
+- automatic restoration after refresh or browser closure
+- JSON draft export and import
+- browser-tested recovery and backup workflows
 
-The next interface increments will add pick correction, keyboard-first controls, import/recovery, broader roster customization, and end-to-end browser tests.
+The next primary increments are broader roster customization, production preseason player-data releases, SQLite persistence, and Tauri desktop packaging.
 
 ## Target application
 
@@ -425,7 +442,7 @@ The initial tested format is a 12-team redraft snake league with configurable sc
 - **Draft and recommendation engines:** TypeScript
 - **Interface:** React and Vite
 - **Desktop packaging:** Tauri
-- **Local persistence:** SQLite
+- **Local persistence:** browser recovery now; SQLite for the desktop release
 - **Testing:** pytest, Vitest, Playwright
 
 See:
@@ -481,8 +498,10 @@ pytest
 npm run typecheck
 npm test
 npm run check
+npm run build
 npm run evaluate:recommendations
-npm run evaluate:recommendations:json
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## Current project structure
@@ -490,6 +509,7 @@ npm run evaluate:recommendations:json
 ```text
 apps/
   draft-room/            # React/Vite live draft interface
+e2e/                     # Playwright browser workflows
 packages/
   data/                  # Python ingestion and identity logic
   modeling/              # Python modeling package
@@ -505,11 +525,9 @@ docs/                    # Product and technical documentation
 
 ## Milestones
 
-- **M1 — Historical data foundation:** established
-- **M2 — Offline draft engine foundation:** established
-- **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** active
-- **M5 — Desktop packaging and release**
+-
+
+[TRUNCATED]
 ```
 
 ### `pyproject.toml`
@@ -2142,7 +2160,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** First functional React/Vite shell implemented
+**Status:** Functional recoverable browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -2155,18 +2173,24 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 5. Live draft board and recent-pick feed — baseline complete
 6. Team roster views — baseline complete
 7. Recommendation panel — baseline complete
-8. Undo and correction interface — undo complete; correction pending
-9. Keyboard-first workflow — pending
-10. Player-data import and draft restore flow — pending
-11. Playwright end-to-end tests — pending
+8. Undo and correction interface — complete
+9. Keyboard-first workflow — baseline complete
+10. Draft import, autosave, and recovery — complete for the browser application
+11. Playwright end-to-end tests — baseline complete
+12. Custom roster editor — pending
+13. Production player-data release import — pending
 
-### Current shell behavior
+### Current behavior
 
 - Setup creates a real deterministic draft state rather than mocked UI state.
 - Every manual selection advances the snake order through the draft engine.
 - Position-aware roster assignments are shown for every fantasy team.
 - Recommendations recalculate from the current user roster and remaining player pool.
-- The interface can export the engine's versioned JSON draft backup.
+- Picks can be corrected by replaying the authoritative selection history.
+- The interface autosaves after every state change and restores the latest valid draft after a reload.
+- Versioned JSON backups can be exported, cleared from local recovery, and imported again.
+- Keyboard shortcuts support search, player navigation, drafting, undo, export, and latest-pick correction.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, and import in Chromium.
 - A deterministic fictional player release allows the app to run without network access while the production preseason data pipeline is completed.
 
 ### Exit criteria
@@ -2176,7 +2200,11 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
 
+The baseline exit criteria are now covered. Remaining M4 work is customization and replacing demonstration data with a production preseason release.
+
 ## M5 — Local persistence and desktop release
+
+**Status:** Browser recovery proven; desktop persistence and packaging pending
 
 **Goal:** Deliver a normal Windows laptop application that works offline.
 
@@ -2197,6 +2225,8 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - The application installs and launches without development tools.
 - A complete draft works in airplane mode.
 - Closing and reopening restores the latest valid state.
+
+Browser storage has already validated the autosave/recovery behavior and state boundaries. M5 replaces that browser adapter with durable SQLite-backed desktop persistence while preserving the same engine contracts.
 
 ## Deferred roadmap
 
@@ -2223,7 +2253,7 @@ The active build sequence is:
 5. Add named recommendation scenarios, score snapshots, and weight comparisons.
 6. Build the React/Vite draft-room shell against stable engine APIs.
 7. Add pick correction, keyboard controls, import/recovery, and browser end-to-end tests.
-8. Replace demo data with versioned preseason app releases.
+8. Add custom roster editing and versioned preseason player-data releases.
 9. Expand evaluation with full mock drafts and historical player releases.
 10. Add SQLite autosave and Tauri desktop packaging.
 ```
@@ -2885,37 +2915,73 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
 ### `apps/draft-room/src/App.tsx`
 
 ```text
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  correctPick,
   getPlayerById,
   makePick,
   serializeDraftState,
   undoLastPick,
 } from "@fdi/draft-engine";
 import type { DraftState } from "@fdi/shared-types";
-import { DraftRoom } from "./components/DraftRoom.js";
-import { SetupScreen } from "./components/SetupScreen.js";
+import { DraftWorkspace } from "./components/DraftWorkspace.js";
+import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
   createDraftFromSetup,
   type DraftSetup,
 } from "./draft-factory.js";
+import {
+  clearDraftRecovery,
+  importDraftFile,
+  loadDraftRecovery,
+  saveDraftRecovery,
+} from "./draft-storage.js";
 
 export function App() {
+  const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
-  const [draftState, setDraftState] = useState<DraftState | null>(null);
+  const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
+  const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    initialRecovery === null ? null : "Autosaved draft restored on this device.",
+  );
+
+  useEffect(() => {
+    if (draftState === null) {
+      return;
+    }
+    saveDraftRecovery(draftState);
+    setRecoveredDraft(draftState);
+  }, [draftState]);
 
   function startDraft(): void {
     try {
       const nextState = createDraftFromSetup(setup);
+      clearDraftRecovery();
+      setRecoveredDraft(null);
       setDraftState(nextState);
       setErrorMessage(null);
       setNotice("Draft created. Record the first selection from the player board.");
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     }
+  }
+
+  function resumeDraft(): void {
+    if (recoveredDraft === null) {
+      return;
+    }
+    setDraftState(recoveredDraft);
+    setErrorMessage(null);
+    setNotice("Autosaved draft resumed.");
+  }
+
+  function discardRecovery(): void {
+    clearDraftRecovery();
+    setRecoveredDraft(null);
+    setErrorMessage(null);
   }
 
   function draftPlayer(playerId: string): void {
@@ -2952,65 +3018,118 @@ export function App() {
     }
   }
 
-  function exportDraft(): void {
+  function correctDraftPick(overallPick: number, replacementPlayerId: string): boolean {
     if (draftState === null) {
-      return;
+      return false;
     }
 
     try {
-      const json = serializeDraftState(draftState);
-      const blob = new Blob([json], { type: "application/json" });
-      const downloadUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.download = `${slugify(draftState.settings.leagueName)}-draft.json`;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(downloadUrl);
-      setNotice("Draft backup exported to your downloads folder.");
-    } catch (error) {
-      setNotice(toErrorMessage(error));
+      const previousPick = draftState.picks[overallPick - 1];
+      const previousPlayer =
+        previousPick === undefined ? null : getPlayerById(draftState, previousPick.playerId);
+      const replacementPlayer = getPlayerById(draftState, replacementPlayerId);
+      const nextState = correctPick(draftState, ove
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/CorrectionDialog.tsx`
+
+```text
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DraftPick, DraftState, PlayerDataRecord, PlayerPosition } from "@fdi/shared-types";
+
+interface CorrectionDialogProps {
+  state: DraftState;
+  pick: DraftPick;
+  onClose: () => void;
+  onCorrect: (overallPick: number, playerId: string) => boolean;
+}
+
+type PositionFilter = "ALL" | PlayerPosition;
+
+const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+
+export function CorrectionDialog({ state, pick, onClose, onCorrect }: CorrectionDialogProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
+  const currentPlayer = state.playerDataRelease.players.find(
+    (player) => player.canonical_player_id === pick.playerId,
+  );
+  const team = state.teams.find((candidate) => candidate.teamId === pick.teamId);
+
+  const candidates = useMemo(() => {
+    const eligibleIds = new Set([...state.availablePlayerIds, pick.playerId]);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return state.playerDataRelease.players
+      .filter((player) => eligibleIds.has(player.canonical_player_id))
+      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
+      .filter((player) => {
+        if (normalizedQuery.length === 0) {
+          return true;
+        }
+        return [player.display_name, player.position, player.nfl_team ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort(comparePlayers)
+      .slice(0, 60);
+  }, [pick.playerId, positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease]);
+
+  useEffect(() => {
+    searchInputRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  function selectReplacement(playerId: string): void {
+    if (onCorrect(pick.overallPick, playerId)) {
+      onClose();
     }
   }
 
-  function exitDraft(): void {
-    setDraftState(null);
-    setNotice(null);
-    setErrorMessage(null);
-  }
-
-  if (draftState === null) {
-    return (
-      <SetupScreen
-        setup={setup}
-        errorMessage={errorMessage}
-        onSetupChange={(nextSetup) => {
-          setSetup(nextSetup);
-          setErrorMessage(null);
-        }}
-        onStartDraft={startDraft}
-      />
-    );
-  }
-
   return (
-    <DraftRoom
-      state={draftState}
-      notice={notice}
-      onDraftPlayer={draftPlayer}
-      onUndo={undoPick}
-      onExport={exportDraft}
-      onExit={exitDraft}
-    />
-  );
-}
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="correction-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="correction-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="dialog-heading">
+          <div>
+            <p className="eyebrow">Correct recorded selection</p>
+            <h2 id="correction-title">Pick #{pick.overallPick}</h2>
+            <p>
+              {team?.name ?? pick.teamId} currently has {currentPlayer?.display_name ?? pick.playerId}.
+            </p>
+          </div>
+          <button className="ghost-button" type="button" onClick={onClose} aria-label="Close correction dialog">
+            Close
+          </button>
+        </div>
 
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "An unexpected draft-room error occurred.";
-}
+        <label className="search-field correction-search">
+          <span className="sr-only">Search replacement players</span>
+          <input
+            ref={searchInputRef}
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search replacement player…"
+          />
+        </label>
 
-function slugify(va
+        <div className="position-filters" aria-label="Filter repl
 
 [TRUNCATED]
 ```
@@ -3127,6 +3246,229 @@ export function DraftRoom({
           <div>
             <p className="eyebrow">Fantasy Draft Intelligence</p>
             <h1>{state.settings.leagueName}</h1>
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/DraftWorkspace.tsx`
+
+```text
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import type {
+  DraftPick,
+  DraftState,
+  PlayerDataRecord,
+  PlayerPosition,
+  RosterSlotType,
+} from "@fdi/shared-types";
+import { CorrectionDialog } from "./CorrectionDialog.js";
+
+interface DraftWorkspaceProps {
+  state: DraftState;
+  notice: string | null;
+  onDraftPlayer: (playerId: string) => void;
+  onUndo: () => void;
+  onExport: () => void;
+  onExit: () => void;
+  onCorrectPick: (overallPick: number, playerId: string) => boolean;
+  onImportDraft: (file: File) => Promise<boolean>;
+}
+
+type PositionFilter = "ALL" | PlayerPosition;
+
+const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+const ROSTER_SLOT_ORDER: RosterSlotType[] = [
+  "QB",
+  "RB",
+  "WR",
+  "TE",
+  "FLEX",
+  "SUPERFLEX",
+  "K",
+  "DST",
+  "BENCH",
+];
+
+export function DraftWorkspace({
+  state,
+  notice,
+  onDraftPlayer,
+  onUndo,
+  onExport,
+  onExit,
+  onCorrectPick,
+  onImportDraft,
+}: DraftWorkspaceProps) {
+  const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
+  const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [correctionPickNumber, setCorrectionPickNumber] = useState<number | null>(null);
+
+  const currentSlot = getCurrentOrderSlot(state);
+  const currentTeam =
+    currentSlot === null
+      ? null
+      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
+  const isUserOnClock = currentTeam?.isUser ?? false;
+  const rosters = useMemo(() => buildRosterAssignments(state), [state]);
+  const playersById = useMemo(
+    () =>
+      new Map(
+        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+      ),
+    [state.playerDataRelease],
+  );
+
+  const recommendationResult = useMemo(() => {
+    if (state.availablePlayerIds.length === 0) {
+      return null;
+    }
+    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
+  }, [state, userTeam.teamId]);
+
+  const filteredPlayers = useMemo(() => {
+    const available = new Set(state.availablePlayerIds);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return state.playerDataRelease.players
+      .filter((player) => available.has(player.canonical_player_id))
+      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
+      .filter((player) => {
+        if (normalizedQuery.length === 0) {
+          return true;
+        }
+        return [player.display_name, player.position, player.nfl_team ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort(compareAvailablePlayers)
+      .slice(0, 100);
+  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
+
+  useEffect(() => {
+    if (!filteredPlayers.some((player) => player.canonical_player_id === selectedPlayerId)) {
+      setSelectedPlayerId(filteredPlayers[0]?.canonical_player_id ?? null);
+    }
+  }, [filteredPlayers, selectedPlayerId]);
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
+
+```text
+import { useRef, type ChangeEvent, type FormEvent } from "react";
+import type { DraftState } from "@fdi/shared-types";
+import {
+  ROUND_OPTIONS,
+  SCORING_OPTIONS,
+  TEAM_COUNT_OPTIONS,
+  type DraftSetup,
+  type SupportedScoringPreset,
+} from "../draft-factory.js";
+
+interface RecoverySetupScreenProps {
+  setup: DraftSetup;
+  recoveredDraft: DraftState | null;
+  errorMessage: string | null;
+  onSetupChange: (setup: DraftSetup) => void;
+  onStartDraft: () => void;
+  onResumeDraft: () => void;
+  onDiscardRecovery: () => void;
+  onImportDraft: (file: File) => Promise<boolean>;
+}
+
+export function RecoverySetupScreen({
+  setup,
+  recoveredDraft,
+  errorMessage,
+  onSetupChange,
+  onStartDraft,
+  onResumeDraft,
+  onDiscardRecovery,
+  onImportDraft,
+}: RecoverySetupScreenProps) {
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    onStartDraft();
+  }
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImportDraft(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <main className="setup-shell">
+      <section className="setup-hero">
+        <div className="brand-mark" aria-hidden="true">
+          FDI
+        </div>
+        <p className="eyebrow">Local-first draft intelligence</p>
+        <h1>Build your draft room.</h1>
+        <p className="setup-lede">
+          Configure the league, restore a saved draft, and run the entire snake draft from one
+          laptop. No platform login. No live sync dependency.
+        </p>
+
+        <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>Manual pick entry</span>
+          <span>Automatic recovery</span>
+          <span>Live recommendations</span>
+          <span>Every roster tracked</span>
+        </div>
+      </section>
+
+      <section className="setup-card" aria-labelledby="setup-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Draft control</p>
+            <h2 id="setup-title">League setup</h2>
+          </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+          >
+            Import backup
+          </button>
+          <input
+            ref={importInputRef}
+            className="sr-only"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+
+        {recoveredDraft === null ? null : (
+          <section className="recovery-card" aria-labelledby="recovery-title">
+            <div>
+              <p className="eyebrow">Autosaved draft found</p>
+              <h3 id="recovery-title">{recoveredDraft.settings.leagueName}</h3>
+              <p>
+                {recoveredDraft.picks.length} of {recoveredDraft.order.length} picks recorded ·
+                revision {recoveredDraft.revision}
+              </p>
+            </div>
+            <div className="recovery-actions">
+              <button className="primary-button" type="button" onClick={onResumeDraft}>
+                Resume draft
+              </button>
+              <button className="ghost-button" type="button" onClick={onDiscardRecovery}>
 
 [TRUNCATED]
 ```
@@ -3585,6 +3927,60 @@ function validateDraftSetup(setup: DraftSetup): void {
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/draft-storage.ts`
+
+```text
+import { deserializeDraftState, serializeDraftState } from "@fdi/draft-engine";
+import type { DraftState } from "@fdi/shared-types";
+
+export const DRAFT_RECOVERY_STORAGE_KEY = "fdi.draft-room.recovery.v1";
+
+type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export function loadDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): DraftState | null {
+  if (storage === null) {
+    return null;
+  }
+
+  const serialized = storage.getItem(DRAFT_RECOVERY_STORAGE_KEY);
+  if (serialized === null) {
+    return null;
+  }
+
+  try {
+    return deserializeDraftState(serialized);
+  } catch {
+    storage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+    return null;
+  }
+}
+
+export function saveDraftRecovery(
+  state: DraftState,
+  storage: DraftStorage | null = getBrowserStorage(),
+): void {
+  if (storage === null) {
+    return;
+  }
+  storage.setItem(DRAFT_RECOVERY_STORAGE_KEY, serializeDraftState(state));
+}
+
+export function clearDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): void {
+  storage?.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+}
+
+export async function importDraftFile(file: Pick<File, "text">): Promise<DraftState> {
+  return deserializeDraftState(await file.text());
+}
+
+function getBrowserStorage(): Storage | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage;
+}
+```
+
 ### `apps/draft-room/src/main.tsx`
 
 ```text
@@ -3592,6 +3988,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
 import "./styles.css";
+import "./recovery.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
@@ -3620,12 +4017,13 @@ import {
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders the league setup experience", () => {
+  it("renders the league setup and recovery experience", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
-    expect(html).toContain("Start live draft");
-    expect(html).toContain("Offline fictional demo release");
+    expect(html).toContain("Start new draft");
+    expect(html).toContain("Import backup");
+    expect(html).toContain("Autosaved after every change");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
@@ -3659,97 +4057,6 @@ describe("draft room application shell", () => {
     expect(result.recommendations).toHaveLength(5);
   });
 });
-```
-
-### `apps/draft-room/tsconfig.json`
-
-```text
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist-types",
-    "tsBuildInfoFile": "dist-types/.tsbuildinfo",
-    "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"]
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "references": [
-    { "path": "../../packages/shared-types" },
-    { "path": "../../packages/draft-engine" },
-    { "path": "../../packages/recommendation-engine" }
-  ]
-}
-```
-
-### `apps/draft-room/vite.config.ts`
-
-```text
-import { fileURLToPath, URL } from "node:url";
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@fdi/shared-types": fileURLToPath(
-        new URL("../../packages/shared-types/src/index.ts", import.meta.url),
-      ),
-      "@fdi/draft-engine": fileURLToPath(
-        new URL("../../packages/draft-engine/src/index.ts", import.meta.url),
-      ),
-      "@fdi/recommendation-engine": fileURLToPath(
-        new URL("../../packages/recommendation-engine/src/index.ts", import.meta.url),
-      ),
-    },
-  },
-  server: {
-    host: "0.0.0.0",
-    port: 5173,
-  },
-  preview: {
-    host: "0.0.0.0",
-    port: 4173,
-  },
-});
-```
-
-### `packages/data/constants.py`
-
-```text
-"""Project-wide constants."""
-
-RAW_DATA_DIR = "data/raw"
-INTERMEDIATE_DATA_DIR = "data/intermediate"
-PROCESSED_DATA_DIR = "data/processed"
-
-DEFAULT_PILOT_YEARS = [2023, 2024]
-VALID_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DST"}
-```
-
-### `packages/data/io.py`
-
-```text
-from pathlib import Path
-
-import pandas as pd
-
-
-def ensure_parent_dir(path: str | Path) -> Path:
-    output_path = Path(path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    return output_path
-
-
-def write_parquet(df: pd.DataFrame, path: str | Path) -> None:
-    output_path = ensure_parent_dir(path)
-    df.to_parquet(output_path, index=False)
-
-
-def read_parquet(path: str | Path) -> pd.DataFrame:
-    return pd.read_parquet(path)
 ```
 
 ## Fantasy Domain Logic Files
@@ -3786,37 +4093,73 @@ def read_parquet(path: str | Path) -> pd.DataFrame:
 ### `apps/draft-room/src/App.tsx`
 
 ```text
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  correctPick,
   getPlayerById,
   makePick,
   serializeDraftState,
   undoLastPick,
 } from "@fdi/draft-engine";
 import type { DraftState } from "@fdi/shared-types";
-import { DraftRoom } from "./components/DraftRoom.js";
-import { SetupScreen } from "./components/SetupScreen.js";
+import { DraftWorkspace } from "./components/DraftWorkspace.js";
+import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
   createDraftFromSetup,
   type DraftSetup,
 } from "./draft-factory.js";
+import {
+  clearDraftRecovery,
+  importDraftFile,
+  loadDraftRecovery,
+  saveDraftRecovery,
+} from "./draft-storage.js";
 
 export function App() {
+  const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
-  const [draftState, setDraftState] = useState<DraftState | null>(null);
+  const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
+  const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    initialRecovery === null ? null : "Autosaved draft restored on this device.",
+  );
+
+  useEffect(() => {
+    if (draftState === null) {
+      return;
+    }
+    saveDraftRecovery(draftState);
+    setRecoveredDraft(draftState);
+  }, [draftState]);
 
   function startDraft(): void {
     try {
       const nextState = createDraftFromSetup(setup);
+      clearDraftRecovery();
+      setRecoveredDraft(null);
       setDraftState(nextState);
       setErrorMessage(null);
       setNotice("Draft created. Record the first selection from the player board.");
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
     }
+  }
+
+  function resumeDraft(): void {
+    if (recoveredDraft === null) {
+      return;
+    }
+    setDraftState(recoveredDraft);
+    setErrorMessage(null);
+    setNotice("Autosaved draft resumed.");
+  }
+
+  function discardRecovery(): void {
+    clearDraftRecovery();
+    setRecoveredDraft(null);
+    setErrorMessage(null);
   }
 
   function draftPlayer(playerId: string): void {
@@ -3853,65 +4196,118 @@ export function App() {
     }
   }
 
-  function exportDraft(): void {
+  function correctDraftPick(overallPick: number, replacementPlayerId: string): boolean {
     if (draftState === null) {
-      return;
+      return false;
     }
 
     try {
-      const json = serializeDraftState(draftState);
-      const blob = new Blob([json], { type: "application/json" });
-      const downloadUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.download = `${slugify(draftState.settings.leagueName)}-draft.json`;
-      document.body.append(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(downloadUrl);
-      setNotice("Draft backup exported to your downloads folder.");
-    } catch (error) {
-      setNotice(toErrorMessage(error));
+      const previousPick = draftState.picks[overallPick - 1];
+      const previousPlayer =
+        previousPick === undefined ? null : getPlayerById(draftState, previousPick.playerId);
+      const replacementPlayer = getPlayerById(draftState, replacementPlayerId);
+      const nextState = correctPick(draftState, ove
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/CorrectionDialog.tsx`
+
+```text
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DraftPick, DraftState, PlayerDataRecord, PlayerPosition } from "@fdi/shared-types";
+
+interface CorrectionDialogProps {
+  state: DraftState;
+  pick: DraftPick;
+  onClose: () => void;
+  onCorrect: (overallPick: number, playerId: string) => boolean;
+}
+
+type PositionFilter = "ALL" | PlayerPosition;
+
+const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+
+export function CorrectionDialog({ state, pick, onClose, onCorrect }: CorrectionDialogProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
+  const currentPlayer = state.playerDataRelease.players.find(
+    (player) => player.canonical_player_id === pick.playerId,
+  );
+  const team = state.teams.find((candidate) => candidate.teamId === pick.teamId);
+
+  const candidates = useMemo(() => {
+    const eligibleIds = new Set([...state.availablePlayerIds, pick.playerId]);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return state.playerDataRelease.players
+      .filter((player) => eligibleIds.has(player.canonical_player_id))
+      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
+      .filter((player) => {
+        if (normalizedQuery.length === 0) {
+          return true;
+        }
+        return [player.display_name, player.position, player.nfl_team ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort(comparePlayers)
+      .slice(0, 60);
+  }, [pick.playerId, positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease]);
+
+  useEffect(() => {
+    searchInputRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  function selectReplacement(playerId: string): void {
+    if (onCorrect(pick.overallPick, playerId)) {
+      onClose();
     }
   }
 
-  function exitDraft(): void {
-    setDraftState(null);
-    setNotice(null);
-    setErrorMessage(null);
-  }
-
-  if (draftState === null) {
-    return (
-      <SetupScreen
-        setup={setup}
-        errorMessage={errorMessage}
-        onSetupChange={(nextSetup) => {
-          setSetup(nextSetup);
-          setErrorMessage(null);
-        }}
-        onStartDraft={startDraft}
-      />
-    );
-  }
-
   return (
-    <DraftRoom
-      state={draftState}
-      notice={notice}
-      onDraftPlayer={draftPlayer}
-      onUndo={undoPick}
-      onExport={exportDraft}
-      onExit={exitDraft}
-    />
-  );
-}
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="correction-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="correction-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="dialog-heading">
+          <div>
+            <p className="eyebrow">Correct recorded selection</p>
+            <h2 id="correction-title">Pick #{pick.overallPick}</h2>
+            <p>
+              {team?.name ?? pick.teamId} currently has {currentPlayer?.display_name ?? pick.playerId}.
+            </p>
+          </div>
+          <button className="ghost-button" type="button" onClick={onClose} aria-label="Close correction dialog">
+            Close
+          </button>
+        </div>
 
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "An unexpected draft-room error occurred.";
-}
+        <label className="search-field correction-search">
+          <span className="sr-only">Search replacement players</span>
+          <input
+            ref={searchInputRef}
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search replacement player…"
+          />
+        </label>
 
-function slugify(va
+        <div className="position-filters" aria-label="Filter repl
 
 [TRUNCATED]
 ```
@@ -4028,6 +4424,229 @@ export function DraftRoom({
           <div>
             <p className="eyebrow">Fantasy Draft Intelligence</p>
             <h1>{state.settings.leagueName}</h1>
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/DraftWorkspace.tsx`
+
+```text
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import type {
+  DraftPick,
+  DraftState,
+  PlayerDataRecord,
+  PlayerPosition,
+  RosterSlotType,
+} from "@fdi/shared-types";
+import { CorrectionDialog } from "./CorrectionDialog.js";
+
+interface DraftWorkspaceProps {
+  state: DraftState;
+  notice: string | null;
+  onDraftPlayer: (playerId: string) => void;
+  onUndo: () => void;
+  onExport: () => void;
+  onExit: () => void;
+  onCorrectPick: (overallPick: number, playerId: string) => boolean;
+  onImportDraft: (file: File) => Promise<boolean>;
+}
+
+type PositionFilter = "ALL" | PlayerPosition;
+
+const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+const ROSTER_SLOT_ORDER: RosterSlotType[] = [
+  "QB",
+  "RB",
+  "WR",
+  "TE",
+  "FLEX",
+  "SUPERFLEX",
+  "K",
+  "DST",
+  "BENCH",
+];
+
+export function DraftWorkspace({
+  state,
+  notice,
+  onDraftPlayer,
+  onUndo,
+  onExport,
+  onExit,
+  onCorrectPick,
+  onImportDraft,
+}: DraftWorkspaceProps) {
+  const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
+  const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [correctionPickNumber, setCorrectionPickNumber] = useState<number | null>(null);
+
+  const currentSlot = getCurrentOrderSlot(state);
+  const currentTeam =
+    currentSlot === null
+      ? null
+      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
+  const isUserOnClock = currentTeam?.isUser ?? false;
+  const rosters = useMemo(() => buildRosterAssignments(state), [state]);
+  const playersById = useMemo(
+    () =>
+      new Map(
+        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+      ),
+    [state.playerDataRelease],
+  );
+
+  const recommendationResult = useMemo(() => {
+    if (state.availablePlayerIds.length === 0) {
+      return null;
+    }
+    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
+  }, [state, userTeam.teamId]);
+
+  const filteredPlayers = useMemo(() => {
+    const available = new Set(state.availablePlayerIds);
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    return state.playerDataRelease.players
+      .filter((player) => available.has(player.canonical_player_id))
+      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
+      .filter((player) => {
+        if (normalizedQuery.length === 0) {
+          return true;
+        }
+        return [player.display_name, player.position, player.nfl_team ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedQuery);
+      })
+      .sort(compareAvailablePlayers)
+      .slice(0, 100);
+  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
+
+  useEffect(() => {
+    if (!filteredPlayers.some((player) => player.canonical_player_id === selectedPlayerId)) {
+      setSelectedPlayerId(filteredPlayers[0]?.canonical_player_id ?? null);
+    }
+  }, [filteredPlayers, selectedPlayerId]);
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
+
+```text
+import { useRef, type ChangeEvent, type FormEvent } from "react";
+import type { DraftState } from "@fdi/shared-types";
+import {
+  ROUND_OPTIONS,
+  SCORING_OPTIONS,
+  TEAM_COUNT_OPTIONS,
+  type DraftSetup,
+  type SupportedScoringPreset,
+} from "../draft-factory.js";
+
+interface RecoverySetupScreenProps {
+  setup: DraftSetup;
+  recoveredDraft: DraftState | null;
+  errorMessage: string | null;
+  onSetupChange: (setup: DraftSetup) => void;
+  onStartDraft: () => void;
+  onResumeDraft: () => void;
+  onDiscardRecovery: () => void;
+  onImportDraft: (file: File) => Promise<boolean>;
+}
+
+export function RecoverySetupScreen({
+  setup,
+  recoveredDraft,
+  errorMessage,
+  onSetupChange,
+  onStartDraft,
+  onResumeDraft,
+  onDiscardRecovery,
+  onImportDraft,
+}: RecoverySetupScreenProps) {
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    onStartDraft();
+  }
+
+  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (file !== undefined) {
+      await onImportDraft(file);
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <main className="setup-shell">
+      <section className="setup-hero">
+        <div className="brand-mark" aria-hidden="true">
+          FDI
+        </div>
+        <p className="eyebrow">Local-first draft intelligence</p>
+        <h1>Build your draft room.</h1>
+        <p className="setup-lede">
+          Configure the league, restore a saved draft, and run the entire snake draft from one
+          laptop. No platform login. No live sync dependency.
+        </p>
+
+        <div className="feature-strip" aria-label="Draft room capabilities">
+          <span>Manual pick entry</span>
+          <span>Automatic recovery</span>
+          <span>Live recommendations</span>
+          <span>Every roster tracked</span>
+        </div>
+      </section>
+
+      <section className="setup-card" aria-labelledby="setup-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Draft control</p>
+            <h2 id="setup-title">League setup</h2>
+          </div>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => importInputRef.current?.click()}
+          >
+            Import backup
+          </button>
+          <input
+            ref={importInputRef}
+            className="sr-only"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void handleImport(event)}
+          />
+        </div>
+
+        {recoveredDraft === null ? null : (
+          <section className="recovery-card" aria-labelledby="recovery-title">
+            <div>
+              <p className="eyebrow">Autosaved draft found</p>
+              <h3 id="recovery-title">{recoveredDraft.settings.leagueName}</h3>
+              <p>
+                {recoveredDraft.picks.length} of {recoveredDraft.order.length} picks recorded ·
+                revision {recoveredDraft.revision}
+              </p>
+            </div>
+            <div className="recovery-actions">
+              <button className="primary-button" type="button" onClick={onResumeDraft}>
+                Resume draft
+              </button>
+              <button className="ghost-button" type="button" onClick={onDiscardRecovery}>
 
 [TRUNCATED]
 ```
@@ -4486,6 +5105,60 @@ function validateDraftSetup(setup: DraftSetup): void {
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/draft-storage.ts`
+
+```text
+import { deserializeDraftState, serializeDraftState } from "@fdi/draft-engine";
+import type { DraftState } from "@fdi/shared-types";
+
+export const DRAFT_RECOVERY_STORAGE_KEY = "fdi.draft-room.recovery.v1";
+
+type DraftStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+
+export function loadDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): DraftState | null {
+  if (storage === null) {
+    return null;
+  }
+
+  const serialized = storage.getItem(DRAFT_RECOVERY_STORAGE_KEY);
+  if (serialized === null) {
+    return null;
+  }
+
+  try {
+    return deserializeDraftState(serialized);
+  } catch {
+    storage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+    return null;
+  }
+}
+
+export function saveDraftRecovery(
+  state: DraftState,
+  storage: DraftStorage | null = getBrowserStorage(),
+): void {
+  if (storage === null) {
+    return;
+  }
+  storage.setItem(DRAFT_RECOVERY_STORAGE_KEY, serializeDraftState(state));
+}
+
+export function clearDraftRecovery(storage: DraftStorage | null = getBrowserStorage()): void {
+  storage?.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+}
+
+export async function importDraftFile(file: Pick<File, "text">): Promise<DraftState> {
+  return deserializeDraftState(await file.text());
+}
+
+function getBrowserStorage(): Storage | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  return window.localStorage;
+}
+```
+
 ### `apps/draft-room/src/main.tsx`
 
 ```text
@@ -4493,6 +5166,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
 import "./styles.css";
+import "./recovery.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
@@ -4521,12 +5195,13 @@ import {
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders the league setup experience", () => {
+  it("renders the league setup and recovery experience", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
-    expect(html).toContain("Start live draft");
-    expect(html).toContain("Offline fictional demo release");
+    expect(html).toContain("Start new draft");
+    expect(html).toContain("Import backup");
+    expect(html).toContain("Autosaved after every change");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
@@ -4560,309 +5235,6 @@ describe("draft room application shell", () => {
     expect(result.recommendations).toHaveLength(5);
   });
 });
-```
-
-### `apps/draft-room/tsconfig.json`
-
-```text
-{
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist-types",
-    "tsBuildInfoFile": "dist-types/.tsbuildinfo",
-    "jsx": "react-jsx",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"]
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "references": [
-    { "path": "../../packages/shared-types" },
-    { "path": "../../packages/draft-engine" },
-    { "path": "../../packages/recommendation-engine" }
-  ]
-}
-```
-
-### `apps/draft-room/vite.config.ts`
-
-```text
-import { fileURLToPath, URL } from "node:url";
-import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@fdi/shared-types": fileURLToPath(
-        new URL("../../packages/shared-types/src/index.ts", import.meta.url),
-      ),
-      "@fdi/draft-engine": fileURLToPath(
-        new URL("../../packages/draft-engine/src/index.ts", import.meta.url),
-      ),
-      "@fdi/recommendation-engine": fileURLToPath(
-        new URL("../../packages/recommendation-engine/src/index.ts", import.meta.url),
-      ),
-    },
-  },
-  server: {
-    host: "0.0.0.0",
-    port: 5173,
-  },
-  preview: {
-    host: "0.0.0.0",
-    port: 4173,
-  },
-});
-```
-
-### `packages/data/ingest/adp.py`
-
-```text
-from __future__ import annotations
-
-import re
-from dataclasses import dataclass
-from io import StringIO
-from pathlib import Path
-from typing import Final
-from urllib.request import Request, urlopen
-
-import pandas as pd
-
-from packages.data.constants import (
-    DEFAULT_PILOT_YEARS,
-    INTERMEDIATE_DATA_DIR,
-    RAW_DATA_DIR,
-)
-from packages.data.io import write_parquet
-from packages.data.player_ids import attach_canonical_ids_pandas
-from packages.data.validation import assert_unique_key, require_columns
-
-REQUIRED_OUTPUT_COLUMNS: Final[list[str]] = [
-    "season",
-    "player_name",
-    "normalized_player_name",
-    "entity_type",
-    "canonical_player_id",
-    "position",
-    "adp_overall",
-    "source_name",
-]
-
-UNIQUE_KEY_COLUMNS: Final[list[str]] = [
-    "season",
-    "canonical_player_id",
-    "source_name",
-]
-
-SOURCE_NAME: Final[str] = "fantasypros"
-
-DEFAULT_SOURCE_URLS: Final[dict[int, str]] = {
-    2023: "https://www.fantasypros.com/nfl/adp/overall.php?year=2023",
-    2024: "https://www.fantasypros.com/nfl/adp/overall.php?year=2024",
-}
-
-REQUEST_HEADERS: Final[dict[str, str]] = {
-    "User-Agent": "fantasy-draft-intelligence/0.1 (+historical-adp-ingestion)"
-}
-
-
-@dataclass(frozen=True)
-class AdpIngestConfig:
-    years: list[int]
-    raw_dir: Path
-    intermediate_dir: Path
-    source_urls: dict[int, str]
-
-
-def default_config() -> AdpIngestConfig:
-    return AdpIngestConfig(
-        years=list(DEFAULT_PILOT_YEARS),
-        raw_dir=Path(RAW_DATA_DIR),
-        intermediate_dir=Path(INTERMEDIATE_DATA_DIR),
-        source_urls=dict(DEFAULT_SOURCE_URLS),
-    )
-
-
-def _fetch_html(url: str) -> str:
-    request = Request(url, headers=REQUEST_HEADERS)
-    with urlopen(request) as response:  # noqa: S310
-        return response.read().decode("utf-8")
-
-
-def _extract_raw_table_from_html(html: str, season: int) -> pd.DataFrame:
-    tables = pd.read_html(StringIO(html))
-    if not tables:
-        raise ValueError(f"No HTML tables found for season {season}")
-
-    raw = tables[0].copy()
-    raw.columns = [str(col).strip() for col in raw.columns]
-
-    expected_columns = {"Player Team (Bye)", "POS", "AVG"}
-    missing_columns = expected_columns.difference(raw.columns)
-    if missing_columns:
-        raise ValueError(
-            f"Missing expected FantasyPros columns for season {season}: "
-            f"{sorted(missing_columns)}"
-        )
-
-    raw["season"] = season
-    raw["source_name"] = SOURCE_NAME
-    return raw
-
-
-def _split_player_name(value: object) -> str:
-    text = str(value).strip()
-    if not text:
-        return text
-
-    text = re.sub(r"\s+[A-Z]{2,3}\s+\(\d+\)$", "", text)
-    return text.strip()
-
-
-def _extract_position(value: object) -> str:
-    text = str(value).strip().upper()
-    if not text:
-        return text
-
-    for valid_position in ("QB", "RB", "WR", "TE", "DST", "K"):
-        if text.startswith(valid_position):
-            return valid_position
-
-    return text
-
-
-def normalize_historical_adp(raw_df: pd.DataFrame) -> pd.DataFrame:
-    normalized = pd.DataFrame(
-        {
-            "season": pd.to_numeric(raw_df["season"], errors="coerce").astype("Int64"),
-            "player_name": raw_df["Player Team (Bye)"].map(_split_player_name),
-            "position": raw_df["POS"].map(_extract_position),
-            "adp_overall": pd.to_numeric(raw_df["AVG"], errors="coerce"),
-            "source_name": raw_df["source_name"].astype("string").str.strip(),
-        }
-    )
-
-    normalized["player_name"] = normalized["player_name"].astyp
-
-[TRUNCATED]
-```
-
-### `packages/data/player_ids.py`
-
-```text
-from __future__ import annotations
-
-import re
-import unicodedata
-from collections.abc import Iterable
-
-import pandas as pd
-import polars as pl
-
-from packages.data.validation import assert_unique_key, require_columns
-
-CANONICAL_ID_COLUMN = "canonical_player_id"
-NORMALIZED_NAME_COLUMN = "normalized_player_name"
-ENTITY_TYPE_COLUMN = "entity_type"
-
-PLAYER_ENTITY = "player"
-DST_ENTITY = "dst"
-
-POSITION_NORMALIZATION_MAP: dict[str, str] = {
-    "QB": "QB",
-    "RB": "RB",
-    "WR": "WR",
-    "TE": "TE",
-    "K": "K",
-    "DST": "DST",
-    "DEF": "DST",
-    "D/ST": "DST",
-}
-
-_SUFFIX_PATTERN = re.compile(r"\b(jr|sr|ii|iii|iv|v)\b", flags=re.IGNORECASE)
-_MULTI_SPACE_PATTERN = re.compile(r"\s+")
-_NON_WORD_SPACE_HYPHEN_SLASH_PATTERN = re.compile(r"[^a-z0-9\s\-/]")
-_DST_TOKEN_PATTERN = re.compile(r"\b(?:d\s*/\s*st|dst|defense|def)\b", flags=re.IGNORECASE)
-
-DST_ALIAS_MAP: dict[str, str] = {
-    "arizona cardinals": "arizona_cardinals",
-    "atlanta falcons": "atlanta_falcons",
-    "baltimore ravens": "baltimore_ravens",
-    "buffalo bills": "buffalo_bills",
-    "carolina panthers": "carolina_panthers",
-    "chicago bears": "chicago_bears",
-    "cincinnati bengals": "cincinnati_bengals",
-    "cleveland browns": "cleveland_browns",
-    "dallas cowboys": "dallas_cowboys",
-    "denver broncos": "denver_broncos",
-    "detroit lions": "detroit_lions",
-    "green bay packers": "green_bay_packers",
-    "houston texans": "houston_texans",
-    "indianapolis colts": "indianapolis_colts",
-    "jacksonville jaguars": "jacksonville_jaguars",
-    "kansas city chiefs": "kansas_city_chiefs",
-    "las vegas raiders": "las_vegas_raiders",
-    "los angeles chargers": "los_angeles_chargers",
-    "los angeles rams": "los_angeles_rams",
-    "miami dolphins": "miami_dolphins",
-    "minnesota vikings": "minnesota_vikings",
-    "new england patriots": "new_england_patriots",
-    "new orleans saints": "new_orleans_saints",
-    "new york giants": "new_york_giants",
-    "new york jets": "new_york_jets",
-    "philadelphia eagles": "philadelphia_eagles",
-    "pittsburgh steelers": "pittsburgh_steelers",
-    "san francisco 49ers": "san_francisco_49ers",
-    "seattle seahawks": "seattle_seahawks",
-    "tampa bay buccaneers": "tampa_bay_buccaneers",
-    "tennessee titans": "tennessee_titans",
-    "washington commanders": "washington_commanders",
-}
-
-DST_ABBR_MAP: dict[str, str] = {
-    "ARI": "arizona_cardinals",
-    "ATL": "atlanta_falcons",
-    "BAL": "baltimore_ravens",
-    "BUF": "buffalo_bills",
-    "CAR": "carolina_panthers",
-    "CHI": "chicago_bears",
-    "CIN": "cincinnati_bengals",
-    "CLE": "cleveland_browns",
-    "DAL": "dallas_cowboys",
-    "DEN": "denver_broncos",
-    "DET": "detroit_lions",
-    "GB": "green_bay_packers",
-    "HOU": "houston_texans",
-    "IND": "indianapolis_colts",
-    "JAX": "jacksonville_jaguars",
-    "KC": "kansas_city_chiefs",
-    "LV": "las_vegas_raiders",
-    "LAC": "los_angeles_chargers",
-    "LAR": "los_angeles_rams",
-    "MIA": "miami_dolphins",
-    "MIN": "minnesota_vikings",
-    "NE": "new_england_patriots",
-    "NO": "new_orleans_saints",
-    "NYG": "new_york_giants",
-    "NYJ": "new_york_jets",
-    "PHI": "philadelphia_eagles",
-    "PIT": "pittsburgh_steelers",
-    "SF": "san_francisco_49ers",
-    "SEA": "seattle_seahawks",
-    "TB": "tampa_bay_buccaneers",
-    "TEN": "tennessee_titans",
-    "WAS": "washington_commanders",
-}
-
-
-def normalize_position(value: object) -> str:
-    text = str(value).strip().upper()
-    return POSITION_NORMALIZA
-
-[TRUNCATED]
 ```
 
 ## Data Pipeline and Ingestion Files
@@ -5856,12 +6228,13 @@ import {
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders the league setup experience", () => {
+  it("renders the league setup and recovery experience", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
-    expect(html).toContain("Start live draft");
-    expect(html).toContain("Offline fictional demo release");
+    expect(html).toContain("Start new draft");
+    expect(html).toContain("Import backup");
+    expect(html).toContain("Autosaved after every change");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
@@ -5895,6 +6268,84 @@ describe("draft room application shell", () => {
     expect(result.recommendations).toHaveLength(5);
   });
 });
+```
+
+### `apps/draft-room/tests/recovery.test.ts`
+
+```text
+import { describe, expect, it } from "vitest";
+import { makePick, serializeDraftState } from "@fdi/draft-engine";
+import { DEFAULT_DRAFT_SETUP, createDraftFromSetup } from "../src/draft-factory.js";
+import {
+  DRAFT_RECOVERY_STORAGE_KEY,
+  clearDraftRecovery,
+  importDraftFile,
+  loadDraftRecovery,
+  saveDraftRecovery,
+} from "../src/draft-storage.js";
+
+interface MemoryStorage {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+  has: (key: string) => boolean;
+}
+
+describe("draft recovery storage", () => {
+  it("round-trips an autosaved draft", () => {
+    const storage = createMemoryStorage();
+    const initial = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "recovery-test");
+    const state = makePick(initial, initial.availablePlayerIds[0]!);
+
+    saveDraftRecovery(state, storage);
+    const restored = loadDraftRecovery(storage);
+
+    expect(restored?.draftId).toBe("recovery-test");
+    expect(restored?.picks).toHaveLength(1);
+    expect(restored?.picks[0]?.playerId).toBe(state.picks[0]?.playerId);
+    expect(restored?.revision).toBe(state.revision);
+  });
+
+  it("removes a corrupted autosave instead of loading it", () => {
+    const storage = createMemoryStorage();
+    storage.setItem(DRAFT_RECOVERY_STORAGE_KEY, "not json");
+
+    expect(loadDraftRecovery(storage)).toBeNull();
+    expect(storage.has(DRAFT_RECOVERY_STORAGE_KEY)).toBe(false);
+  });
+
+  it("clears the saved draft on request", () => {
+    const storage = createMemoryStorage();
+    const state = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "clear-test");
+    saveDraftRecovery(state, storage);
+
+    clearDraftRecovery(storage);
+
+    expect(storage.has(DRAFT_RECOVERY_STORAGE_KEY)).toBe(false);
+  });
+
+  it("imports a versioned JSON backup through the file adapter", async () => {
+    const initial = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "import-test");
+    const state = makePick(initial, initial.availablePlayerIds[0]!);
+    const file = {
+      text: async () => serializeDraftState(state, "2026-07-17T16:00:00.000Z"),
+    } satisfies Pick<File, "text">;
+
+    const restored = await importDraftFile(file);
+
+    expect(restored.draftId).toBe("import-test");
+    expect(restored.picks).toHaveLength(1);
+    expect(restored.nextOverallPick).toBe(2);
+  });
+});
+
+function createMemoryStorage(): MemoryStorage {
+  const values = new Map<string, string>();
+  return {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) =
+
+[TRUNCATED]
 ```
 
 ### `packages/draft-engine/tests/fixtures.ts`
@@ -6561,112 +7012,6 @@ describe("assertPlayerDataRelease", () => {
     expect(() => assertPlayerDataRelease(release)).toThrow(/position is unsupported/);
   });
 });
-```
-
-### `tests/data/ingest/test_adp.py`
-
-```text
-from __future__ import annotations
-
-from pathlib import Path
-
-import pandas as pd
-import pytest
-
-from packages.data.ingest.adp import (
-    REQUIRED_OUTPUT_COLUMNS,
-    UNIQUE_KEY_COLUMNS,
-    AdpIngestConfig,
-    ingest_historical_adp,
-    normalize_historical_adp,
-)
-from packages.data.validation import ValidationError
-
-
-@pytest.fixture
-def fantasypros_html_2023() -> str:
-    return """
-    <html>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player Team (Bye)</th>
-              <th>POS</th>
-              <th>AVG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>Christian McCaffrey SF (9)</td><td>RB1</td><td>1.2</td></tr>
-            <tr><td>2</td><td>Tyreek Hill MIA (10)</td><td>WR1</td><td>4.8</td></tr>
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-@pytest.fixture
-def fantasypros_html_2024() -> str:
-    return """
-    <html>
-      <body>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player Team (Bye)</th>
-              <th>POS</th>
-              <th>AVG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>1</td><td>CeeDee Lamb DAL (7)</td><td>WR1</td><td>2.1</td></tr>
-            <tr><td>2</td><td>Breece Hall NYJ (12)</td><td>RB2</td><td>5.0</td></tr>
-          </tbody>
-        </table>
-      </body>
-    </html>
-    """
-
-
-def test_normalize_historical_adp_requires_expected_columns() -> None:
-    raw = pd.DataFrame(
-        {
-            "season": [2024],
-            "Player Team (Bye)": ["CeeDee Lamb DAL (7)"],
-            "POS": ["WR1"],
-            "AVG": [2.1],
-            "source_name": ["fantasypros"],
-        }
-    )
-
-    normalized = normalize_historical_adp(raw)
-
-    assert list(normalized.columns) == REQUIRED_OUTPUT_COLUMNS
-    assert normalized.iloc[0]["player_name"] == "CeeDee Lamb"
-    assert normalized.iloc[0]["position"] == "WR"
-
-
-def test_normalize_historical_adp_rejects_duplicate_keys() -> None:
-    raw = pd.DataFrame(
-        {
-            "season": [2024, 2024],
-            "Player Team (Bye)": ["CeeDee Lamb DAL (7)", "CeeDee Lamb DAL (7)"],
-            "POS": ["WR1", "WR1"],
-            "AVG": [2.1, 2.1],
-            "source_name": ["fantasypros", "fantasypros"],
-        }
-    )
-
-    with pytest.raises(ValidationError, match="duplicate rows"):
-        normalize_historical_adp(raw)
-
-
-def test_ingest_historical_adp_writes_raw_and_in
-
-[TRUNCATED]
 ```
 
 ## Open Implementation Notes
