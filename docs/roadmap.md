@@ -72,7 +72,7 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 
 ## M4 — Local draft-room interface
 
-**Status:** Functional, recoverable, roster-configurable, and UDK-enabled browser application implemented
+**Status:** Functional, recoverable, roster-configurable, UDK-enabled, and NFLverse-enriched browser application implemented
 
 **Goal:** Make the engine practical during a real draft.
 
@@ -91,7 +91,8 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 11. Playwright end-to-end tests — baseline complete
 12. Custom roster editor — complete
 13. Fantasy Footballers UDK ZIP import — complete
-14. NFLverse identity and prior-year-stat enrichment — pending
+14. NFLverse identity and prior-year-stat enrichment — baseline complete
+15. Real preseason release calibration and saved identity overrides — pending
 
 ### Current behavior
 
@@ -110,8 +111,13 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Andy, Jason, and Mike stat lines are rescored for Standard, Half PPR, or Full PPR and combined by median.
 - Average, Sleeper, ESPN, Yahoo, and Underdog ADP can be selected and converted to overall picks using league size.
 - Import coverage and unmatched rows are shown before the draft starts.
-- The UDK release replaces the fictional player pool while remaining local to the user's device.
-- Playwright validates keyboard drafting, recovery, correction, undo, export, import, custom roster setup, and synthetic UDK ZIP upload in Chromium.
+- A compact NFLverse JSON release supplies stable IDs, aliases, current teams, roster status, and prior-season statistics.
+- UDK players are matched deterministically by normalized name and position, with team used only to resolve collisions.
+- Fuzzy and ambiguous matches are reported for review rather than accepted automatically.
+- Rookies and current players without prior-year statistics can still receive stable identities.
+- UDK remains authoritative for projections, rankings, tiers, risk, upside, and ADP.
+- The combined release replaces the fictional player pool while remaining local to the user's device.
+- Playwright validates keyboard drafting, recovery, correction, undo, export, import, custom roster setup, UDK ZIP upload, NFLverse import, stable-ID matching, and combined draft creation in Chromium.
 
 ### Exit criteria
 
@@ -120,8 +126,9 @@ Items 1 through 11 have baseline implementations. Broader calibration with real 
 - Errors are recoverable and clearly explained.
 - A browser-level test completes a representative draft workflow.
 - A fresh day-of-draft UDK package can replace the demonstration release without code changes.
+- UDK players can be enriched with stable NFLverse identities and prior-year history without changing UDK projections.
 
-The interface, resilience, roster, and UDK import exit criteria are covered. Remaining M4 data work is stable NFLverse identity matching and prior-year-stat enrichment.
+The interface, resilience, roster, UDK import, and NFLverse enrichment baseline criteria are covered. Remaining M4 data work is real-release calibration, manual identity overrides for genuine exceptions, and broader historical replay evaluation.
 
 ## M5 — Local persistence and desktop release
 
@@ -176,5 +183,5 @@ The active build sequence is:
 8. Add custom roster editing.
 9. Add day-of-draft UDK ZIP import and normalization.
 10. Match UDK players to NFLverse identities and prior-year statistics.
-11. Expand evaluation with full mock drafts and historical player releases.
+11. Generate and calibrate a real preseason release, then expand historical replay evaluation.
 12. Add SQLite autosave and Tauri desktop packaging.

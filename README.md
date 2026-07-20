@@ -25,6 +25,7 @@ The repository includes:
 - canonical player ID normalization
 - cross-source player reference data
 - Parquet-based intermediate datasets
+- a compact NFLverse identity and prior-season history release builder
 - a TypeScript shared-contract package
 - a deterministic snake-draft engine
 - position-aware roster allocation
@@ -33,6 +34,7 @@ The repository includes:
 - named recommendation scenarios and weight-comparison reports
 - a React/Vite live draft room with local recovery
 - Fantasy Footballers UDK ZIP import and release normalization
+- deterministic UDK-to-NFLverse matching and review reporting
 - Vitest and Playwright regression coverage
 
 ## Current draft-room capabilities
@@ -47,6 +49,11 @@ The React interface currently supports:
 - UDK Andy, Jason, and Mike statistical projections recalculated for the selected scoring format
 - Average, Sleeper, ESPN, Yahoo, and Underdog ADP markets
 - UDK rankings, tiers, risk scores, upside scores, and bye weeks
+- import of a compact NFLverse identity and prior-season history JSON release
+- deterministic name, position, alias, and team-assisted player matching
+- stable NFLverse IDs for matched players
+- prior-season Standard, Half PPR, and Full PPR production
+- a visible unmatched and ambiguous-player review list
 - an offline deterministic demo release when no UDK package is loaded
 - manual entry for every team selection
 - automatic snake-order advancement
@@ -58,20 +65,35 @@ The React interface currently supports:
 - autosave after every state change
 - automatic restoration after refresh or browser closure
 - JSON draft export and import
-- browser-tested recovery, backup, custom-roster, and UDK-upload workflows
+- browser-tested recovery, backup, custom-roster, UDK-upload, and NFLverse-enrichment workflows
 
-The next data increment is matching the UDK release to stable NFLverse player IDs and prior-year statistics. SQLite persistence and Tauri desktop packaging follow.
+The next data increment is generating and inspecting a real preseason history release, resolving any real-world identity exceptions, and expanding historical replay evaluation. SQLite persistence and Tauri desktop packaging follow.
 
-## Draft-day UDK refresh
+## Draft-day data refresh
+
+Generate the open NFLverse history release before the draft:
+
+```bash
+python scripts/build_nflverse_history_release.py \
+  --prior-season 2025 \
+  --roster-season 2026
+```
+
+Then:
 
 1. Download fresh UDK CSV exports.
 2. Keep the exported folder structure and compress the files into one ZIP.
 3. Configure scoring, league size, roster slots, and the desired ADP market.
-4. Select **Import UDK ZIP**.
-5. Review the coverage report.
+4. Import the NFLverse history JSON and UDK ZIP in either order.
+5. Review UDK coverage and NFLverse identity matches.
 6. Start the draft.
 
-All ZIP processing happens locally in the browser. See [`docs/udk-import.md`](docs/udk-import.md) for recognized files, projection math, ADP conversion, and privacy rules.
+NFLverse generation requires a network connection, but the completed JSON file and all draft-room processing work offline. UDK ZIP processing and NFLverse matching happen locally in the browser.
+
+See:
+
+- [`docs/udk-import.md`](docs/udk-import.md) for recognized UDK files, projection math, ADP conversion, and privacy rules.
+- [`docs/nflverse-history.md`](docs/nflverse-history.md) for history generation, match rules, release fields, and limitations.
 
 ## Target application
 
@@ -107,6 +129,7 @@ See:
 - [`docs/recommendation-engine.md`](docs/recommendation-engine.md)
 - [`docs/recommendation-evaluation.md`](docs/recommendation-evaluation.md)
 - [`docs/udk-import.md`](docs/udk-import.md)
+- [`docs/nflverse-history.md`](docs/nflverse-history.md)
 
 ## Run the draft room
 
@@ -136,12 +159,13 @@ source .venv/bin/activate  # Windows PowerShell: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
 
-Run the existing data pipeline and tests:
+Run the data pipeline and tests:
 
 ```bash
 python scripts/ingest_adp.py
 python scripts/ingest_nflverse.py
 python scripts/build_player_reference.py
+python scripts/build_nflverse_history_release.py --prior-season 2025 --roster-season 2026
 pytest
 ```
 
@@ -161,16 +185,16 @@ npm run test:e2e
 
 ```text
 apps/
-  draft-room/            # React/Vite live draft interface and UDK importer
+  draft-room/            # React/Vite interface, UDK importer, and NFLverse matcher
 e2e/                     # Playwright browser workflows
 packages/
-  data/                  # Python ingestion and identity logic
+  data/                  # Python ingestion, identity, and history-release logic
   modeling/              # Python modeling package
   shared/                # Python shared package
   shared-types/          # TypeScript contracts and runtime release validation
   draft-engine/          # Deterministic TypeScript draft state engine
   recommendation-engine/ # Explainable scoring, scenarios, and evaluation reports
-scripts/                 # Data entrypoints and recommendation evaluation command
+scripts/                 # Data and recommendation entrypoints
 data/                    # Raw, intermediate, and processed data
 tests/                   # Python tests
 docs/                    # Product and technical documentation
@@ -181,5 +205,5 @@ docs/                    # Product and technical documentation
 - **M1 — Historical data foundation:** established
 - **M2 — Offline draft engine foundation:** established
 - **M3 — Recommendation engine v1:** baseline and evaluation harness established
-- **M4 — Local draft-room interface:** functional, recoverable, roster-configurable, and UDK-enabled; NFLverse enrichment remains
+- **M4 — Local draft-room interface:** functional, recoverable, roster-configurable, UDK-enabled, and NFLverse-enriched
 - **M5 — Desktop packaging and release**

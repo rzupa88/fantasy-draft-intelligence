@@ -46,6 +46,30 @@ export interface LeagueSettings {
   rosterSlots: RosterSlotRule[];
 }
 
+export interface PlayerSeasonHistory {
+  season: number;
+  games: number;
+  fantasy_points_standard: number;
+  fantasy_points_half_ppr: number;
+  fantasy_points_ppr: number;
+  points_per_game_standard: number;
+  points_per_game_half_ppr: number;
+  points_per_game_ppr: number;
+  weekly_points_stddev_half_ppr: number;
+  attempts: number;
+  passing_yards: number;
+  passing_tds: number;
+  interceptions: number;
+  carries: number;
+  rushing_yards: number;
+  rushing_tds: number;
+  targets: number;
+  receptions: number;
+  receiving_yards: number;
+  receiving_tds: number;
+  fumbles_lost: number;
+}
+
 export interface PlayerDataRecord {
   canonical_player_id: string;
   display_name: string;
@@ -60,6 +84,8 @@ export interface PlayerDataRecord {
   risk_score: number | null;
   upside_score: number | null;
   availability_status: string | null;
+  nflverse_player_id?: string | null;
+  prior_season_stats?: PlayerSeasonHistory | null;
 }
 
 export interface PlayerDataRelease {
@@ -181,6 +207,45 @@ function assertPlayerRecord(value: unknown, index: number): asserts value is Pla
   assertNullableNumber(value.risk_score, `players[${index}].risk_score`);
   assertNullableNumber(value.upside_score, `players[${index}].upside_score`);
   assertNullableString(value.availability_status, `players[${index}].availability_status`);
+
+  if ("nflverse_player_id" in value) {
+    assertNullableString(value.nflverse_player_id, `players[${index}].nflverse_player_id`);
+  }
+  if ("prior_season_stats" in value && value.prior_season_stats !== null) {
+    assertPlayerSeasonHistory(value.prior_season_stats, `players[${index}].prior_season_stats`);
+  }
+}
+
+function assertPlayerSeasonHistory(value: unknown, field: string): asserts value is PlayerSeasonHistory {
+  if (!isRecord(value)) {
+    throw new TypeError(`${field} must be null or an object.`);
+  }
+  assertPositiveInteger(value.season, `${field}.season`);
+  assertPositiveInteger(value.games, `${field}.games`);
+  const numericFields = [
+    "fantasy_points_standard",
+    "fantasy_points_half_ppr",
+    "fantasy_points_ppr",
+    "points_per_game_standard",
+    "points_per_game_half_ppr",
+    "points_per_game_ppr",
+    "weekly_points_stddev_half_ppr",
+    "attempts",
+    "passing_yards",
+    "passing_tds",
+    "interceptions",
+    "carries",
+    "rushing_yards",
+    "rushing_tds",
+    "targets",
+    "receptions",
+    "receiving_yards",
+    "receiving_tds",
+    "fumbles_lost",
+  ] as const;
+  for (const key of numericFields) {
+    assertNumber(value[key], `${field}.${key}`);
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -219,8 +284,14 @@ function assertNullablePositiveNumber(value: unknown, field: string): void {
 }
 
 function assertNullableNumber(value: unknown, field: string): void {
-  if (value !== null && (typeof value !== "number" || !Number.isFinite(value))) {
-    throw new TypeError(`${field} must be null or a finite number.`);
+  if (value !== null) {
+    assertNumber(value, field);
+  }
+}
+
+function assertNumber(value: unknown, field: string): asserts value is number {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new TypeError(`${field} must be a finite number.`);
   }
 }
 

@@ -54,7 +54,7 @@ test("exports a backup and imports it after clearing recovery", async ({ page })
   await page.getByRole("button", { name: "Discard save" }).click();
   await expect(page.getByText("Autosaved draft found")).toHaveCount(0);
 
-  await page.locator('input[accept*="json"]').setInputFiles(downloadPath!);
+  await page.locator('input[accept*="json"]').first().setInputFiles(downloadPath!);
   await expect(page.getByRole("heading", { name: "Backup League" })).toBeVisible();
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
   await expect(page.getByRole("status")).toContainText("imported with 1 recorded picks");
@@ -74,7 +74,7 @@ test("derives draft length from a custom superflex roster", async ({ page }) => 
   await expect(page.locator(".draft-progress-label")).toContainText("0 / 204 picks");
 });
 
-test("imports a UDK ZIP and uses its players in the draft", async ({ page }, testInfo) => {
+test("imports UDK and NFLverse releases into one stable player pool", async ({ page }, testInfo) => {
   const rankingRows = Array.from({ length: 200 }, (_, index) => {
     const rank = index + 1;
     return `UDK Player ${rank},RB,T${String(rank).padStart(2, "0")},7,${rank},${350 - rank},4,7,${Math.ceil(rank / 12)}.${String(((rank - 1) % 12) + 1).padStart(2, "0")},${Math.ceil(rank / 12)},Outlook,Dynasty,Markers`;
@@ -105,16 +105,68 @@ test("imports a UDK ZIP and uses its players in the draft", async ({ page }, tes
   const zipPath = testInfo.outputPath("udk-fixture.zip");
   await writeFile(zipPath, archive);
 
+  const historyPlayers = Array.from({ length: 200 }, (_, index) => {
+    const rank = index + 1;
+    return {
+      nflverse_player_id: `00-test-${String(rank).padStart(4, "0")}`,
+      canonical_player_id: `nflverse:00-test-${String(rank).padStart(4, "0")}`,
+      display_name: `UDK Player ${rank}`,
+      normalized_name: `udk_player_${rank}`,
+      aliases: [`UDK Player ${rank}`],
+      position: "RB",
+      current_team: `T${String(rank).padStart(2, "0")}`,
+      roster_status: "ACT",
+      prior_season_stats: {
+        season: 2025,
+        games: 17,
+        fantasy_points_standard: 150,
+        fantasy_points_half_ppr: 175,
+        fantasy_points_ppr: 200,
+        points_per_game_standard: 8.824,
+        points_per_game_half_ppr: 10.294,
+        points_per_game_ppr: 11.765,
+        weekly_points_stddev_half_ppr: 4.2,
+        attempts: 0,
+        passing_yards: 0,
+        passing_tds: 0,
+        interceptions: 0,
+        carries: 200,
+        rushing_yards: 900,
+        rushing_tds: 7,
+        targets: 50,
+        receptions: 40,
+        receiving_yards: 300,
+        receiving_tds: 2,
+        fumbles_lost: 1,
+      },
+    };
+  });
+  const historyPath = testInfo.outputPath("nflverse-history.json");
+  await writeFile(
+    historyPath,
+    JSON.stringify({
+      schema_version: "1.0",
+      source: "nflverse",
+      prior_season: 2025,
+      roster_season: 2026,
+      generated_at: "2026-07-17T12:00:00.000Z",
+      players: historyPlayers,
+    }),
+  );
+
+  await page.getByTestId("nflverse-history-input").setInputFiles(historyPath);
+  await expect(page.getByText("NFLverse 2025 history is ready.")).toBeVisible();
   await page.getByTestId("udk-file-input").setInputFiles(zipPath);
   await expect(page.getByText("UDK 2026 ready")).toBeVisible();
-  await expect(page.getByText("200", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("NFLverse 2025 matched")).toBeVisible();
+  await expect(page.getByText("200 of 200 UDK players now use stable NFLverse IDs.")).toBeVisible();
 
-  await page.getByLabel("League name").fill("UDK League");
+  await page.getByLabel("League name").fill("Enriched UDK League");
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await expect(page.getByRole("heading", { name: "UDK League" })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("2026 UDK release");
+  await expect(page.getByRole("heading", { name: "Enriched UDK League" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("200 NFLverse identity matches");
 
   const search = page.getByPlaceholder("Search player, team, position…");
   await search.fill("UDK Player 1");
-  await expect(page.getByText("UDK Player 1", { exact: true }).first()).toBeVisible();
+  await expect(page.locator('[data-player-id="nflverse:00-test-0001"]')).toBeVisible();
 });
