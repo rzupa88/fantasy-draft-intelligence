@@ -37,7 +37,8 @@ export function LeagueDraftBoard({ state, playersById }: LeagueDraftBoardProps) 
 
       <p className="panel-intro">
         Scan every roster by round. Team headers show remaining starter needs as position-colored pills,
-        while completed picks use the same position colors as the rest of the draft room.
+        while completed picks use the same position colors as the rest of the draft room. Hover a pick
+        for ADP, tier, bye week, and projected points.
       </p>
 
       <div className="league-board-scroll">
