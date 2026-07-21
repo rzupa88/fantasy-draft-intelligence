@@ -23,7 +23,7 @@
   min-width: 2.6rem;
   padding: 0.35rem 0.55rem;
   border-radius: 0.5rem;
-  color: #071019;
+  color: #fff;
   font-size: 0.67rem;
   font-weight: 900;
   text-align: center;
@@ -70,11 +70,11 @@
   display: grid;
   padding: 0.7rem;
   align-content: center;
-  gap: 0.2rem;
+  gap: 0.28rem;
   border-right: 1px solid var(--border-soft);
 }
 
-.league-board-team-header span {
+.league-board-team-header > span {
   color: var(--accent);
   font-size: 0.62rem;
   font-weight: 900;
@@ -92,6 +92,23 @@
   color: var(--muted);
   font-size: 0.58rem;
   line-height: 1.35;
+}
+
+.team-needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+
+.team-need-pill {
+  min-width: 1.8rem;
+  padding: 0.16rem 0.32rem;
+  border-radius: 0.3rem;
+  color: #fff;
+  font-size: 0.52rem;
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
 }
 
 .league-board-user-team {
@@ -150,18 +167,49 @@
 .league-board-on-clock {
   color: var(--text);
   background: rgb(114 241 184 / 13%);
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    0 0 18px rgb(114 241 184 / 26%);
+  animation: draft-board-pulse 1.6s ease-in-out infinite;
 }
 
-.position-bg-qb { background: #f6c85f; }
-.position-bg-rb { background: #64c7b4; }
-.position-bg-wr { background: #78a9ff; }
-.position-bg-te { background: #c99cff; }
-.position-bg-k { background: #ff9f80; }
-.position-bg-dst { background: #b5bdc9; }
+@keyframes draft-board-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 2px var(--accent),
+      0 0 10px rgb(114 241 184 / 18%);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 3px var(--accent),
+      0 0 22px rgb(114 241 184 / 38%);
+  }
+}
+
+/* Shared draft-room position palette. */
+.position-bg-qb { background: #c94747; }
+.position-bg-rb { background: #2f9e61; }
+.position-bg-wr { background: #397bc8; }
+.position-bg-te { color: #2f2600; background: #e4c84b; }
+.position-bg-k { background: #7e57c2; }
+.position-bg-dst { background: #7d8794; }
+.position-bg-flex { background: #4c596b; }
+
+.position-legend.position-bg-te,
+.team-need-pill.position-bg-te,
+.league-board-pick.position-bg-te {
+  color: #2f2600;
+}
 
 .league-board-pick {
-  color: #071019;
+  color: #fff;
+  cursor: help;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .league-board-on-clock {
+    animation: none;
+  }
 }
 
 @media (max-width: 900px) {
