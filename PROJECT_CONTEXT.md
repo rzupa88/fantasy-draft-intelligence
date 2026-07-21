@@ -268,9 +268,12 @@ test:
 ├── apps
 │   ├── api
 │   ├── draft-room
+│   │   ├── public
+│   │   │   └── data
 │   │   ├── src
 │   │   │   ├── components
 │   │   │   ├── App.tsx
+│   │   │   ├── bundled-nflverse-history.ts
 │   │   │   ├── demo-data.ts
 │   │   │   ├── draft-factory.ts
 │   │   │   ├── draft-storage.ts
@@ -284,6 +287,7 @@ test:
 │   │   │   └── udk-importer.ts
 │   │   ├── tests
 │   │   │   ├── app.test.tsx
+│   │   │   ├── bundled-nflverse-history.test.ts
 │   │   │   ├── nflverse-history.test.ts
 │   │   │   ├── recovery.test.ts
 │   │   │   └── udk-importer.test.ts
@@ -330,6 +334,7 @@ test:
 │   ├── testing-strategy.md
 │   └── udk-import.md
 ├── e2e
+│   ├── bundled-history.spec.ts
 │   ├── draft-room.spec.ts
 │   └── udk-loose-files.spec.ts
 ├── notebooks
@@ -398,6 +403,7 @@ test:
 │   ├── evaluate_recommendations.mjs
 │   ├── ingest_adp.py
 │   ├── ingest_nflverse.py
+│   ├── package_bundled_nflverse.py
 │   └── validate_data.py
 ├── tests
 │   ├── data
@@ -3299,6 +3305,10 @@ import {
   saveDraftRecovery,
 } from "./draft-storage.js";
 import {
+  BUNDLED_NFLVERSE_HISTORY_LABEL,
+  loadBundledNflverseHistory,
+} from "./bundled-nflverse-history.js";
+import {
   enrichPlayerDataReleaseWithNflverse,
   importNflverseHistoryFile,
   type NflverseHistoryRelease,
@@ -3316,6 +3326,7 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
+  const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
   const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -3343,6 +3354,26 @@ export function App() {
   }, [historyRelease, udkBuild]);
 
   useEffect(() => {
+    let cancelled = false;
+    void loadBundledNflverseHistory()
+      .then((release) => {
+        if (cancelled) return;
+        setBundledHistory(release);
+        setHistoryRelease((current) => current ?? release);
+        setHistoryFilename((current) => current ?? BUNDLED_NFLVERSE_HISTORY_LABEL);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setErrorMessage((current) =>
+          current ?? `Bundled NFLverse history failed to load: ${toErrorMessage(error)}`,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (draftState === null) {
       return;
     }
@@ -3353,26 +3384,61 @@ export function App() {
   function startDraft(): void {
     try {
       const release = historyBuild?.release ?? udkBuild?.release;
-      if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
-        throw new RangeError(
-          `The imported player release contains ${release.players.length} players, but this draft requires ${
-            setup.teamCount * setup.rounds
-          } selections.`,
-        );
-      }
-      const nextState = createDraftFromSetup(setup, undefined, release);
-      clearDraftRecovery();
-      setRecoveredDraft(null);
-      setDraftState(nextState);
-      setErrorMessage(null);
-      setNotice(
-        release === undefined
-          ? "Draft created with demonstration player data."
-          : historyBuild === null
-            ? `Draft created with the ${release.season} UDK release and ${release.players.length} players.`
-            : `Draft created with UDK projections and ${historyBuild.re
+      if (release !==
 
 [TRUNCATED]
+```
+
+### `apps/draft-room/src/bundled-nflverse-history.ts`
+
+```text
+import { strFromU8, unzipSync } from "fflate";
+import {
+  parseNflverseHistoryJson,
+  type NflverseHistoryRelease,
+} from "./nflverse-history.js";
+
+export const BUNDLED_NFLVERSE_HISTORY_ARCHIVE = "nflverse-history-2025-2026.zip";
+export const BUNDLED_NFLVERSE_HISTORY_LABEL = "Bundled NFLverse 2025/2026";
+
+export async function loadBundledNflverseHistory(
+  fetcher: typeof fetch = fetch,
+  url = defaultBundledUrl(),
+): Promise<NflverseHistoryRelease> {
+  const response = await fetcher(url);
+  if (!response.ok) {
+    throw new TypeError(
+      `Bundled NFLverse history could not be loaded (${response.status} ${response.statusText}).`,
+    );
+  }
+
+  let archive: Record<string, Uint8Array>;
+  try {
+    archive = unzipSync(new Uint8Array(await response.arrayBuffer()));
+  } catch (error) {
+    throw new TypeError(`Bundled NFLverse history is not a readable ZIP archive: ${messageOf(error)}`);
+  }
+
+  const jsonEntries = Object.entries(archive).filter(
+    ([path, bytes]) => /\.json$/i.test(path) && bytes.length > 0,
+  );
+  if (jsonEntries.length !== 1) {
+    throw new TypeError(
+      `Bundled NFLverse history must contain exactly one JSON release; found ${jsonEntries.length}.`,
+    );
+  }
+
+  return parseNflverseHistoryJson(strFromU8(jsonEntries[0]![1]));
+}
+
+function defaultBundledUrl(): string {
+  const baseUrl = typeof document === "undefined" ? "http://localhost/" : document.baseURI;
+  return new URL(`data/${BUNDLED_NFLVERSE_HISTORY_ARCHIVE}`, baseUrl).toString();
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 ```
 
 ### `apps/draft-room/src/components/CorrectionDialog.tsx`
@@ -3707,6 +3773,7 @@ export function DraftWorkspace({
 
 ```text
 import { useRef, type ChangeEvent } from "react";
+import { BUNDLED_NFLVERSE_HISTORY_LABEL } from "../bundled-nflverse-history.js";
 import type {
   NflverseEnrichmentReport,
   NflverseHistoryRelease,
@@ -3728,6 +3795,7 @@ export function NflverseHistoryCard({
   onClear,
 }: NflverseHistoryCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isBundled = filename === BUNDLED_NFLVERSE_HISTORY_LABEL;
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
@@ -3744,17 +3812,17 @@ export function NflverseHistoryCard({
           <p className="eyebrow">Historical context</p>
           <h3 id="history-import-title">NFLverse identity and prior-year stats</h3>
           <p>
-            Load the compact JSON release generated from NFLverse. It supplies stable player IDs,
-            current teams, and prior-season production while UDK remains the projection source.
+            The app loads a validated NFLverse release automatically. Import a newer JSON release
+            only when you want to replace the bundled identities and prior-season production.
           </p>
         </div>
         <div className="history-import-actions">
           <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            {history === null ? "Import NFLverse history" : "Replace history file"}
+            Import newer history
           </button>
-          {history === null ? null : (
+          {history === null || isBundled ? null : (
             <button className="ghost-button" type="button" onClick={onClear}>
-              Clear history
+              Use bundled release
             </button>
           )}
           <input
@@ -3770,8 +3838,8 @@ export function NflverseHistoryCard({
 
       {history === null ? (
         <div className="history-empty-state">
-          <strong>Historical enrichment is optional.</strong>
-          <span>The UDK release can still run without it, but player IDs and prior-year context will be limited.</span>
+          <strong>Loading bundled NFLverse history.</strong>
+          <span>The validated local release will be ready before you start the draft.</span>
         </div>
       ) : report === null ? (
         <div className="history-ready-state" role="status">
@@ -3794,8 +3862,6 @@ export function NflverseHistoryCard({
               value={report.unmatchedPlayers.length + report.ambiguousPlayers.length}
             />
           </div>
-          <p className="history-preview-note">
-            {report.matchedPlayerCount} of {re
 
 [TRUNCATED]
 ```
@@ -4155,95 +4221,6 @@ export function SetupScreen({
 [TRUNCATED]
 ```
 
-### `apps/draft-room/src/components/UdkImportCard.tsx`
-
-```text
-import { useRef, type ChangeEvent } from "react";
-import { zipSync } from "fflate";
-import type { UdkBuildReport } from "../udk-importer.js";
-
-interface UdkImportCardProps {
-  report: UdkBuildReport | null;
-  filename: string | null;
-  onImport: (file: File) => Promise<void>;
-  onClear: () => void;
-}
-
-export function UdkImportCard({ report, filename, onImport, onClear }: UdkImportCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length === 1 && /\.zip$/i.test(files[0]!.name)) {
-      await onImport(files[0]!);
-    } else if (files.length > 0) {
-      const archive: Record<string, Uint8Array> = {};
-      for (const [index, file] of files.entries()) {
-        const originalPath = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
-        const path = archive[originalPath] === undefined ? originalPath : `selected-${index + 1}/${file.name}`;
-        archive[path] = new Uint8Array(await file.arrayBuffer());
-      }
-      const bundled = new File([zipSync(archive, { level: 0 })], `udk-${files.length}-files.zip`, {
-        type: "application/zip",
-      });
-      await onImport(bundled);
-    }
-    event.target.value = "";
-  }
-
-  return (
-    <section className="udk-import-card field-wide" aria-labelledby="udk-import-title">
-      <div className="udk-import-heading">
-        <div>
-          <p className="eyebrow">Player data</p>
-          <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
-          <p>
-            Choose the UDK ZIP, or select all exported CSV and PDF files together. The files are
-            recognized locally, combined in memory when needed, and never sent to a server.
-          </p>
-        </div>
-        <div className="udk-import-actions">
-          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            {report === null ? "Import UDK files" : "Replace UDK files"}
-          </button>
-          {report === null ? null : (
-            <button className="ghost-button" type="button" onClick={onClear}>
-              Use demo data
-            </button>
-          )}
-          <input
-            ref={inputRef}
-            data-testid="udk-file-input"
-            className="sr-only"
-            type="file"
-            accept="application/zip,.zip,text/csv,.csv,application/pdf,.pdf"
-            multiple
-            onChange={(event) => void handleImport(event)}
-          />
-        </div>
-      </div>
-
-      {report === null ? (
-        <div className="udk-empty-state">
-          <strong>Demo player data is active.</strong>
-          <span>Import a ZIP or select the loose UDK exports to replace the fictional pool.</span>
-        </div>
-      ) : (
-        <div className="udk-preview" role="status">
-          <div className="udk-ready-row">
-            <span className="udk-ready-badge">UDK {report.season} ready</span>
-            <span>{filename}</span>
-          </div>
-          <div className="udk-metrics">
-            <Metric label="Players" value={report.playerCount} />
-            <Metric label="Projected" value={report.projectedPlayerCount} />
-            <Metric label="All 3 analysts" value={report.allAnalystProjectionCount} />
-            <Metric label="Selected ADP" value={report.selectedAdpPlayerCount} />
-            <Metric label="Files recognized" value={report.recognizedFileCount} /
-
-[TRUNCATED]
-```
-
 ## Fantasy Domain Logic Files
 
 ### `apps/draft-room/src/components/RosterConfigurator.tsx`
@@ -4411,6 +4388,10 @@ import {
   saveDraftRecovery,
 } from "./draft-storage.js";
 import {
+  BUNDLED_NFLVERSE_HISTORY_LABEL,
+  loadBundledNflverseHistory,
+} from "./bundled-nflverse-history.js";
+import {
   enrichPlayerDataReleaseWithNflverse,
   importNflverseHistoryFile,
   type NflverseHistoryRelease,
@@ -4428,6 +4409,7 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
+  const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
   const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -4455,6 +4437,26 @@ export function App() {
   }, [historyRelease, udkBuild]);
 
   useEffect(() => {
+    let cancelled = false;
+    void loadBundledNflverseHistory()
+      .then((release) => {
+        if (cancelled) return;
+        setBundledHistory(release);
+        setHistoryRelease((current) => current ?? release);
+        setHistoryFilename((current) => current ?? BUNDLED_NFLVERSE_HISTORY_LABEL);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setErrorMessage((current) =>
+          current ?? `Bundled NFLverse history failed to load: ${toErrorMessage(error)}`,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (draftState === null) {
       return;
     }
@@ -4465,26 +4467,61 @@ export function App() {
   function startDraft(): void {
     try {
       const release = historyBuild?.release ?? udkBuild?.release;
-      if (release !== undefined && release.players.length < setup.teamCount * setup.rounds) {
-        throw new RangeError(
-          `The imported player release contains ${release.players.length} players, but this draft requires ${
-            setup.teamCount * setup.rounds
-          } selections.`,
-        );
-      }
-      const nextState = createDraftFromSetup(setup, undefined, release);
-      clearDraftRecovery();
-      setRecoveredDraft(null);
-      setDraftState(nextState);
-      setErrorMessage(null);
-      setNotice(
-        release === undefined
-          ? "Draft created with demonstration player data."
-          : historyBuild === null
-            ? `Draft created with the ${release.season} UDK release and ${release.players.length} players.`
-            : `Draft created with UDK projections and ${historyBuild.re
+      if (release !==
 
 [TRUNCATED]
+```
+
+### `apps/draft-room/src/bundled-nflverse-history.ts`
+
+```text
+import { strFromU8, unzipSync } from "fflate";
+import {
+  parseNflverseHistoryJson,
+  type NflverseHistoryRelease,
+} from "./nflverse-history.js";
+
+export const BUNDLED_NFLVERSE_HISTORY_ARCHIVE = "nflverse-history-2025-2026.zip";
+export const BUNDLED_NFLVERSE_HISTORY_LABEL = "Bundled NFLverse 2025/2026";
+
+export async function loadBundledNflverseHistory(
+  fetcher: typeof fetch = fetch,
+  url = defaultBundledUrl(),
+): Promise<NflverseHistoryRelease> {
+  const response = await fetcher(url);
+  if (!response.ok) {
+    throw new TypeError(
+      `Bundled NFLverse history could not be loaded (${response.status} ${response.statusText}).`,
+    );
+  }
+
+  let archive: Record<string, Uint8Array>;
+  try {
+    archive = unzipSync(new Uint8Array(await response.arrayBuffer()));
+  } catch (error) {
+    throw new TypeError(`Bundled NFLverse history is not a readable ZIP archive: ${messageOf(error)}`);
+  }
+
+  const jsonEntries = Object.entries(archive).filter(
+    ([path, bytes]) => /\.json$/i.test(path) && bytes.length > 0,
+  );
+  if (jsonEntries.length !== 1) {
+    throw new TypeError(
+      `Bundled NFLverse history must contain exactly one JSON release; found ${jsonEntries.length}.`,
+    );
+  }
+
+  return parseNflverseHistoryJson(strFromU8(jsonEntries[0]![1]));
+}
+
+function defaultBundledUrl(): string {
+  const baseUrl = typeof document === "undefined" ? "http://localhost/" : document.baseURI;
+  return new URL(`data/${BUNDLED_NFLVERSE_HISTORY_ARCHIVE}`, baseUrl).toString();
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 ```
 
 ### `apps/draft-room/src/components/CorrectionDialog.tsx`
@@ -4819,6 +4856,7 @@ export function DraftWorkspace({
 
 ```text
 import { useRef, type ChangeEvent } from "react";
+import { BUNDLED_NFLVERSE_HISTORY_LABEL } from "../bundled-nflverse-history.js";
 import type {
   NflverseEnrichmentReport,
   NflverseHistoryRelease,
@@ -4840,6 +4878,7 @@ export function NflverseHistoryCard({
   onClear,
 }: NflverseHistoryCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isBundled = filename === BUNDLED_NFLVERSE_HISTORY_LABEL;
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
@@ -4856,17 +4895,17 @@ export function NflverseHistoryCard({
           <p className="eyebrow">Historical context</p>
           <h3 id="history-import-title">NFLverse identity and prior-year stats</h3>
           <p>
-            Load the compact JSON release generated from NFLverse. It supplies stable player IDs,
-            current teams, and prior-season production while UDK remains the projection source.
+            The app loads a validated NFLverse release automatically. Import a newer JSON release
+            only when you want to replace the bundled identities and prior-season production.
           </p>
         </div>
         <div className="history-import-actions">
           <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            {history === null ? "Import NFLverse history" : "Replace history file"}
+            Import newer history
           </button>
-          {history === null ? null : (
+          {history === null || isBundled ? null : (
             <button className="ghost-button" type="button" onClick={onClear}>
-              Clear history
+              Use bundled release
             </button>
           )}
           <input
@@ -4882,8 +4921,8 @@ export function NflverseHistoryCard({
 
       {history === null ? (
         <div className="history-empty-state">
-          <strong>Historical enrichment is optional.</strong>
-          <span>The UDK release can still run without it, but player IDs and prior-year context will be limited.</span>
+          <strong>Loading bundled NFLverse history.</strong>
+          <span>The validated local release will be ready before you start the draft.</span>
         </div>
       ) : report === null ? (
         <div className="history-ready-state" role="status">
@@ -4906,8 +4945,6 @@ export function NflverseHistoryCard({
               value={report.unmatchedPlayers.length + report.ambiguousPlayers.length}
             />
           </div>
-          <p className="history-preview-note">
-            {report.matchedPlayerCount} of {re
 
 [TRUNCATED]
 ```
@@ -5440,112 +5477,6 @@ export function createDemoPlayerDataRelease(requiredPlayerCount = 252): PlayerDa
         ),
         tier: Math.floor(positionIndex / profile.tierSize) + 1,
         risk_score: 18 + ((globalIndex * 17 + profileIndex *
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/draft-factory.ts`
-
-```text
-import { createDraftState } from "@fdi/draft-engine";
-import type {
-  DraftState,
-  LeagueSettings,
-  PlayerDataRelease,
-  PlayerPosition,
-  RosterSlotRule,
-  RosterSlotType,
-  ScoringPreset,
-  ScoringSettings,
-} from "@fdi/shared-types";
-import { createDemoPlayerDataRelease } from "./demo-data.js";
-import { UDK_ADP_SOURCES, type UdkAdpSource } from "./udk-importer.js";
-
-export type SupportedScoringPreset = Exclude<ScoringPreset, "custom">;
-export type RosterCounts = Record<RosterSlotType, number>;
-
-export interface DraftSetup {
-  leagueName: string;
-  teamCount: number;
-  userDraftSlot: number;
-  rounds: number;
-  scoringPreset: SupportedScoringPreset;
-  adpSource: UdkAdpSource;
-  rosterCounts: RosterCounts;
-}
-
-export interface RosterSlotOption {
-  slot: RosterSlotType;
-  label: string;
-  description: string;
-  min: number;
-  max: number;
-  eligiblePositions: PlayerPosition[];
-}
-
-export const ROSTER_SLOT_OPTIONS: RosterSlotOption[] = [
-  { slot: "QB", label: "Quarterback", description: "Dedicated QB starters", min: 0, max: 3, eligiblePositions: ["QB"] },
-  { slot: "RB", label: "Running back", description: "Dedicated RB starters", min: 0, max: 6, eligiblePositions: ["RB"] },
-  { slot: "WR", label: "Wide receiver", description: "Dedicated WR starters", min: 0, max: 6, eligiblePositions: ["WR"] },
-  { slot: "TE", label: "Tight end", description: "Dedicated TE starters", min: 0, max: 3, eligiblePositions: ["TE"] },
-  { slot: "FLEX", label: "Flex", description: "RB, WR, or TE", min: 0, max: 4, eligiblePositions: ["RB", "WR", "TE"] },
-  { slot: "SUPERFLEX", label: "Superflex", description: "QB, RB, WR, or TE", min: 0, max: 3, eligiblePositions: ["QB", "RB", "WR", "TE"] },
-  { slot: "K", label: "Kicker", description: "Dedicated kicker slot", min: 0, max: 1, eligiblePositions: ["K"] },
-  { slot: "DST", label: "Defense", description: "Team defense / special teams", min: 0, max: 1, eligiblePositions: ["DST"] },
-  { slot: "BENCH", label: "Bench", description: "Any offensive player, K, or DST", min: 0, max: 16, eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"] },
-];
-
-export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
-  QB: 1,
-  RB: 2,
-  WR: 2,
-  TE: 1,
-  FLEX: 1,
-  SUPERFLEX: 0,
-  K: 1,
-  DST: 1,
-  BENCH: 7,
-};
-
-export const DEFAULT_DRAFT_SETUP: DraftSetup = {
-  leagueName: "Friday Night League",
-  teamCount: 12,
-  userDraftSlot: 6,
-  rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
-  scoringPreset: "half_ppr",
-  adpSource: "sleeper",
-  rosterCounts: { ...DEFAULT_ROSTER_COUNTS },
-};
-
-export const TEAM_COUNT_OPTIONS = [8, 10, 12, 14] as const;
-export const ROUND_OPTIONS = [14, 15, 16, 17, 18] as const;
-
-export const SCORING_OPTIONS: Array<{
-  value: SupportedScoringPreset;
-  label: string;
-  description: string;
-}> = [
-  { value: "standard", label: "Standard", description: "No points per reception" },
-  { value: "half_ppr", label: "Half PPR", description: "0.5 points per reception" },
-  { value: "ppr", label: "Full PPR", description: "1 point per reception" },
-];
-
-export function createDraftFromSetup(
-  setup: DraftSetup,
-  draftId = createDraftId(setup.leagueName),
-  playerDataRelease?: PlayerDataRelease,
-): DraftState {
-  validateDraftSetup(setup);
-  const settings = createLeagueSettings(setup);
-  const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
-
-  return createDraftState({
-    draftId,
-    settings,
-    teamNames,
-    playerDataRelease:
 
 [TRUNCATED]
 ```
@@ -6875,7 +6806,7 @@ describe("draft room application shell", () => {
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
     expect(html).toContain("Import UDK files");
-    expect(html).toContain("Import NFLverse history");
+    expect(html).toContain("Import newer history");
     expect(html).toContain("ADP market");
     expect(html).toContain("Roster configuration");
     expect(html).toContain("Superflex");
@@ -6914,9 +6845,50 @@ describe("draft room application shell", () => {
       K: 0,
       DST: 0,
     };
-    const rosterSlots = createRosterSlots(rost
+    const rosterSlots = createRosterSlots(rosterC
 
 [TRUNCATED]
+```
+
+### `apps/draft-room/tests/bundled-nflverse-history.test.ts`
+
+```text
+import { strToU8, zipSync } from "fflate";
+import { describe, expect, it, vi } from "vitest";
+import { loadBundledNflverseHistory } from "../src/bundled-nflverse-history.js";
+
+const RELEASE = {
+  schema_version: "1.0",
+  source: "nflverse",
+  prior_season: 2025,
+  roster_season: 2026,
+  generated_at: "2026-07-18T00:23:54.397Z",
+  players: [],
+};
+
+describe("bundled NFLverse history", () => {
+  it("downloads, decompresses, and validates the bundled release", async () => {
+    const archive = zipSync({
+      "nflverse_history_2025_2026.json": strToU8(JSON.stringify(RELEASE)),
+    });
+    const fetcher = vi.fn(async () => new Response(archive, { status: 200 }));
+
+    const result = await loadBundledNflverseHistory(fetcher, "https://example.test/history.zip");
+
+    expect(fetcher).toHaveBeenCalledWith("https://example.test/history.zip");
+    expect(result.prior_season).toBe(2025);
+    expect(result.roster_season).toBe(2026);
+  });
+
+  it("rejects archives without exactly one JSON release", async () => {
+    const archive = zipSync({ "readme.txt": strToU8("missing") });
+    const fetcher = vi.fn(async () => new Response(archive, { status: 200 }));
+
+    await expect(loadBundledNflverseHistory(fetcher, "https://example.test/history.zip")).rejects.toThrow(
+      "exactly one JSON release",
+    );
+  });
+});
 ```
 
 ### `apps/draft-room/tests/nflverse-history.test.ts`
@@ -7386,90 +7358,6 @@ describe("draft export and import", () => {
     envelope.draft.pickPlayerIds = ["player-4", "player-4"];
 
     expect(() => deserializeDraftState(JSON.stringify(env
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/tests/state.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import {
-  buildRosterAssignments,
-  buildRosters,
-  correctPick,
-  createDraftState,
-  getCurrentOrderSlot,
-  getPlayerById,
-  makePick,
-  undoLastPick,
-} from "@fdi/draft-engine";
-import {
-  fullDraftPlayerRelease,
-  generatedPlayerRelease,
-  leagueSettings,
-  playerDataRelease,
-  playerRecord,
-} from "./fixtures.js";
-
-describe("draft state transitions", () => {
-  it("creates a deterministic initial state", () => {
-    const state = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 }),
-      playerDataRelease: generatedPlayerRelease(20),
-    });
-
-    expect(state.status).toBe("not_started");
-    expect(state.nextOverallPick).toBe(1);
-    expect(state.picks).toEqual([]);
-    expect(getCurrentOrderSlot(state)?.teamId).toBe("team-1");
-    expect(getPlayerById(state, "player-1")?.canonical_player_id).toBe("player-1");
-  });
-
-  it("records picks, advances the clock, and updates rosters", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerDataRelease: generatedPlayerRelease(12),
-    });
-
-    const afterOne = makePick(initial, "player-1");
-    const afterTwo = makePick(afterOne, "player-2");
-
-    expect(initial.picks).toHaveLength(0);
-    expect(afterTwo.status).toBe("in_progress");
-    expect(afterTwo.nextOverallPick).toBe(3);
-    expect(afterTwo.availablePlayerIds).not.toContain("player-1");
-    expect(buildRosters(afterTwo)).toEqual({
-      "team-1": ["player-1"],
-      "team-2": ["player-2"],
-      "team-3": [],
-      "team-4": [],
-    });
-  });
-
-  it("prevents a player from being selected twice", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerDataRelease: generatedPlayerRelease(12),
-    });
-    const afterOne = makePick(initial, "player-1");
-
-    expect(() => makePick(afterOne, "player-1")).toThrow(/not available/);
-  });
-
-  it("undoes the most recent pick and restores availability", () => {
-    const initial = createDraftState({
-      draftId: "draft-1",
-      settings: leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 2 }),
-      playerDataRelease: generatedPlayerRelease(12),
-    });
-    const afterTwo = makePick(makePick(initial, "player-1"), "player-2");
-    const undone = undoLastPick(afterTwo);
-
-    exp
 
 [TRUNCATED]
 ```
