@@ -3,7 +3,6 @@ import type { DraftPick, DraftState, PlayerDataRecord, PlayerPosition } from "@f
 interface LeagueDraftBoardProps {
   state: DraftState;
   playersById: Map<string, PlayerDataRecord>;
-  onSelectTeam: (teamId: string) => void;
   onCorrectPick: (overallPick: number) => void;
 }
 
@@ -12,7 +11,6 @@ const NEED_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 export function LeagueDraftBoard({
   state,
   playersById,
-  onSelectTeam,
   onCorrectPick,
 }: LeagueDraftBoardProps) {
   const teams = [...state.teams].sort((left, right) => left.draftSlot - right.draftSlot);
@@ -38,8 +36,8 @@ export function LeagueDraftBoard({
       </div>
 
       <p className="panel-intro">
-        Scan every roster by round. Team headers show remaining dedicated starter needs; click a team
-        to open its detailed roster.
+        Scan every roster by round. Team headers show the remaining dedicated starter needs for each
+        drafter, while filled cells use consistent position colors.
       </p>
 
       <div className="league-board-scroll">
@@ -52,16 +50,14 @@ export function LeagueDraftBoard({
             const teamPicks = state.picks.filter((pick) => pick.teamId === team.teamId);
             const needs = getRemainingNeeds(state, teamPicks, playersById);
             return (
-              <button
+              <div
                 className={`league-board-team-header ${team.isUser ? "league-board-user-team" : ""}`}
                 key={team.teamId}
-                type="button"
-                onClick={() => onSelectTeam(team.teamId)}
               >
                 <span>{team.isUser ? "YOU" : `Slot ${team.draftSlot}`}</span>
                 <strong>{team.name}</strong>
                 <small>{needs.length === 0 ? "Starters filled" : `Needs ${needs.join(" · ")}`}</small>
-              </button>
+              </div>
             );
           })}
 
@@ -166,7 +162,16 @@ function getRemainingNeeds(
     )
     .reduce((sum, rule) => sum + rule.count, 0);
   const flexRemaining = Math.max(0, dedicatedOffense + flexRequired - offensiveStarters);
-  if (flexRemaining > 0 && !needs.some((need) => need.startsWith("QB") || need.startsWith("RB") || need.startsWith("WR") || need.startsWith("TE"))) {
+  if (
+    flexRemaining > 0 &&
+    !needs.some(
+      (need) =>
+        need.startsWith("QB") ||
+        need.startsWith("RB") ||
+        need.startsWith("WR") ||
+        need.startsWith("TE"),
+    )
+  ) {
     needs.push(flexRemaining === 1 ? "FLEX" : `FLEX ${flexRemaining}`);
   }
 
