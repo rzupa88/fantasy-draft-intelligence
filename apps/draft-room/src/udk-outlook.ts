@@ -2,12 +2,6 @@ import { strFromU8, unzipSync } from "fflate";
 import type { PlayerDataRelease, PlayerPosition } from "@fdi/shared-types";
 import { parseCsv } from "./udk-importer.js";
 
-declare module "@fdi/shared-types" {
-  interface PlayerDataRecord {
-    outlook?: string | null;
-  }
-}
-
 export type UdkOutlookMap = Map<string, string>;
 
 export function extractUdkOutlooks(bytes: Uint8Array): UdkOutlookMap {
