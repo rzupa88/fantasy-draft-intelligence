@@ -9,6 +9,7 @@ import type {
   RosterSlotType,
 } from "@fdi/shared-types";
 import { CorrectionDialog } from "./CorrectionDialog.js";
+import { RosterLineup } from "./RosterLineup.js";
 
 interface DraftWorkspaceProps {
   state: DraftState;
@@ -452,30 +453,11 @@ export function DraftWorkspace({
           </div>
 
           <div className="roster-list">
-            {selectedRoster.length === 0 ? (
-              <div className="empty-state">
-                <strong>No players drafted yet.</strong>
-                <span>This roster will update after every selection.</span>
-              </div>
-            ) : (
-              selectedRoster.map((pick) => {
-                const player = playersById.get(pick.playerId);
-                return (
-                  <div className="roster-row" key={`${pick.overallPick}-${pick.playerId}`}>
-                    <span className="roster-slot">
-                      {pick.rosterSlot}
-                      {pick.rosterSlotIndex > 1 ? ` ${pick.rosterSlotIndex}` : ""}
-                    </span>
-                    <div>
-                      <strong>{player?.display_name ?? pick.playerId}</strong>
-                      <span>
-                        {player?.position ?? "—"} · {player?.nfl_team ?? "FA"} · Pick {pick.overallPick}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+            <RosterLineup
+              rules={state.settings.rosterSlots}
+              picks={selectedRoster}
+              playersById={playersById}
+            />
           </div>
         </section>
       </section>
