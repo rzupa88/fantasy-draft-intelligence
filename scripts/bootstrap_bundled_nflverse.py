@@ -177,4 +177,8 @@ test("loads bundled NFLverse history without a manual import", async ({ page }) 
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as error:
+        Path("bootstrap-error.txt").write_text(f"{type(error).__name__}: {error}\n", encoding="utf-8")
+        raise
