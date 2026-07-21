@@ -5,6 +5,11 @@ interface LeagueDraftBoardProps {
   playersById: Map<string, PlayerDataRecord>;
 }
 
+interface PositionNeed {
+  position: PlayerPosition | "FLEX";
+  count: number;
+}
+
 const NEED_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
 export function LeagueDraftBoard({ state, playersById }: LeagueDraftBoardProps) {
@@ -31,8 +36,8 @@ export function LeagueDraftBoard({ state, playersById }: LeagueDraftBoardProps) 
       </div>
 
       <p className="panel-intro">
-        Scan every roster by round. Team headers show the remaining dedicated starter needs for each
-        drafter, while filled cells use consistent position colors.
+        Scan every roster by round. Team headers show remaining starter needs as position-colored pills,
+        while completed picks use the same position colors as the rest of the draft room.
       </p>
 
       <div className="league-board-scroll">
@@ -51,7 +56,25 @@ export function LeagueDraftBoard({ state, playersById }: LeagueDraftBoardProps) 
               >
                 <span>{team.isUser ? "YOU" : `Slot ${team.draftSlot}`}</span>
                 <strong>{team.name}</strong>
-                <small>{needs.length === 0 ? "Starters filled" : `Needs ${needs.join(" · ")}`}</small>
+                {needs.length === 0 ? (
+                  <small>Starters filled</small>
+                ) : (
+                  <div className="team-needs" aria-label={`Needs ${formatNeeds(needs)}`}>
+                    {needs.map((need) => (
+                      <span
+                        className={`team-need-pill ${
+                          need.position === "FLEX"
+                            ? "position-bg-flex"
+                            : `position-bg-${need.position.toLowerCase()}`
+                        }`}
+                        key={need.position}
+                      >
+                        {need.position}
+                        {need.count > 1 ? ` ${need.count}` : ""}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -102,8 +125,21 @@ function DraftBoardCell({
     );
   }
 
+  const tooltip = [
+    `${player.display_name} (${player.position})`,
+    `Overall pick: ${pick.overallPick}`,
+    `NFL team: ${player.nfl_team ?? "FA"}`,
+    `Bye: ${player.bye_week ?? "—"}`,
+    `ADP: ${player.adp?.toFixed(1) ?? "—"}`,
+    `Tier: ${player.tier ?? "—"}`,
+    `Projected points: ${player.projected_points?.toFixed(1) ?? "—"}`,
+  ].join("\n");
+
   return (
-    <div className={`league-board-cell league-board-pick position-bg-${player.position.toLowerCase()}`}>
+    <div
+      className={`league-board-cell league-board-pick position-bg-${player.position.toLowerCase()}`}
+      title={tooltip}
+    >
       <span>#{pick.overallPick} · {player.position}</span>
       <strong>{player.display_name}</strong>
       <small>{player.nfl_team ?? "FA"}</small>
@@ -115,20 +151,20 @@ function getRemainingNeeds(
   state: DraftState,
   picks: DraftPick[],
   playersById: Map<string, PlayerDataRecord>,
-): string[] {
+): PositionNeed[] {
   const counts = new Map<PlayerPosition, number>();
   for (const pick of picks) {
     const position = playersById.get(pick.playerId)?.position;
     if (position !== undefined) counts.set(position, (counts.get(position) ?? 0) + 1);
   }
 
-  const needs: string[] = [];
+  const needs: PositionNeed[] = [];
   for (const position of NEED_POSITIONS) {
     const required = state.settings.rosterSlots
       .filter((rule) => rule.eligiblePositions.length === 1 && rule.eligiblePositions[0] === position)
       .reduce((sum, rule) => sum + rule.count, 0);
     const remaining = Math.max(0, required - (counts.get(position) ?? 0));
-    if (remaining > 0) needs.push(remaining === 1 ? position : `${position} ${remaining}`);
+    if (remaining > 0) needs.push({ position, count: remaining });
   }
 
   const flexRequired = state.settings.rosterSlots
@@ -153,14 +189,18 @@ function getRemainingNeeds(
     flexRemaining > 0 &&
     !needs.some(
       (need) =>
-        need.startsWith("QB") ||
-        need.startsWith("RB") ||
-        need.startsWith("WR") ||
-        need.startsWith("TE"),
+        need.position === "QB" ||
+        need.position === "RB" ||
+        need.position === "WR" ||
+        need.position === "TE",
     )
   ) {
-    needs.push(flexRemaining === 1 ? "FLEX" : `FLEX ${flexRemaining}`);
+    needs.push({ position: "FLEX", count: flexRemaining });
   }
 
   return needs;
+}
+
+function formatNeeds(needs: PositionNeed[]): string {
+  return needs.map((need) => `${need.position}${need.count > 1 ? ` ${need.count}` : ""}`).join(", ");
 }
