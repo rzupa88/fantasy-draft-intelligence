@@ -3,16 +3,11 @@ import type { DraftPick, DraftState, PlayerDataRecord, PlayerPosition } from "@f
 interface LeagueDraftBoardProps {
   state: DraftState;
   playersById: Map<string, PlayerDataRecord>;
-  onCorrectPick: (overallPick: number) => void;
 }
 
 const NEED_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 
-export function LeagueDraftBoard({
-  state,
-  playersById,
-  onCorrectPick,
-}: LeagueDraftBoardProps) {
+export function LeagueDraftBoard({ state, playersById }: LeagueDraftBoardProps) {
   const teams = [...state.teams].sort((left, right) => left.draftSlot - right.draftSlot);
   const picksByOverall = new Map(state.picks.map((pick) => [pick.overallPick, pick]));
   const orderByRoundAndTeam = new Map(
@@ -77,7 +72,6 @@ export function LeagueDraftBoard({
                   player={player}
                   overallPick={slot?.overallPick ?? 0}
                   isOnClock={isOnClock}
-                  onCorrect={onCorrectPick}
                 />
               );
             }),
@@ -93,13 +87,11 @@ function DraftBoardCell({
   player,
   overallPick,
   isOnClock,
-  onCorrect,
 }: {
   pick: DraftPick | undefined;
   player: PlayerDataRecord | undefined;
   overallPick: number;
   isOnClock: boolean;
-  onCorrect: (overallPick: number) => void;
 }) {
   if (pick === undefined || player === undefined) {
     return (
@@ -111,16 +103,11 @@ function DraftBoardCell({
   }
 
   return (
-    <button
-      type="button"
-      className={`league-board-cell league-board-pick position-bg-${player.position.toLowerCase()}`}
-      onClick={() => onCorrect(pick.overallPick)}
-      aria-label={`Correct pick ${pick.overallPick}: ${player.display_name}`}
-    >
+    <div className={`league-board-cell league-board-pick position-bg-${player.position.toLowerCase()}`}>
       <span>#{pick.overallPick} · {player.position}</span>
       <strong>{player.display_name}</strong>
       <small>{player.nfl_team ?? "FA"}</small>
-    </button>
+    </div>
   );
 }
 
