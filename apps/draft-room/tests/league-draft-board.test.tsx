@@ -5,7 +5,7 @@ import { LeagueDraftBoard } from "../src/components/LeagueDraftBoard.js";
 import { DEFAULT_DRAFT_SETUP, createDraftFromSetup } from "../src/draft-factory.js";
 
 describe("league draft board", () => {
-  it("renders all team columns, roster needs, and position-colored picks", () => {
+  it("renders all team columns, colored roster needs, and detailed pick metadata", () => {
     const initial = createDraftFromSetup(DEFAULT_DRAFT_SETUP, "board-test");
     const draftedPlayerId = initial.availablePlayerIds[0]!;
     const draftedPlayer = initial.playerDataRelease.players.find(
@@ -21,9 +21,12 @@ describe("league draft board", () => {
     );
 
     expect(html).toContain("League-wide grid");
-    expect(html).toContain("Needs QB");
+    expect(html).toContain('class="team-needs"');
+    expect(html).toContain("QB");
     expect(html).toContain(draftedPlayer.display_name);
     expect(html).toContain(`position-bg-${draftedPlayer.position.toLowerCase()}`);
+    expect(html).toContain("Overall pick:");
+    expect(html).toContain("Projected points:");
     expect(html.match(/league-board-team-header/g)).toHaveLength(DEFAULT_DRAFT_SETUP.teamCount);
     expect(html).toContain("On clock");
   });
