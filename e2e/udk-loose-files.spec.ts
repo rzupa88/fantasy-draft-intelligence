@@ -33,5 +33,5 @@ test("imports loose UDK exports without requiring a ZIP", async ({ page }, testI
   await page.getByLabel("League name").fill("Loose File League");
   await page.getByRole("button", { name: "Start new draft" }).click();
   await expect(page.getByRole("heading", { name: "Loose File League" })).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("UDK release");
+  await expect(page.getByRole("status")).toContainText("Draft created with UDK projections");
 });
