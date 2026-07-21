@@ -1,0 +1,44 @@
+name: Debug bundled NFLverse startup
+
+on:
+  push:
+    branches:
+      - agent/m5-bundled-nflverse-history
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m5-bundled-nflverse-history
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+
+      - name: Run focused browser test
+        id: focused
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: bundled-history-diagnostic.json
+        run: npx playwright test e2e/bundled-history.spec.ts --reporter=json
+
+      - name: Commit diagnostic result
+        if: always()
+        run: |
+          if [ ! -f bundled-history-diagnostic.json ]; then
+            printf '{"error":"Playwright did not produce a diagnostic report"}\n' > bundled-history-diagnostic.json
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bundled-history-diagnostic.json
+          git commit -m "chore: capture bundled history diagnostic"
+          git push origin HEAD:agent/m5-bundled-nflverse-history
