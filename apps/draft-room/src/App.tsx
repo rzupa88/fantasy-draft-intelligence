@@ -22,6 +22,10 @@ import {
   saveDraftRecovery,
 } from "./draft-storage.js";
 import {
+  BUNDLED_NFLVERSE_HISTORY_LABEL,
+  loadBundledNflverseHistory,
+} from "./bundled-nflverse-history.js";
+import {
   enrichPlayerDataReleaseWithNflverse,
   importNflverseHistoryFile,
   type NflverseHistoryRelease,
@@ -39,6 +43,7 @@ export function App() {
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
+  const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
   const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -64,6 +69,26 @@ export function App() {
     }
     return enrichPlayerDataReleaseWithNflverse(udkBuild.release, historyRelease);
   }, [historyRelease, udkBuild]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadBundledNflverseHistory()
+      .then((release) => {
+        if (cancelled) return;
+        setBundledHistory(release);
+        setHistoryRelease((current) => current ?? release);
+        setHistoryFilename((current) => current ?? BUNDLED_NFLVERSE_HISTORY_LABEL);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setErrorMessage((current) =>
+          current ?? `Bundled NFLverse history failed to load: ${toErrorMessage(error)}`,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (draftState === null) {
@@ -136,8 +161,10 @@ export function App() {
   }
 
   function clearHistory(): void {
-    setHistoryRelease(null);
-    setHistoryFilename(null);
+    setHistoryRelease(bundledHistory);
+    setHistoryFilename(
+      bundledHistory === null ? null : BUNDLED_NFLVERSE_HISTORY_LABEL,
+    );
     setErrorMessage(null);
   }
 
