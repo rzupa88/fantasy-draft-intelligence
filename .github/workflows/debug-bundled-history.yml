@@ -1,24 +1,19 @@
 name: Debug bundled NFLverse startup
 
 on:
-  push:
-    branches:
-      - agent/m5-bundled-nflverse-history
   pull_request:
     branches:
       - main
 
 permissions:
-  contents: write
+  contents: read
+  pull-requests: write
 
 jobs:
   debug:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/m5-bundled-nflverse-history
 
       - uses: actions/setup-node@v4
         with:
@@ -27,21 +22,53 @@ jobs:
       - run: npm install
       - run: npx playwright install --with-deps chromium
 
-      - name: Run focused browser test
-        id: focused
+      - name: Run complete browser suite
+        id: browser
         continue-on-error: true
         env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: bundled-history-diagnostic.json
-        run: npx playwright test e2e/bundled-history.spec.ts --reporter=json
+          PLAYWRIGHT_JSON_OUTPUT_NAME: playwright-diagnostic.json
+        run: npx playwright test --reporter=json
 
-      - name: Commit diagnostic result
+      - name: Summarize failures
         if: always()
         run: |
-          if [ ! -f bundled-history-diagnostic.json ]; then
-            printf '{"error":"Playwright did not produce a diagnostic report"}\n' > bundled-history-diagnostic.json
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add bundled-history-diagnostic.json
-          git commit -m "chore: capture bundled history diagnostic"
-          git push origin HEAD:agent/m5-bundled-nflverse-history
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report_path = Path("playwright-diagnostic.json")
+          lines = ["## Focused Playwright diagnostic"]
+          if not report_path.exists():
+              lines.append("Playwright did not produce a JSON report.")
+          else:
+              report = json.loads(report_path.read_text(encoding="utf-8"))
+              failures = []
+              for suite in report.get("suites", []):
+                  stack = [suite]
+                  while stack:
+                      current = stack.pop()
+                      stack.extend(current.get("suites", []))
+                      for spec in current.get("specs", []):
+                          for test in spec.get("tests", []):
+                              for result in test.get("results", []):
+                                  if result.get("status") not in {"passed", "skipped"}:
+                                      errors = result.get("errors") or []
+                                      message = "\n".join(
+                                          error.get("message", str(error)) if isinstance(error, dict) else str(error)
+                                          for error in errors
+                                      )
+                                      failures.append((spec.get("title", "unknown test"), message))
+              if failures:
+                  lines.append(f"Failed results: {len(failures)}")
+                  for title, message in failures[:10]:
+                      lines.extend([f"### {title}", "```text", message[:4000], "```"])
+              else:
+                  lines.append("The complete browser suite passed in the diagnostic workflow.")
+          Path("playwright-diagnostic.md").write_text("\n\n".join(lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Post diagnostic to PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file playwright-diagnostic.md
