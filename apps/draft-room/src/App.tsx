@@ -37,6 +37,11 @@ import {
   parseUdkZip,
   type UdkImportPackage,
 } from "./udk-importer.js";
+import {
+  enrichReleaseWithUdkOutlooks,
+  extractUdkOutlooks,
+  type UdkOutlookMap,
+} from "./udk-outlook.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
@@ -44,6 +49,7 @@ export function App() {
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
@@ -58,13 +64,17 @@ export function App() {
     if (udkPackage === null) {
       return null;
     }
-    return buildUdkPlayerDataRelease(udkPackage, {
+    const build = buildUdkPlayerDataRelease(udkPackage, {
       scoring: createScoringSettings(setup.scoringPreset),
       adpTeamCount: setup.teamCount,
       adpSource: setup.adpSource,
       generatedAt: new Date().toISOString(),
     });
-  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
+    return {
+      ...build,
+      release: enrichReleaseWithUdkOutlooks(build.release, udkOutlooks),
+    };
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkOutlooks, udkPackage]);
 
   const historyBuild = useMemo(() => {
     if (udkBuild === null || historyRelease === null) {
@@ -176,11 +186,13 @@ export function App() {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const parsed = parseUdkZip(bytes);
       setUdkPackage(parsed);
+      setUdkOutlooks(extractUdkOutlooks(bytes));
       setUdkFilename(file.name);
       setErrorMessage(null);
       setNotice(null);
     } catch (error) {
       setUdkPackage(null);
+      setUdkOutlooks(new Map());
       setUdkFilename(null);
       setErrorMessage(toErrorMessage(error));
     }
@@ -188,6 +200,7 @@ export function App() {
 
   function clearUdkPackage(): void {
     setUdkPackage(null);
+    setUdkOutlooks(new Map());
     setUdkFilename(null);
     setErrorMessage(null);
   }
