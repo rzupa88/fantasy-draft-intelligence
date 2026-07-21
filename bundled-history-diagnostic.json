@@ -1,0 +1,234 @@
+{
+  "config": {
+    "argv": [
+      "/opt/hostedtoolcache/node/22.23.1/x64/bin/node",
+      "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/node_modules/.bin/playwright",
+      "test",
+      "e2e/bundled-history.spec.ts",
+      "--reporter=json"
+    ],
+    "configFile": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/playwright.config.ts",
+    "rootDir": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": true,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "ci": {
+        "commitHref": "https://github.com/rzupa88/fantasy-draft-intelligence/commit/94b0267eae20358cf529b93c7d9ec4d310dd22b8",
+        "commitHash": "94b0267eae20358cf529b93c7d9ec4d310dd22b8",
+        "buildHref": "https://github.com/rzupa88/fantasy-draft-intelligence/actions/runs/29791634317"
+      },
+      "gitCommit": {
+        "shortHash": "94b0267",
+        "hash": "94b0267eae20358cf529b93c7d9ec4d310dd22b8",
+        "subject": "ci: run focused bundled history diagnostic on PR",
+        "body": "ci: run focused bundled history diagnostic on PR",
+        "author": {
+          "name": "rzupa88",
+          "email": "64094555+rzupa88@users.noreply.github.com",
+          "time": 1784595248000
+        },
+        "committer": {
+          "name": "rzupa88",
+          "email": "64094555+rzupa88@users.noreply.github.com",
+          "time": 1784595248000
+        },
+        "branch": "agent/m5-bundled-nflverse-history"
+      },
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "ci": {
+            "commitHref": "https://github.com/rzupa88/fantasy-draft-intelligence/commit/94b0267eae20358cf529b93c7d9ec4d310dd22b8",
+            "commitHash": "94b0267eae20358cf529b93c7d9ec4d310dd22b8",
+            "buildHref": "https://github.com/rzupa88/fantasy-draft-intelligence/actions/runs/29791634317"
+          },
+          "gitCommit": {
+            "shortHash": "94b0267",
+            "hash": "94b0267eae20358cf529b93c7d9ec4d310dd22b8",
+            "subject": "ci: run focused bundled history diagnostic on PR",
+            "body": "ci: run focused bundled history diagnostic on PR",
+            "author": {
+              "name": "rzupa88",
+              "email": "64094555+rzupa88@users.noreply.github.com",
+              "time": 1784595248000
+            },
+            "committer": {
+              "name": "rzupa88",
+              "email": "64094555+rzupa88@users.noreply.github.com",
+              "time": 1784595248000
+            },
+            "branch": "agent/m5-bundled-nflverse-history"
+          },
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev --workspace @fdi/draft-room -- --host 127.0.0.1 --port 4173",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false
+    }
+  },
+  "suites": [
+    {
+      "title": "bundled-history.spec.ts",
+      "file": "bundled-history.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "loads bundled NFLverse history without a manual import",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 30165,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/e2e/bundled-history.spec.ts",
+                        "column": 28,
+                        "line": 23
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.history-ready-state')\nExpected substring: \u001b[32m\"NFLverse 2025 history is ready.\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\n\n  21 |\n  22 |   const readyState = page.locator(\".history-ready-state\");\n> 23 |   await expect(readyState).toContainText(\"NFLverse 2025 history is ready.\");\n     |                            ^\n  24 |   await expect(readyState).toContainText(\"Bundled NFLverse 2025/2026\");\n  25 | });\n  26 |\n    at /home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/e2e/bundled-history.spec.ts:23:28"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-21T00:54:58.045Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/test-results/bundled-history-loads-bund-90814-ory-without-a-manual-import-chromium/test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/test-results/bundled-history-loads-bund-90814-ory-without-a-manual-import-chromium/error-context.md"
+                    }
+                  ]
+                },
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 30231,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/e2e/bundled-history.spec.ts",
+                        "column": 28,
+                        "line": 23
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.history-ready-state')\nExpected substring: \u001b[32m\"NFLverse 2025 history is ready.\"\u001b[39m\nReceived string:    \u001b[31m\"\"\u001b[39m\n\n\n  21 |\n  22 |   const readyState = page.locator(\".history-ready-state\");\n> 23 |   await expect(readyState).toContainText(\"NFLverse 2025 history is ready.\");\n     |                            ^\n  24 |   await expect(readyState).toContainText(\"Bundled NFLverse 2025/2026\");\n  25 | });\n  26 |\n    at /home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/e2e/bundled-history.spec.ts:23:28"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 1,
+                  "startTime": "2026-07-21T00:55:29.110Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/test-results/bundled-history-loads-bund-90814-ory-without-a-manual-import-chromium-retry1/test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/test-results/bundled-history-loads-bund-90814-ory-without-a-manual-import-chromium-retry1/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/runner/work/fantasy-draft-intelligence/fantasy-draft-intelligence/test-results/bundled-history-loads-bund-90814-ory-without-a-manual-import-chromium-retry1/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "09c7d060b73d47eb9dc4-f0f28a7b2452464893ad",
+          "file": "bundled-history.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-07-21T00:54:56.566Z",
+    "duration": 63054.68,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
