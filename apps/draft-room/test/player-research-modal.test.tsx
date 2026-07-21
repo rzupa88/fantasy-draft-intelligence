@@ -2,6 +2,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { PlayerDataRecord } from "@fdi/shared-types";
 import { PlayerResearchModal } from "../src/components/PlayerResearchModal.js";
+import {
+  buildPlayerResearchLinks,
+  type SleeperPlayerProfile,
+} from "../src/sleeper-players.js";
 
 const player: PlayerDataRecord = {
   canonical_player_id: "puka-nacua",
@@ -43,6 +47,31 @@ const player: PlayerDataRecord = {
   },
 };
 
+const sleeperProfile: SleeperPlayerProfile = {
+  sleeperPlayerId: "8130",
+  fullName: "Puka Nacua",
+  position: "WR",
+  fantasyPositions: ["WR"],
+  team: "LAR",
+  number: 17,
+  age: 25,
+  height: "6'2\"",
+  weight: "212",
+  college: "BYU",
+  yearsExperience: 3,
+  status: "Active",
+  injuryStatus: null,
+  injuryBodyPart: null,
+  injuryStartDate: null,
+  practiceParticipation: null,
+  depthChartPosition: "LWR",
+  depthChartOrder: 1,
+  espnId: "4426515",
+  yahooId: "40026",
+  rotowireId: "16888",
+  rotoworldId: "12345",
+};
+
 describe("player research modal", () => {
   it("renders UDK market data and matched NFLverse production", () => {
     const html = renderToStaticMarkup(
@@ -76,5 +105,22 @@ describe("player research modal", () => {
 
     expect(html).toContain("NFLverse match unavailable");
     expect(html).toContain("Data unavailable");
+  });
+
+  it("builds direct ESPN, Yahoo and RotoWire player links from Sleeper IDs", () => {
+    expect(buildPlayerResearchLinks(sleeperProfile)).toEqual([
+      {
+        provider: "ESPN",
+        url: "https://www.espn.com/nfl/player/_/id/4426515/puka-nacua",
+      },
+      {
+        provider: "Yahoo",
+        url: "https://sports.yahoo.com/nfl/players/40026/",
+      },
+      {
+        provider: "RotoWire",
+        url: "https://www.rotowire.com/football/player.php?id=16888",
+      },
+    ]);
   });
 });
