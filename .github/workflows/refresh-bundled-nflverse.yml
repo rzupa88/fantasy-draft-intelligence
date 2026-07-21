@@ -1,0 +1,64 @@
+name: Refresh bundled NFLverse history
+
+on:
+  workflow_dispatch:
+    inputs:
+      prior_season:
+        description: Completed NFL season to summarize
+        required: true
+        default: "2025"
+      roster_season:
+        description: Current roster season
+        required: true
+        default: "2026"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Generate and package release
+        run: |
+          output="/tmp/nflverse_history_${{ inputs.prior_season }}_${{ inputs.roster_season }}.json"
+          python scripts/build_nflverse_history_release.py \
+            --prior-season "${{ inputs.prior_season }}" \
+            --roster-season "${{ inputs.roster_season }}" \
+            --output "$output"
+          python scripts/package_bundled_nflverse.py --input "$output"
+
+      - name: Open refresh pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: automation/nflverse-refresh-${{ github.run_id }}
+        run: |
+          if git diff --quiet -- apps/draft-room/public/data/nflverse-history-2025-2026.zip; then
+            echo "The bundled release is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add apps/draft-room/public/data/nflverse-history-2025-2026.zip
+          git commit -m "data: refresh bundled NFLverse history"
+          git push --set-upstream origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "data: refresh bundled NFLverse history" \
+            --body "Regenerates the bundled NFLverse release for prior season ${{ inputs.prior_season }} and roster season ${{ inputs.roster_season }} using the repository's validated release builder."
