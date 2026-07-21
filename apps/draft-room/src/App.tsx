@@ -133,7 +133,7 @@ export function App() {
       const playerNameTarget = target?.closest(
         ".player-identity strong, .recommendation-title-row h3, .roster-row strong, .recent-pick-card > strong",
       );
-      if (playerNameTarget === null) return;
+      if (playerNameTarget == null) return;
 
       const playerRow = playerNameTarget.closest<HTMLElement>(".player-row[data-player-id]");
       const directPlayerId = playerRow?.dataset.playerId;
