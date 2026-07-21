@@ -1,0 +1,67 @@
+name: Bootstrap bundled NFLverse history
+
+on:
+  push:
+    branches:
+      - agent/m5-bundled-nflverse-history
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/m5-bundled-nflverse-history
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate current NFLverse release
+        run: |
+          python scripts/build_nflverse_history_release.py \
+            --prior-season 2025 \
+            --roster-season 2026 \
+            --output /tmp/nflverse_history_2025_2026.json
+          mkdir -p apps/draft-room/public/data
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZIP_DEFLATED, ZipFile
+
+          source = Path("/tmp/nflverse_history_2025_2026.json")
+          target = Path("apps/draft-room/public/data/nflverse-history-2025-2026.zip")
+          with ZipFile(target, "w", compression=ZIP_DEFLATED, compresslevel=9) as archive:
+              archive.write(source, arcname="nflverse_history_2025_2026.json")
+          print(f"Bundled release written: {target} ({target.stat().st_size} bytes)")
+          PY
+
+      - name: Wire bundled history into the app
+        run: python scripts/bootstrap_bundled_nflverse.py
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Validate application
+        run: |
+          npm run check
+          npm run build
+
+      - name: Commit generated release and integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/draft-room scripts/bootstrap_bundled_nflverse.py
+          git commit -m "feat: bundle NFLverse history by default"
+          git push origin HEAD:agent/m5-bundled-nflverse-history
