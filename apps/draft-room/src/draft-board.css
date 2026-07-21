@@ -186,7 +186,7 @@
   }
 }
 
-/* Shared draft-room position palette. */
+/* Shared draft-room position palette: QB red, RB green, WR blue, TE yellow, K purple, DST gray. */
 .position-bg-qb { background: #c94747; }
 .position-bg-rb { background: #2f9e61; }
 .position-bg-wr { background: #397bc8; }
