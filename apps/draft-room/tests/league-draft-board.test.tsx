@@ -22,7 +22,12 @@ describe("league draft board", () => {
 
     expect(html).toContain("League-wide grid");
     expect(html).toContain('class="team-needs"');
-    expect(html).toContain("QB");
+    expect(html).toContain("position-bg-qb");
+    expect(html).toContain("position-bg-rb");
+    expect(html).toContain("position-bg-wr");
+    expect(html).toContain("position-bg-te");
+    expect(html).toContain("position-bg-k");
+    expect(html).toContain("position-bg-dst");
     expect(html).toContain(draftedPlayer.display_name);
     expect(html).toContain(`position-bg-${draftedPlayer.position.toLowerCase()}`);
     expect(html).toContain("Overall pick:");
