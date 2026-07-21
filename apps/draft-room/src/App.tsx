@@ -8,6 +8,7 @@ import {
 } from "@fdi/draft-engine";
 import type { DraftState } from "@fdi/shared-types";
 import { DraftWorkspace } from "./components/DraftWorkspace.js";
+import { LeagueDraftBoard } from "./components/LeagueDraftBoard.js";
 import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
@@ -69,6 +70,17 @@ export function App() {
     }
     return enrichPlayerDataReleaseWithNflverse(udkBuild.release, historyRelease);
   }, [historyRelease, udkBuild]);
+
+  const activePlayersById = useMemo(
+    () =>
+      new Map(
+        (draftState?.playerDataRelease.players ?? []).map((player) => [
+          player.canonical_player_id,
+          player,
+        ]),
+      ),
+    [draftState],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -315,16 +327,21 @@ export function App() {
   }
 
   return (
-    <DraftWorkspace
-      state={draftState}
-      notice={notice}
-      onDraftPlayer={draftPlayer}
-      onUndo={undoPick}
-      onCorrectPick={correctDraftPick}
-      onExport={exportDraft}
-      onImportDraft={importDraft}
-      onExit={exitDraft}
-    />
+    <>
+      <div className="draft-board-standalone">
+        <LeagueDraftBoard state={draftState} playersById={activePlayersById} />
+      </div>
+      <DraftWorkspace
+        state={draftState}
+        notice={notice}
+        onDraftPlayer={draftPlayer}
+        onUndo={undoPick}
+        onCorrectPick={correctDraftPick}
+        onExport={exportDraft}
+        onImportDraft={importDraft}
+        onExit={exitDraft}
+      />
+    </>
   );
 }
 
