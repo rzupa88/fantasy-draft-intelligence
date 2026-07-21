@@ -23,6 +23,15 @@ export interface SleeperPlayerProfile {
   practiceParticipation: string | null;
   depthChartPosition: string | null;
   depthChartOrder: number | null;
+  espnId: string | null;
+  yahooId: string | null;
+  rotowireId: string | null;
+  rotoworldId: string | null;
+}
+
+export interface PlayerResearchLink {
+  provider: "ESPN" | "Yahoo" | "RotoWire";
+  url: string;
 }
 
 interface SleeperCacheEnvelope {
@@ -81,6 +90,32 @@ export function matchSleeperPlayer(
   return teamMatch ?? narrowed[0] ?? null;
 }
 
+export function buildPlayerResearchLinks(profile: SleeperPlayerProfile): PlayerResearchLink[] {
+  const links: PlayerResearchLink[] = [];
+  const slug = slugify(profile.fullName);
+
+  if (profile.espnId !== null) {
+    links.push({
+      provider: "ESPN",
+      url: `https://www.espn.com/nfl/player/_/id/${encodeURIComponent(profile.espnId)}/${slug}`,
+    });
+  }
+  if (profile.yahooId !== null) {
+    links.push({
+      provider: "Yahoo",
+      url: `https://sports.yahoo.com/nfl/players/${encodeURIComponent(profile.yahooId)}/`,
+    });
+  }
+  if (profile.rotowireId !== null) {
+    links.push({
+      provider: "RotoWire",
+      url: `https://www.rotowire.com/football/player.php?id=${encodeURIComponent(profile.rotowireId)}`,
+    });
+  }
+
+  return links;
+}
+
 function parseSleeperPlayer(playerId: string, value: unknown): SleeperPlayerProfile | null {
   if (!isRecord(value)) return null;
   const fullName = stringValue(value.full_name) ??
@@ -106,6 +141,10 @@ function parseSleeperPlayer(playerId: string, value: unknown): SleeperPlayerProf
     practiceParticipation: stringValue(value.practice_participation),
     depthChartPosition: stringValue(value.depth_chart_position),
     depthChartOrder: numberValue(value.depth_chart_order),
+    espnId: idValue(value.espn_id),
+    yahooId: idValue(value.yahoo_id),
+    rotowireId: idValue(value.rotowire_id),
+    rotoworldId: idValue(value.rotoworld_id),
   };
 }
 
@@ -130,6 +169,15 @@ function normalizeName(value: string): string {
 
 function normalizeTeam(value: string): string {
   return value.trim().toUpperCase().replace(/[^A-Z]/g, "");
+}
+
+function slugify(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function readCache(): SleeperCacheEnvelope | null {
@@ -162,6 +210,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function stringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function idValue(value: unknown): string | null {
+  if (typeof value === "string" && value.trim().length > 0) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
 }
 
 function numberValue(value: unknown): number | null {
