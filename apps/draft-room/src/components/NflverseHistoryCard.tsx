@@ -1,4 +1,5 @@
 import { useRef, type ChangeEvent } from "react";
+import { BUNDLED_NFLVERSE_HISTORY_LABEL } from "../bundled-nflverse-history.js";
 import type {
   NflverseEnrichmentReport,
   NflverseHistoryRelease,
@@ -20,6 +21,7 @@ export function NflverseHistoryCard({
   onClear,
 }: NflverseHistoryCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const isBundled = filename === BUNDLED_NFLVERSE_HISTORY_LABEL;
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
@@ -36,17 +38,17 @@ export function NflverseHistoryCard({
           <p className="eyebrow">Historical context</p>
           <h3 id="history-import-title">NFLverse identity and prior-year stats</h3>
           <p>
-            Load the compact JSON release generated from NFLverse. It supplies stable player IDs,
-            current teams, and prior-season production while UDK remains the projection source.
+            The app loads a validated NFLverse release automatically. Import a newer JSON release
+            only when you want to replace the bundled identities and prior-season production.
           </p>
         </div>
         <div className="history-import-actions">
           <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            {history === null ? "Import NFLverse history" : "Replace history file"}
+            Import newer history
           </button>
-          {history === null ? null : (
+          {history === null || isBundled ? null : (
             <button className="ghost-button" type="button" onClick={onClear}>
-              Clear history
+              Use bundled release
             </button>
           )}
           <input
@@ -62,8 +64,8 @@ export function NflverseHistoryCard({
 
       {history === null ? (
         <div className="history-empty-state">
-          <strong>Historical enrichment is optional.</strong>
-          <span>The UDK release can still run without it, but player IDs and prior-year context will be limited.</span>
+          <strong>Loading bundled NFLverse history.</strong>
+          <span>The validated local release will be ready before you start the draft.</span>
         </div>
       ) : report === null ? (
         <div className="history-ready-state" role="status">

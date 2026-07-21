@@ -20,7 +20,7 @@ describe("draft room application shell", () => {
     expect(html).toContain("Start new draft");
     expect(html).toContain("Import backup");
     expect(html).toContain("Import UDK files");
-    expect(html).toContain("Import NFLverse history");
+    expect(html).toContain("Import newer history");
     expect(html).toContain("ADP market");
     expect(html).toContain("Roster configuration");
     expect(html).toContain("Superflex");
