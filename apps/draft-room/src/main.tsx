@@ -6,6 +6,7 @@ import "./recovery.css";
 import "./roster-config.css";
 import "./udk-import.css";
 import "./nflverse-history.css";
+import "./draft-board.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
