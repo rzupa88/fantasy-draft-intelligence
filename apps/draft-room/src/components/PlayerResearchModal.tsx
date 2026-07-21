@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { PlayerDataRecord, ScoringPreset } from "@fdi/shared-types";
 import {
+  buildPlayerResearchLinks,
   loadSleeperPlayerDirectory,
   matchSleeperPlayer,
   type SleeperPlayerProfile,
@@ -66,6 +67,7 @@ export function PlayerResearchModal({
 
   const priorPoints = getScoringValue(history, scoringPreset, "season");
   const priorPpg = getScoringValue(history, scoringPreset, "game");
+  const researchLinks = sleeperProfile === null ? [] : buildPlayerResearchLinks(sleeperProfile);
   const currentStatus =
     sleeperProfile?.injuryStatus ??
     sleeperProfile?.status ??
@@ -203,6 +205,36 @@ export function PlayerResearchModal({
               </section>
 
               <section className="research-card">
+                <p className="eyebrow">External research</p>
+                <h3>Player news pages</h3>
+                {sleeperState === "loading" ? (
+                  <ResearchEmpty text="Loading available provider links…" />
+                ) : researchLinks.length === 0 ? (
+                  <ResearchEmpty text="Sleeper did not provide a supported ESPN, Yahoo or RotoWire identity for this player." />
+                ) : (
+                  <>
+                    <div className="research-source-list">
+                      {researchLinks.map((link) => (
+                        <a
+                          className="research-status research-status-neutral"
+                          href={link.url}
+                          key={link.provider}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ textDecoration: "none" }}
+                        >
+                          Open {link.provider} ↗
+                        </a>
+                      ))}
+                    </div>
+                    <p className="research-copy">
+                      Opens the provider's player page in a new browser tab. News remains on the provider's site.
+                    </p>
+                  </>
+                )}
+              </section>
+
+              <section className="research-card">
                 <p className="eyebrow">Prior season</p>
                 <h3>{history === null ? "NFLverse match unavailable" : `${history.season} fantasy production`}</h3>
                 {history === null ? (
@@ -280,16 +312,19 @@ export function PlayerResearchModal({
                   <StatRow label="Canonical ID" value={player.canonical_player_id} />
                   <StatRow label="NFLverse ID" value={player.nflverse_player_id ?? "Not matched"} />
                   <StatRow label="Sleeper ID" value={sleeperProfile?.sleeperPlayerId ?? "Not matched"} />
+                  <StatRow label="ESPN ID" value={sleeperProfile?.espnId ?? "Not supplied"} />
+                  <StatRow label="Yahoo ID" value={sleeperProfile?.yahooId ?? "Not supplied"} />
+                  <StatRow label="RotoWire ID" value={sleeperProfile?.rotowireId ?? "Not supplied"} />
                   <StatRow label="Historical season" value={history?.season ?? "Not available"} />
                 </div>
               </section>
               <section className="research-card">
-                <p className="eyebrow">Still not included</p>
-                <h3>News and editorial reporting</h3>
+                <p className="eyebrow">News access</p>
+                <h3>Provider-hosted reporting</h3>
                 <p className="research-copy">
-                  Sleeper's public Players endpoint supplies structured status fields but does not expose the editorial
-                  news feed shown in the Sleeper application. News blurbs remain intentionally omitted until a licensed,
-                  attributable feed is selected.
+                  Sleeper's public Players endpoint does not expose editorial news text. The Overview tab uses Sleeper's
+                  external IDs to link directly to supported provider pages, which open in a new tab and remain subject to
+                  each provider's availability and access rules.
                 </p>
               </section>
             </>
