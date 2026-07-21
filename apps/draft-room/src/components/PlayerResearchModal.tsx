@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
 import type { PlayerDataRecord, ScoringPreset } from "@fdi/shared-types";
+import {
+  loadSleeperPlayerDirectory,
+  matchSleeperPlayer,
+  type SleeperPlayerProfile,
+} from "../sleeper-players.js";
 
 interface PlayerResearchModalProps {
   player: PlayerDataRecord;
@@ -11,6 +16,8 @@ interface PlayerResearchModalProps {
 
 type ResearchTab = "overview" | "production" | "data";
 
+type SleeperLoadState = "idle" | "loading" | "ready" | "error";
+
 export function PlayerResearchModal({
   player,
   scoringPreset,
@@ -19,6 +26,8 @@ export function PlayerResearchModal({
   onClose,
 }: PlayerResearchModalProps) {
   const [activeTab, setActiveTab] = useState<ResearchTab>("overview");
+  const [sleeperProfile, setSleeperProfile] = useState<SleeperPlayerProfile | null>(null);
+  const [sleeperState, setSleeperState] = useState<SleeperLoadState>("idle");
   const history = player.prior_season_stats ?? null;
 
   useEffect(() => {
@@ -34,8 +43,34 @@ export function PlayerResearchModal({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setSleeperState("loading");
+    setSleeperProfile(null);
+
+    void loadSleeperPlayerDirectory()
+      .then((directory) => {
+        if (cancelled) return;
+        setSleeperProfile(matchSleeperPlayer(player, directory));
+        setSleeperState("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSleeperState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [player]);
+
   const priorPoints = getScoringValue(history, scoringPreset, "season");
   const priorPpg = getScoringValue(history, scoringPreset, "game");
+  const currentStatus =
+    sleeperProfile?.injuryStatus ??
+    sleeperProfile?.status ??
+    player.availability_status ??
+    "Status unavailable";
   const initials = player.display_name
     .split(/\s+/)
     .map((part) => part[0])
@@ -60,11 +95,14 @@ export function PlayerResearchModal({
           <div className="player-research-identity">
             <div className="player-research-position-line">
               <span>{player.position}</span>
-              <span>{player.nfl_team ?? "Free agent"}</span>
+              <span>{sleeperProfile?.team ?? player.nfl_team ?? "Free agent"}</span>
               <span>Bye {player.bye_week ?? "—"}</span>
+              {sleeperProfile?.number === null || sleeperProfile?.number === undefined ? null : (
+                <span>#{sleeperProfile.number}</span>
+              )}
             </div>
             <h2 id="player-research-title">{player.display_name}</h2>
-            <p>UDK draft profile enriched with NFLverse prior-season production.</p>
+            <p>UDK analysis, NFLverse production and cached Sleeper player status in one draft profile.</p>
           </div>
           <div className="player-research-headline-ranks">
             <ResearchMetric label="Overall" value={formatRank(player.overall_rank)} />
@@ -95,8 +133,8 @@ export function PlayerResearchModal({
                     <p className="eyebrow">{releaseSeason} draft market</p>
                     <h3>UDK snapshot</h3>
                   </div>
-                  <span className={`research-status research-status-${normalizeStatus(player.availability_status)}`}>
-                    {player.availability_status ?? "Status unavailable"}
+                  <span className={`research-status research-status-${normalizeStatus(currentStatus)}`}>
+                    {currentStatus}
                   </span>
                 </div>
                 <div className="research-metric-grid">
@@ -107,6 +145,16 @@ export function PlayerResearchModal({
                 </div>
               </section>
 
+              <section className="research-card research-card-wide">
+                <p className="eyebrow">Fantasy Footballers UDK</p>
+                <h3>Season outlook</h3>
+                {player.outlook === null || player.outlook === undefined ? (
+                  <ResearchEmpty text="The imported Position Rankings file did not include an Outlook entry for this player." />
+                ) : (
+                  <p className="research-copy research-outlook-copy">{player.outlook}</p>
+                )}
+              </section>
+
               <section className="research-card">
                 <p className="eyebrow">Market read</p>
                 <h3>Draft-day interpretation</h3>
@@ -115,6 +163,43 @@ export function PlayerResearchModal({
                   <Insight label="Profile" text={buildProfileInsight(player)} />
                   <Insight label="History" text={buildHistoryInsight(player, priorPpg)} />
                 </div>
+              </section>
+
+              <section className="research-card">
+                <p className="eyebrow">Sleeper</p>
+                <h3>Current player profile</h3>
+                {sleeperState === "loading" ? (
+                  <ResearchEmpty text="Loading the cached Sleeper player directory…" />
+                ) : sleeperState === "error" ? (
+                  <ResearchEmpty text="Sleeper metadata could not be loaded. Drafting remains fully available." />
+                ) : sleeperProfile === null ? (
+                  <ResearchEmpty text="No confident Sleeper identity match was found for this player." />
+                ) : (
+                  <div className="research-metric-grid research-metric-grid-compact">
+                    <ResearchMetric label="Age" value={formatOptional(sleeperProfile.age)} />
+                    <ResearchMetric label="Experience" value={formatExperience(sleeperProfile.yearsExperience)} />
+                    <ResearchMetric label="Height" value={sleeperProfile.height ?? "—"} />
+                    <ResearchMetric label="Weight" value={formatWeight(sleeperProfile.weight)} />
+                    <ResearchMetric label="College" value={sleeperProfile.college ?? "—"} />
+                    <ResearchMetric label="Depth" value={formatDepthChart(sleeperProfile)} />
+                  </div>
+                )}
+              </section>
+
+              <section className="research-card">
+                <p className="eyebrow">Live status</p>
+                <h3>Injury and practice designation</h3>
+                {sleeperProfile === null ? (
+                  <ResearchEmpty text="Current designation requires a matched Sleeper player record." />
+                ) : (
+                  <div className="research-stat-table">
+                    <StatRow label="Roster status" value={sleeperProfile.status ?? "Not reported"} />
+                    <StatRow label="Injury status" value={sleeperProfile.injuryStatus ?? "No designation"} />
+                    <StatRow label="Body part" value={sleeperProfile.injuryBodyPart ?? "Not reported"} />
+                    <StatRow label="Practice" value={sleeperProfile.practiceParticipation ?? "Not reported"} />
+                    <StatRow label="Injury start" value={sleeperProfile.injuryStartDate ?? "Not reported"} />
+                  </div>
+                )}
               </section>
 
               <section className="research-card">
@@ -146,8 +231,8 @@ export function PlayerResearchModal({
                   <h3>Season production</h3>
                   <div className="research-stat-table">
                     <StatRow label="Games" value={history.games} />
-                    <StatRow label="Fantasy points" value={priorPoints} decimals={1} />
-                    <StatRow label="Points per game" value={priorPpg} decimals={1} />
+                    <StatRow label="Fantasy points" value={priorPoints ?? 0} decimals={1} />
+                    <StatRow label="Points per game" value={priorPpg ?? 0} decimals={1} />
                     <StatRow label="Weekly volatility (half PPR)" value={history.weekly_points_stddev_half_ppr} decimals={1} />
                     <StatRow label="Fumbles lost" value={history.fumbles_lost} />
                   </div>
@@ -179,11 +264,13 @@ export function PlayerResearchModal({
                 <p className="eyebrow">Transparency</p>
                 <h3>What this card can substantiate</h3>
                 <p className="research-copy">
-                  Rankings, ADP, tiers, projections, risk and upside come from the imported UDK release.
-                  Prior-season totals come from the bundled or manually imported NFLverse history release.
+                  Rankings, ADP, tiers, projections, risk, upside and Outlook come from the locally imported UDK release.
+                  Prior-season totals come from NFLverse. Current biographical, depth-chart and injury fields come from
+                  Sleeper's public NFL player directory, cached for 24 hours in this browser.
                 </p>
                 <div className="research-source-list">
                   {sources.map((source) => <span key={source}>{source}</span>)}
+                  <span>Sleeper public NFL player directory</span>
                 </div>
               </section>
               <section className="research-card">
@@ -192,15 +279,17 @@ export function PlayerResearchModal({
                 <div className="research-stat-table">
                   <StatRow label="Canonical ID" value={player.canonical_player_id} />
                   <StatRow label="NFLverse ID" value={player.nflverse_player_id ?? "Not matched"} />
+                  <StatRow label="Sleeper ID" value={sleeperProfile?.sleeperPlayerId ?? "Not matched"} />
                   <StatRow label="Historical season" value={history?.season ?? "Not available"} />
                 </div>
               </section>
               <section className="research-card">
-                <p className="eyebrow">Not included yet</p>
-                <h3>Requires another source</h3>
+                <p className="eyebrow">Still not included</p>
+                <h3>News and editorial reporting</h3>
                 <p className="research-copy">
-                  Headshots, height, weight, college, current news, injury reporting, matchup grades,
-                  schedules and depth-chart context are intentionally omitted until a reliable source is added.
+                  Sleeper's public Players endpoint supplies structured status fields but does not expose the editorial
+                  news feed shown in the Sleeper application. News blurbs remain intentionally omitted until a licensed,
+                  attributable feed is selected.
                 </p>
               </section>
             </>
@@ -236,6 +325,27 @@ function formatNumber(value: number | null | undefined, decimals: number): strin
   return value === null || value === undefined ? "—" : value.toFixed(decimals);
 }
 
+function formatOptional(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : String(value);
+}
+
+function formatWeight(value: string | null): string {
+  return value === null ? "—" : `${value} lbs`;
+}
+
+function formatExperience(value: number | null): string {
+  if (value === null) return "—";
+  if (value === 0) return "Rookie";
+  return `${value} yr${value === 1 ? "" : "s"}`;
+}
+
+function formatDepthChart(profile: SleeperPlayerProfile): string {
+  if (profile.depthChartPosition === null && profile.depthChartOrder === null) return "—";
+  return [profile.depthChartPosition, profile.depthChartOrder === null ? null : `#${profile.depthChartOrder}`]
+    .filter((value): value is string => value !== null)
+    .join(" · ");
+}
+
 function formatRank(value: number | null): string {
   return value === null ? "—" : `#${Math.round(value)}`;
 }
@@ -250,8 +360,15 @@ function capitalize(value: string): string {
 
 function normalizeStatus(value: string | null): string {
   const normalized = value?.toLowerCase() ?? "unknown";
-  if (normalized.includes("out") || normalized.includes("injur")) return "warning";
-  if (normalized.includes("active") || normalized.includes("available")) return "good";
+  if (
+    normalized.includes("out") ||
+    normalized.includes("doubt") ||
+    normalized.includes("question") ||
+    normalized.includes("injur") ||
+    normalized.includes("pup") ||
+    normalized.includes("ir")
+  ) return "warning";
+  if (normalized.includes("active") || normalized.includes("available") || normalized.includes("healthy")) return "good";
   return "neutral";
 }
 
