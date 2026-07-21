@@ -52,20 +52,33 @@ jobs:
           PY
 
       - name: Wire bundled history into the app
+        id: wire
+        continue-on-error: true
         run: python scripts/bootstrap_bundled_nflverse.py
 
       - name: Install JavaScript dependencies
+        if: steps.wire.outcome == 'success'
         run: npm install
 
       - name: Validate application
+        if: steps.wire.outcome == 'success'
         run: |
           npm run check
           npm run build
 
-      - name: Commit generated release and integration
+      - name: Commit generated release, integration, or diagnostics
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/draft-room scripts/bootstrap_bundled_nflverse.py
-          git commit -m "feat: bundle NFLverse history by default"
-          git push origin HEAD:agent/m5-bundled-nflverse-history
+          git add apps/draft-room scripts/bootstrap_bundled_nflverse.py bootstrap-error.txt 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+          else
+            git commit -m "feat: bundle NFLverse history by default"
+            git push origin HEAD:agent/m5-bundled-nflverse-history
+          fi
+
+      - name: Fail when integration did not complete
+        if: steps.wire.outcome == 'failure'
+        run: exit 1
