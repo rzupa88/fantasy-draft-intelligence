@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import { createPortal } from "react-dom";
 import { recommendPlayers } from "@fdi/recommendation-engine";
 import { buildDraftDecisionExplanation } from "../decision-explanation.js";
+import {
+  assertRecommendationsAreAvailable,
+  reconcileDraftAvailability,
+} from "../draft-availability.js";
 import { setDecisionDraftState } from "../decision-state.js";
 import { DecisionExplanationPanel } from "./DecisionExplanationPanel.js";
 import { DraftWorkspace as DraftWorkspaceBase } from "./DraftWorkspaceBase.js";
@@ -10,17 +14,22 @@ type DraftWorkspaceProps = ComponentProps<typeof DraftWorkspaceBase>;
 
 export function DraftWorkspace(props: DraftWorkspaceProps) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-  setDecisionDraftState(props.state);
+  const safeState = useMemo(() => reconcileDraftAvailability(props.state), [props.state]);
+  setDecisionDraftState(safeState);
 
   const explanations = useMemo(() => {
-    if (props.state.availablePlayerIds.length === 0) return [];
-    const userTeam = props.state.teams.find((team) => team.isUser) ?? props.state.teams[0];
+    if (safeState.availablePlayerIds.length === 0) return [];
+    const userTeam = safeState.teams.find((team) => team.isUser) ?? safeState.teams[0];
     if (userTeam === undefined) return [];
-    const result = recommendPlayers(props.state, { teamId: userTeam.teamId, limit: 5 });
+    const result = recommendPlayers(safeState, { teamId: userTeam.teamId, limit: 5 });
+    assertRecommendationsAreAvailable(
+      safeState,
+      result.recommendations.map((recommendation) => recommendation.playerId),
+    );
     return result.recommendations.slice(0, 2).map((recommendation) =>
       buildDraftDecisionExplanation(recommendation, result.recommendations),
     );
-  }, [props.state]);
+  }, [safeState]);
 
   useEffect(() => {
     const intro = document.querySelector<HTMLElement>(".recommendation-panel .panel-intro");
@@ -40,7 +49,7 @@ export function DraftWorkspace(props: DraftWorkspaceProps) {
 
   return (
     <>
-      <DraftWorkspaceBase {...props} />
+      <DraftWorkspaceBase {...props} state={safeState} />
       {portalTarget === null || explanations.length === 0
         ? null
         : createPortal(
