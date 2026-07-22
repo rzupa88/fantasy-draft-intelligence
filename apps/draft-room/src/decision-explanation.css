@@ -1,0 +1,111 @@
+.decision-explanation-slot {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.decision-explanation-modal-slot {
+  padding: 0.85rem 1rem 0;
+}
+
+.decision-explanation {
+  padding: 0.9rem;
+  border: 1px solid rgb(114 241 184 / 28%);
+  border-radius: 0.9rem;
+  background: linear-gradient(145deg, rgb(16 45 36 / 74%), rgb(9 13 19 / 62%));
+}
+
+.decision-explanation-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.decision-explanation-heading h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.decision-alternative-chip {
+  flex: 0 0 auto;
+  max-width: 10rem;
+  padding: 0.35rem 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgb(9 13 19 / 65%);
+  font-size: 0.58rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.decision-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.decision-signal {
+  display: grid;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.65rem;
+  background: rgb(9 13 19 / 58%);
+  gap: 0.18rem;
+}
+
+.decision-signal span {
+  color: var(--muted);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.decision-signal strong {
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.decision-signal p {
+  margin: 0.18rem 0 0;
+  color: #aeb9c7;
+  font-size: 0.61rem;
+  line-height: 1.45;
+}
+
+.decision-signal-strong {
+  border-color: rgb(114 241 184 / 48%);
+}
+
+.decision-signal-positive {
+  border-color: rgb(117 183 255 / 34%);
+}
+
+.decision-signal-caution {
+  border-color: rgb(255 209 102 / 42%);
+}
+
+.decision-explanation-compact .decision-signal-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.player-research-modal .decision-explanation {
+  max-width: none;
+}
+
+@media (max-width: 720px) {
+  .decision-explanation-heading {
+    display: grid;
+  }
+
+  .decision-signal-grid,
+  .decision-explanation-compact .decision-signal-grid {
+    grid-template-columns: 1fr;
+  }
+}
