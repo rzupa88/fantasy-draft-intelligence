@@ -72,9 +72,17 @@ export function normalizeTeamNames(
 ): string[] {
   const defaults = createDefaultTeamNames(teamCount, userDraftSlot);
   return Array.from({ length: teamCount }, (_, index) => {
-    const name = teamNames[index]?.trim();
-    return name === undefined || name.length === 0 ? defaults[index]! : name;
+    const name = teamNames[index];
+    return name === undefined || name.trim().length === 0 ? defaults[index]! : name;
   });
+}
+
+function finalizeTeamNames(
+  teamNames: string[],
+  teamCount: number,
+  userDraftSlot: number,
+): string[] {
+  return normalizeTeamNames(teamNames, teamCount, userDraftSlot).map((name) => name.trim());
 }
 
 export const DEFAULT_DRAFT_SETUP: DraftSetup = {
@@ -108,7 +116,7 @@ export function createDraftFromSetup(
 ): DraftState {
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
-  const teamNames = normalizeTeamNames(setup.teamNames, setup.teamCount, setup.userDraftSlot);
+  const teamNames = finalizeTeamNames(setup.teamNames, setup.teamCount, setup.userDraftSlot);
 
   return createDraftState({
     draftId,
