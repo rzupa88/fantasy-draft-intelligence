@@ -3,6 +3,11 @@
   border-bottom: 1px solid var(--border-soft);
 }
 
+.decision-explanation-stack {
+  display: grid;
+  gap: 0.6rem;
+}
+
 .decision-explanation-modal-slot {
   padding: 0.85rem 1rem 0;
 }
