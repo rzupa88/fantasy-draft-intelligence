@@ -17,6 +17,7 @@ import {
   type UdkAdpSource,
   type UdkBuildReport,
 } from "../udk-importer.js";
+import { HistoricalLeagueCard } from "./HistoricalLeagueCard.js";
 import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
 import { TeamNameConfigurator } from "./TeamNameConfigurator.js";
@@ -98,12 +99,13 @@ export function RecoverySetupScreen({
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, name every draft slot, load fresh UDK projections and
-          NFLverse history, restore a saved draft, and run the entire snake draft from one laptop.
+          Configure the league and roster, name every draft slot, load fresh UDK projections,
+          NFLverse production, and your league&apos;s past Yahoo draft results, then run the entire
+          snake draft from one laptop.
         </p>
         <div className="feature-strip" aria-label="Draft room capabilities">
           <span>UDK projections</span>
-          <span>NFLverse history</span>
+          <span>League history</span>
           <span>Named teams</span>
           <span>Automatic recovery</span>
         </div>
@@ -194,6 +196,7 @@ export function RecoverySetupScreen({
           </div>
 
           <TeamNameConfigurator setup={setup} onSetupChange={onSetupChange} />
+          <HistoricalLeagueCard setup={setup} />
 
           <fieldset className="scoring-fieldset field-wide">
             <legend>Scoring</legend>
