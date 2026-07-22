@@ -281,11 +281,18 @@ test:
 │   │   │   ├── main.tsx
 │   │   │   ├── nflverse-history.css
 │   │   │   ├── nflverse-history.ts
+│   │   │   ├── player-research.css
 │   │   │   ├── recovery.css
 │   │   │   ├── roster-config.css
+│   │   │   ├── roster-lineup.css
+│   │   │   ├── sleeper-players.ts
 │   │   │   ├── styles.css
 │   │   │   ├── udk-import.css
-│   │   │   └── udk-importer.ts
+│   │   │   ├── udk-importer.ts
+│   │   │   └── udk-outlook.ts
+│   │   ├── test
+│   │   │   ├── player-research-modal.test.tsx
+│   │   │   └── roster-lineup.test.tsx
 │   │   ├── tests
 │   │   │   ├── app.test.tsx
 │   │   │   ├── bundled-nflverse-history.test.ts
@@ -3294,6 +3301,7 @@ import {
 import type { DraftState } from "@fdi/shared-types";
 import { DraftWorkspace } from "./components/DraftWorkspace.js";
 import { LeagueDraftBoard } from "./components/LeagueDraftBoard.js";
+import { PlayerResearchModal } from "./components/PlayerResearchModal.js";
 import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
@@ -3321,6 +3329,11 @@ import {
   parseUdkZip,
   type UdkImportPackage,
 } from "./udk-importer.js";
+import {
+  enrichReleaseWithUdkOutlooks,
+  extractUdkOutlooks,
+  type UdkOutlookMap,
+} from "./udk-outlook.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
@@ -3328,11 +3341,13 @@ export function App() {
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
   const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedResearchPlayerId, setSelectedResearchPlayerId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
   );
@@ -3341,13 +3356,17 @@ export function App() {
     if (udkPackage === null) {
       return null;
     }
-    return buildUdkPlayerDataRelease(udkPackage, {
+    const build = buildUdkPlayerDataRelease(udkPackage, {
       scoring: createScoringSettings(setup.scoringPreset),
       adpTeamCount: setup.teamCount,
       adpSource: setup.adpSource,
       generatedAt: new Date().toISOString(),
     });
-  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
+    return {
+      ...build,
+      release: enrichReleaseWithUdkOutlooks(build.release, udkOutlooks),
+    };
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkOutlooks, udkPackage]);
 
   const historyBuild = useMemo(() => {
     if (udkBuild === null || historyRelease === null) {
@@ -3367,24 +3386,8 @@ export function App() {
     [draftState],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    void loadBundledNflverseHistory()
-      .then((release) => {
-        if (cancelled) return;
-        setBundledHistory(release);
-        setHistoryRelease((current) => current ?? release);
-        setHistoryFilename((current) => current ?? BUNDLED_NFLVERSE_HISTORY_LABEL);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setErrorMessage((current) =>
-          current ?? `Bundled NFLverse history failed to load: ${toErrorMessage(error)}`,
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
+  const selectedResearchPlayer =
+    selectedResearchPlayerId === null ? null : activePlayersById.get(sele
 
 [TRUNCATED]
 ```
@@ -3672,6 +3675,7 @@ import type {
   RosterSlotType,
 } from "@fdi/shared-types";
 import { CorrectionDialog } from "./CorrectionDialog.js";
+import { RosterLineup } from "./RosterLineup.js";
 
 interface DraftWorkspaceProps {
   state: DraftState;
@@ -3763,8 +3767,6 @@ export function DraftWorkspace({
   useEffect(() => {
     if (!filteredPlayers.some((player) => player.canonical_player_id === selectedPlayerId)) {
       setSelectedPlayerId(filteredPlayers[0]?.canonical_player_id ?? null);
-    }
-  }, [filteredPlayers, selectedPlayerId]);
 
 [TRUNCATED]
 ```
@@ -3958,6 +3960,116 @@ export function NflverseHistoryCard({
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/components/PlayerResearchModal.tsx`
+
+```text
+import { useEffect, useState } from "react";
+import type { PlayerDataRecord, ScoringPreset } from "@fdi/shared-types";
+import {
+  buildPlayerResearchLinks,
+  loadSleeperPlayerDirectory,
+  matchSleeperPlayer,
+  type SleeperPlayerProfile,
+} from "../sleeper-players.js";
+
+interface PlayerResearchModalProps {
+  player: PlayerDataRecord;
+  scoringPreset: ScoringPreset;
+  releaseSeason: number;
+  sources: string[];
+  onClose: () => void;
+}
+
+type ResearchTab = "overview" | "production" | "data";
+
+type SleeperLoadState = "idle" | "loading" | "ready" | "error";
+
+export function PlayerResearchModal({
+  player,
+  scoringPreset,
+  releaseSeason,
+  sources,
+  onClose,
+}: PlayerResearchModalProps) {
+  const [activeTab, setActiveTab] = useState<ResearchTab>("overview");
+  const [sleeperProfile, setSleeperProfile] = useState<SleeperPlayerProfile | null>(null);
+  const [sleeperState, setSleeperState] = useState<SleeperLoadState>("idle");
+  const history = player.prior_season_stats ?? null;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSleeperState("loading");
+    setSleeperProfile(null);
+
+    void loadSleeperPlayerDirectory()
+      .then((directory) => {
+        if (cancelled) return;
+        setSleeperProfile(matchSleeperPlayer(player, directory));
+        setSleeperState("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSleeperState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [player]);
+
+  const priorPoints = getScoringValue(history, scoringPreset, "season");
+  const priorPpg = getScoringValue(history, scoringPreset, "game");
+  const researchLinks = sleeperProfile === null ? [] : buildPlayerResearchLinks(sleeperProfile);
+  const currentStatus =
+    sleeperProfile?.injuryStatus ??
+    sleeperProfile?.status ??
+    player.availability_status ??
+    "Status unavailable";
+  const initials = player.display_name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("");
+
+  return (
+    <div className="player-research-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="player-research-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="player-research-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button className="player-research-close" type="button" onClick={onClose} aria-label="Close player research">
+          ×
+        </button>
+
+        <header className={`player-research-hero research-position-${player.position.toLowerCase()}`}>
+          <div className="player-research-avatar" aria-hidden="true">{initials}</div>
+          <div className="player-research-identity">
+            <div className="player-research-position-line">
+              <span>{player.position}</span>
+              <span>{sleeperProfile?.team ?? player.nfl_team ?? "Free agent"}</span>
+              <span>Bye {player.bye_week ?? "—"}</span>
+              {sleeperProfile?.number === null || sleeperProfile?.number === undefined ? null : (
+                <span>
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
 
 ```text
@@ -4082,6 +4194,235 @@ export function RecoverySetupScreen({
 [TRUNCATED]
 ```
 
+## Fantasy Domain Logic Files
+
+### `apps/draft-room/src/sleeper-players.ts`
+
+```text
+import type { PlayerDataRecord, PlayerPosition } from "@fdi/shared-types";
+
+const SLEEPER_PLAYERS_URL = "https://api.sleeper.app/v1/players/nfl";
+const CACHE_KEY = "fdi:sleeper-nfl-players:v1";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export interface SleeperPlayerProfile {
+  sleeperPlayerId: string;
+  fullName: string;
+  position: string | null;
+  fantasyPositions: string[];
+  team: string | null;
+  number: number | null;
+  age: number | null;
+  height: string | null;
+  weight: string | null;
+  college: string | null;
+  yearsExperience: number | null;
+  status: string | null;
+  injuryStatus: string | null;
+  injuryBodyPart: string | null;
+  injuryStartDate: string | null;
+  practiceParticipation: string | null;
+  depthChartPosition: string | null;
+  depthChartOrder: number | null;
+  espnId: string | null;
+  yahooId: string | null;
+  rotowireId: string | null;
+  rotoworldId: string | null;
+}
+
+export interface PlayerResearchLink {
+  provider: "ESPN" | "Yahoo" | "RotoWire";
+  url: string;
+}
+
+interface SleeperCacheEnvelope {
+  fetchedAt: number;
+  players: SleeperPlayerProfile[];
+}
+
+export async function loadSleeperPlayerDirectory(
+  fetchImpl: typeof fetch = fetch,
+): Promise<SleeperPlayerProfile[]> {
+  const cached = readCache();
+  if (cached !== null && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.players;
+  }
+
+  const response = await fetchImpl(SLEEPER_PLAYERS_URL);
+  if (!response.ok) {
+    if (cached !== null) return cached.players;
+    throw new Error(`Sleeper player directory request failed (${response.status}).`);
+  }
+
+  const payload: unknown = await response.json();
+  if (!isRecord(payload)) {
+    if (cached !== null) return cached.players;
+    throw new TypeError("Sleeper player directory returned an invalid payload.");
+  }
+
+  const players = Object.entries(payload)
+    .map(([playerId, value]) => parseSleeperPlayer(playerId, value))
+    .filter((value): value is SleeperPlayerProfile => value !== null);
+
+  writeCache({ fetchedAt: Date.now(), players });
+  return players;
+}
+
+export function matchSleeperPlayer(
+  player: PlayerDataRecord,
+  directory: SleeperPlayerProfile[],
+): SleeperPlayerProfile | null {
+  const normalizedName = normalizeName(player.display_name);
+  const candidates = directory.filter((candidate) => normalizeName(candidate.fullName) === normalizedName);
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0]!;
+
+  const positionMatch = candidates.filter((candidate) =>
+    positionMatches(player.position, candidate.position, candidate.fantasyPositions),
+  );
+  const narrowed = positionMatch.length > 0 ? positionMatch : candidates;
+
+  const teamMatch = narrowed.find(
+    (candidate) =>
+      player.nfl_team !== null &&
+      candidate.team !== null &&
+      normalizeTeam(candidate.team) === normalizeTeam(player.nfl_team),
+  );
+  return teamMatch ?? narrowed[0] ?? null;
+}
+
+export function buildPlayerResearchLinks(profile: SleeperPlayerProfile): PlayerResearchLink[] {
+  const links: PlayerResearchLink[] = [];
+  const slug = slugify(profile.fullName);
+
+  if (profile.espnId !== null) {
+    links.push({
+      provider: "ESPN",
+      url: `https://www.espn.com/nfl/player/_/id/${encodeURIComponent(profile.espnId)}/${slug}`,
+    });
+  }
+  if (profile.yahooId !== null) {
+    links.push({
+      provider: "Yahoo",
+      url: `https://sports.yahoo.com/nfl/players/${encodeURIComponent(profile.yahooId)}/`,
+    });
+  }
+  if (profile.rotowireId !== null) {
+    links.
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/src/components/PlayerResearchModal.tsx`
+
+```text
+import { useEffect, useState } from "react";
+import type { PlayerDataRecord, ScoringPreset } from "@fdi/shared-types";
+import {
+  buildPlayerResearchLinks,
+  loadSleeperPlayerDirectory,
+  matchSleeperPlayer,
+  type SleeperPlayerProfile,
+} from "../sleeper-players.js";
+
+interface PlayerResearchModalProps {
+  player: PlayerDataRecord;
+  scoringPreset: ScoringPreset;
+  releaseSeason: number;
+  sources: string[];
+  onClose: () => void;
+}
+
+type ResearchTab = "overview" | "production" | "data";
+
+type SleeperLoadState = "idle" | "loading" | "ready" | "error";
+
+export function PlayerResearchModal({
+  player,
+  scoringPreset,
+  releaseSeason,
+  sources,
+  onClose,
+}: PlayerResearchModalProps) {
+  const [activeTab, setActiveTab] = useState<ResearchTab>("overview");
+  const [sleeperProfile, setSleeperProfile] = useState<SleeperPlayerProfile | null>(null);
+  const [sleeperState, setSleeperState] = useState<SleeperLoadState>("idle");
+  const history = player.prior_season_stats ?? null;
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") onClose();
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSleeperState("loading");
+    setSleeperProfile(null);
+
+    void loadSleeperPlayerDirectory()
+      .then((directory) => {
+        if (cancelled) return;
+        setSleeperProfile(matchSleeperPlayer(player, directory));
+        setSleeperState("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSleeperState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [player]);
+
+  const priorPoints = getScoringValue(history, scoringPreset, "season");
+  const priorPpg = getScoringValue(history, scoringPreset, "game");
+  const researchLinks = sleeperProfile === null ? [] : buildPlayerResearchLinks(sleeperProfile);
+  const currentStatus =
+    sleeperProfile?.injuryStatus ??
+    sleeperProfile?.status ??
+    player.availability_status ??
+    "Status unavailable";
+  const initials = player.display_name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("");
+
+  return (
+    <div className="player-research-backdrop" role="presentation" onMouseDown={onClose}>
+      <section
+        className="player-research-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="player-research-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button className="player-research-close" type="button" onClick={onClose} aria-label="Close player research">
+          ×
+        </button>
+
+        <header className={`player-research-hero research-position-${player.position.toLowerCase()}`}>
+          <div className="player-research-avatar" aria-hidden="true">{initials}</div>
+          <div className="player-research-identity">
+            <div className="player-research-position-line">
+              <span>{player.position}</span>
+              <span>{sleeperProfile?.team ?? player.nfl_team ?? "Free agent"}</span>
+              <span>Bye {player.bye_week ?? "—"}</span>
+              {sleeperProfile?.number === null || sleeperProfile?.number === undefined ? null : (
+                <span>
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/components/RosterConfigurator.tsx`
 
 ```text
@@ -4190,112 +4531,411 @@ export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorP
 [TRUNCATED]
 ```
 
-## Fantasy Domain Logic Files
-
-### `apps/draft-room/src/components/RosterConfigurator.tsx`
+### `apps/draft-room/src/components/RosterLineup.tsx`
 
 ```text
-import type { RosterSlotType } from "@fdi/shared-types";
-import {
-  ROSTER_SLOT_OPTIONS,
-  getRosterCapacity,
-  getStarterCapacity,
-  resetRosterCounts,
-  setRosterCount,
-  type DraftSetup,
-} from "../draft-factory.js";
+import type {
+  DraftPick,
+  PlayerDataRecord,
+  PlayerPosition,
+  RosterSlotRule,
+  RosterSlotType,
+} from "@fdi/shared-types";
 
-interface RosterConfiguratorProps {
-  setup: DraftSetup;
-  onSetupChange: (setup: DraftSetup) => void;
+export interface RosterLineupSlot {
+  slot: RosterSlotType;
+  slotIndex: number;
+  eligiblePositions: PlayerPosition[];
+  ruleOrder: number;
+  pick: DraftPick | null;
 }
 
-export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorProps) {
-  const totalSlots = getRosterCapacity(setup.rosterCounts);
-  const starterSlots = getStarterCapacity(setup.rosterCounts);
-  const isCapacityValid = totalSlots >= 8 && totalSlots <= 24 && starterSlots > 0;
+interface RosterLineupProps {
+  rules: RosterSlotRule[];
+  picks: DraftPick[];
+  playersById: ReadonlyMap<string, PlayerDataRecord>;
+}
 
-  function changeCount(slot: RosterSlotType, nextCount: number): void {
-    const option = ROSTER_SLOT_OPTIONS.find((candidate) => candidate.slot === slot);
-    if (option === undefined) {
-      return;
-    }
-    const boundedCount = Math.max(option.min, Math.min(option.max, nextCount));
-    onSetupChange(setRosterCount(setup, slot, boundedCount));
-  }
+export function RosterLineup({ rules, picks, playersById }: RosterLineupProps) {
+  const slots = buildRosterLineupSlots(rules, picks, playersById);
+  const starters = slots.filter((slot) => slot.slot !== "BENCH");
+  const bench = slots.filter((slot) => slot.slot === "BENCH");
 
   return (
-    <fieldset className="roster-fieldset field-wide">
-      <legend className="sr-only">Roster configuration</legend>
-      <div className="roster-heading">
-        <div>
-          <h3>Roster configuration</h3>
-          <p>Draft rounds update automatically from the total number of roster slots.</p>
-        </div>
-        <button
-          className="ghost-button roster-reset-button"
-          type="button"
-          onClick={() => onSetupChange(resetRosterCounts(setup))}
-        >
-          Reset standard
-        </button>
-      </div>
+    <div className="roster-lineup" aria-label="Configured fantasy roster">
+      <RosterSection
+        title="Starting lineup"
+        slots={starters}
+        playersById={playersById}
+      />
+      {bench.length === 0 ? null : (
+        <RosterSection title="Bench" slots={bench} playersById={playersById} />
+      )}
+    </div>
+  );
+}
 
-      <div className="roster-grid">
-        {ROSTER_SLOT_OPTIONS.map((option) => {
-          const count = setup.rosterCounts[option.slot];
-          return (
-            <div className="roster-slot-card" key={option.slot}>
-              <div className="roster-slot-copy">
-                <strong>{option.slot}</strong>
-                <span>{option.label}</span>
-                <small>{option.description}</small>
-              </div>
-              <div className="roster-stepper">
-                <button
-                  type="button"
-                  aria-label={`Decrease ${option.label}`}
-                  disabled={count <= option.min}
-                  onClick={() => changeCount(option.slot, count - 1)}
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  min={option.min}
-                  max={option.max}
-                  step="1"
-                  value={count}
-                  aria-label={`${option.label} roster slots`}
-                  onChange={(event) => changeCount(option.slot, Number(event.target.value))}
-                />
-                <button
-                  type="button"
-                  aria-label={`Increase ${option.label}`}
-                  disabled={count >= option.max}
-                  onClick={() => changeCount(option.slot, count + 1)}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+export function buildRosterLineupSlots(
+  rules: RosterSlotRule[],
+  picks: DraftPick[],
+  playersById: ReadonlyMap<string, PlayerDataRecord>,
+): RosterLineupSlot[] {
+  const slots = expandRosterSlots(rules);
+  const chronologicalPicks = [...picks].sort(
+    (left, right) => left.overallPick - right.overallPick,
+  );
 
-      <div className={`roster-capacity ${isCapacityValid ? "" : "roster-capacity-invalid"}`}>
+  for (const pick of chronologicalPicks) {
+    const player = playersById.get(pick.playerId);
+    if (player === undefined) continue;
+
+    const openSlot = slots
+      .filter(
+        (slot) =>
+          slot.pick === null && slot.eligiblePositions.includes(player.position),
+      )
+      .sort(compareEligibleSlots)[0];
+
+    if (openSlot !== undefined) {
+      openSlot.pick = pick;
+    }
+  }
+
+  return slots;
+}
+
+function expandRosterSlots(rules: RosterSlotRule[]): RosterLineupSlot[] {
+  const slotCounts = new Map<RosterSlotType, number>();
+  const slots: RosterLineupSlot[] = [];
+
+  rules.forEach((rule, ruleOrder) => {
+    for (let count = 0; count < rule.count; count += 1) {
+      const slotIndex = (slotCounts.get(rule.slot) ?? 0) + 1;
+      slotCounts.set(rule.slot, slotIndex);
+      slots.push({
+        slot: rule.slot,
+        slotIndex,
+        eligiblePositions: [...rule.eligiblePositions],
+        ruleOrder,
+        pick: null,
+      });
+    }
+  });
+
+  return slots;
+}
+
+function compareEligibleSlots(
+  left: RosterLineupSlot,
+  right: RosterLineupSlot,
+): number {
+  return (
+    left.eligiblePositions.length - right.eligiblePositions.length ||
+    left.ruleOrder - right.ruleOrder ||
+    left.slotIndex - right.slotIndex
+  );
+}
+
+function RosterSection({
+  title,
+  slots,
+  playersById,
+}: {
+  title: string;
+  slots: RosterLineupSlot[];
+  playersById: ReadonlyMap<string, PlayerDataRecord>;
+}) {
+  const filled = slots.filter((slot) => slot.pick !== null).length;
+
+  return (
+    <section className="roster-lineup-section" aria-label={title}>
+      <div className="roster-lineup-section-heading">
+        <strong>{title}</strong>
         <span>
-          <strong>{starterSlots}</strong> starters
+          {filled}/{slots.length}
         </span>
-        <span>
-          <strong>{setup.rosterCounts.BENCH}</strong> bench
-        </span>
-        <span>
-          <strong>{totalSlots}</strong> rounds
-        </span>
-        <small>
-          {isCapacityValid
-            ? `${setup.teamCount * totalSlots} total selections
+      </div>
+      {slots.map((slot) => (
+        <RosterSlotRow
+          key={slotKey(slot.slot, slot.slotIndex)}
+          slot={slot}
+          player={slot.pick === null ? null : playersById.get(slot.pick.playerId) ?? null}
+        />
+      ))}
+    </section>
+  );
+}
+
+function RosterSlotRow({
+  slot,
+  player,
+}: {
+  slot: RosterLineupSlot;
+  player: PlayerDataRecord | null;
+}) {
+  const
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/test/player-research-modal.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type { PlayerDataRecord } from "@fdi/shared-types";
+import { PlayerResearchModal } from "../src/components/PlayerResearchModal.js";
+import {
+  buildPlayerResearchLinks,
+  type SleeperPlayerProfile,
+} from "../src/sleeper-players.js";
+
+const player: PlayerDataRecord = {
+  canonical_player_id: "puka-nacua",
+  display_name: "Puka Nacua",
+  position: "WR",
+  nfl_team: "LAR",
+  bye_week: 8,
+  overall_rank: 12,
+  position_rank: 5,
+  adp: 15.9,
+  projected_points: 284.6,
+  tier: 2,
+  risk_score: 24,
+  upside_score: 76,
+  availability_status: "Active",
+  nflverse_player_id: "00-0039075",
+  prior_season_stats: {
+    season: 2025,
+    games: 17,
+    fantasy_points_standard: 210,
+    fantasy_points_half_ppr: 252,
+    fantasy_points_ppr: 294,
+    points_per_game_standard: 12.4,
+    points_per_game_half_ppr: 14.8,
+    points_per_game_ppr: 17.3,
+    weekly_points_stddev_half_ppr: 7.2,
+    attempts: 0,
+    passing_yards: 0,
+    passing_tds: 0,
+    interceptions: 0,
+    carries: 8,
+    rushing_yards: 42,
+    rushing_tds: 0,
+    targets: 160,
+    receptions: 105,
+    receiving_yards: 1486,
+    receiving_tds: 6,
+    fumbles_lost: 1,
+  },
+};
+
+const sleeperProfile: SleeperPlayerProfile = {
+  sleeperPlayerId: "8130",
+  fullName: "Puka Nacua",
+  position: "WR",
+  fantasyPositions: ["WR"],
+  team: "LAR",
+  number: 17,
+  age: 25,
+  height: "6'2\"",
+  weight: "212",
+  college: "BYU",
+  yearsExperience: 3,
+  status: "Active",
+  injuryStatus: null,
+  injuryBodyPart: null,
+  injuryStartDate: null,
+  practiceParticipation: null,
+  depthChartPosition: "LWR",
+  depthChartOrder: 1,
+  espnId: "4426515",
+  yahooId: "40026",
+  rotowireId: "16888",
+  rotoworldId: "12345",
+};
+
+describe("player research modal", () => {
+  it("renders UDK market data and matched NFLverse production", () => {
+    const html = renderToStaticMarkup(
+      <PlayerResearchModal
+        player={player}
+        scoringPreset="half_ppr"
+        releaseSeason={2026}
+        sources={["UDK", "NFLverse"]}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Puka Nacua");
+    expect(html).toContain("UDK snapshot");
+    expect(html).toContain("15.9");
+    expect(html).toContain("252.0");
+    expect(html).toContain("NFLverse");
+    expect(html).toContain("Data sources");
+  });
+
+  it("uses explicit unavailable states when NFLverse history is missing", () => {
+    const html = renderToStaticMarkup(
+      <PlayerResearchModal
+        player={{ ...player, prior_season_stats: null, nflverse_player_id: null }}
+        scoringPreset="ppr"
+        releaseSeason={2026}
+        sources={["UDK"]}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("NFLverse match unavailable");
+    expect(html).toContain("Data unavailable");
+  });
+
+  it("builds direct ESPN, Yahoo and RotoWire player links from Sleeper IDs", () => {
+    expect(buildPlayerResearchLinks(sleeperProfile)).toEqual([
+      {
+        provider: "ESPN",
+        url: "https://www.espn.com/nfl/player/_/id/4426515/puka-nacua",
+      },
+      {
+        provider: "Yahoo",
+        url: "https://sports.yahoo.com/nfl/players/40026/",
+      },
+      {
+        provider: "RotoWire",
+        url: "https://www.rotowire.com/football/player.php?id=16888",
+      },
+    ]);
+  });
+});
+```
+
+### `apps/draft-room/test/roster-lineup.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type {
+  DraftPick,
+  PlayerDataRecord,
+  RosterSlotRule,
+} from "@fdi/shared-types";
+import {
+  RosterLineup,
+  buildRosterLineupSlots,
+} from "../src/components/RosterLineup.js";
+
+const rules: RosterSlotRule[] = [
+  { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+  { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+  { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+  { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+  { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+  {
+    slot: "BENCH",
+    count: 2,
+    eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
+  },
+];
+
+const players: PlayerDataRecord[] = [
+  player("qb-one", "QB One", "QB", "BUF"),
+  player("rb-one", "RB One", "RB", "NYJ"),
+  player("wr-one", "Ja'Marr Chase", "WR", "CIN"),
+  player("wr-two", "WR Two", "WR", "LAR"),
+  player("wr-three", "WR Three", "WR", "MIN"),
+  player("wr-four", "WR Four", "WR", "SEA"),
+];
+
+const playersById = new Map(
+  players.map((value) => [value.canonical_player_id, value]),
+);
+
+const picks: DraftPick[] = [
+  pick(1, "qb-one", "QB", 1),
+  pick(2, "rb-one", "RB", 1),
+  pick(3, "wr-one", "FLEX", 1),
+];
+
+describe("roster lineup", () => {
+  it("expands every configured starting and bench slot", () => {
+    const slots = buildRosterLineupSlots(rules, picks, playersById);
+
+    expect(slots).toHaveLength(9);
+    expect(slots.map((slot) => `${slot.slot}:${slot.slotIndex}`)).toEqual([
+      "QB:1",
+      "RB:1",
+      "RB:2",
+      "WR:1",
+      "WR:2",
+      "TE:1",
+      "FLEX:1",
+      "BENCH:1",
+      "BENCH:2",
+    ]);
+    expect(slots.find((slot) => slot.slot === "WR")?.pick?.playerId).toBe("wr-one");
+  });
+
+  it("keeps earlier receivers fixed while later receivers fill WR2, FLEX, then bench", () => {
+    const receiverPicks = [
+      pick(1, "wr-one", "WR", 2),
+      pick(2, "wr-two", "WR", 1),
+      pick(3, "wr-three", "WR", 1),
+      pick(4, "wr-four", "WR", 1),
+    ];
+
+    const slots = buildRosterLineupSlots(rules, receiverPicks, playersById);
+
+    expect(findPlayer(slots, "WR", 1)).toBe("wr-one");
+    expect(findPlayer(slots, "WR", 2)).toBe("wr-two");
+    expect(findPlayer(slots, "FLEX", 1)).toBe("wr-three");
+    expect(findPlayer(slots, "BENCH", 1)).toBe("wr-four");
+  });
+
+  it("renders filled players and visible empty lineup spots", () => {
+    const html = renderToStaticMarkup(
+      <RosterLineup
+        rules={rules}
+        picks={picks}
+        playersById={playersById}
+      />,
+    );
+
+    expect(html).toContain("Starting lineup");
+    expect(html).toContain("Bench");
+    expect(html).toContain("QB One");
+    expect(html).toContain("RB One");
+    expect(html).toContain("Ja&#x27;Marr Chase");
+    expect(html).toContain("Empty");
+    expect(html).toContain("roster-lineup-slot-flex");
+  });
+});
+
+function findPlayer(
+  slots: ReturnType<typeof buildRosterLineupSlots>,
+  slot: DraftPick["rosterSlot"],
+  slotIndex: number,
+): string | undefined {
+  return slots.find(
+    (candidate) => candidate.slot === slot && candidate.slotIndex === slotIndex,
+  )?.pick?.playerId;
+}
+
+function player(
+  id: string,
+  displayName: string,
+  position: PlayerDataRecord["position"],
+  team: string,
+): PlayerDataRecord {
+  return {
+    canonical_player_id: id,
+    display_name: displayName,
+    position,
+    nfl_team: team,
+    bye_week: 7,
+    overall_rank: 1,
+    position_rank: 1,
+    adp: 1,
+    projected_points:
 
 [TRUNCATED]
 ```
@@ -4344,6 +4984,7 @@ import {
 import type { DraftState } from "@fdi/shared-types";
 import { DraftWorkspace } from "./components/DraftWorkspace.js";
 import { LeagueDraftBoard } from "./components/LeagueDraftBoard.js";
+import { PlayerResearchModal } from "./components/PlayerResearchModal.js";
 import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
@@ -4371,6 +5012,11 @@ import {
   parseUdkZip,
   type UdkImportPackage,
 } from "./udk-importer.js";
+import {
+  enrichReleaseWithUdkOutlooks,
+  extractUdkOutlooks,
+  type UdkOutlookMap,
+} from "./udk-outlook.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
@@ -4378,11 +5024,13 @@ export function App() {
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
   const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedResearchPlayerId, setSelectedResearchPlayerId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
   );
@@ -4391,13 +5039,17 @@ export function App() {
     if (udkPackage === null) {
       return null;
     }
-    return buildUdkPlayerDataRelease(udkPackage, {
+    const build = buildUdkPlayerDataRelease(udkPackage, {
       scoring: createScoringSettings(setup.scoringPreset),
       adpTeamCount: setup.teamCount,
       adpSource: setup.adpSource,
       generatedAt: new Date().toISOString(),
     });
-  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
+    return {
+      ...build,
+      release: enrichReleaseWithUdkOutlooks(build.release, udkOutlooks),
+    };
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkOutlooks, udkPackage]);
 
   const historyBuild = useMemo(() => {
     if (udkBuild === null || historyRelease === null) {
@@ -4417,24 +5069,8 @@ export function App() {
     [draftState],
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    void loadBundledNflverseHistory()
-      .then((release) => {
-        if (cancelled) return;
-        setBundledHistory(release);
-        setHistoryRelease((current) => current ?? release);
-        setHistoryFilename((current) => current ?? BUNDLED_NFLVERSE_HISTORY_LABEL);
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setErrorMessage((current) =>
-          current ?? `Bundled NFLverse history failed to load: ${toErrorMessage(error)}`,
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
+  const selectedResearchPlayer =
+    selectedResearchPlayerId === null ? null : activePlayersById.get(sele
 
 [TRUNCATED]
 ```
@@ -4722,6 +5358,7 @@ import type {
   RosterSlotType,
 } from "@fdi/shared-types";
 import { CorrectionDialog } from "./CorrectionDialog.js";
+import { RosterLineup } from "./RosterLineup.js";
 
 interface DraftWorkspaceProps {
   state: DraftState;
@@ -4813,533 +5450,6 @@ export function DraftWorkspace({
   useEffect(() => {
     if (!filteredPlayers.some((player) => player.canonical_player_id === selectedPlayerId)) {
       setSelectedPlayerId(filteredPlayers[0]?.canonical_player_id ?? null);
-    }
-  }, [filteredPlayers, selectedPlayerId]);
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/LeagueDraftBoard.tsx`
-
-```text
-import type { DraftPick, DraftState, PlayerDataRecord, PlayerPosition } from "@fdi/shared-types";
-
-interface LeagueDraftBoardProps {
-  state: DraftState;
-  playersById: Map<string, PlayerDataRecord>;
-}
-
-interface PositionNeed {
-  position: PlayerPosition | "FLEX";
-  count: number;
-}
-
-const NEED_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
-
-export function LeagueDraftBoard({ state, playersById }: LeagueDraftBoardProps) {
-  const teams = [...state.teams].sort((left, right) => left.draftSlot - right.draftSlot);
-  const picksByOverall = new Map(state.picks.map((pick) => [pick.overallPick, pick]));
-  const orderByRoundAndTeam = new Map(
-    state.order.map((slot) => [`${slot.round}:${slot.teamId}`, slot]),
-  );
-
-  return (
-    <section className="panel league-board-panel" aria-labelledby="league-board-title">
-      <div className="panel-heading league-board-heading">
-        <div>
-          <p className="eyebrow">Draft board</p>
-          <h2 id="league-board-title">League-wide grid</h2>
-        </div>
-        <div className="position-color-legend" aria-label="Position color legend">
-          {NEED_POSITIONS.map((position) => (
-            <span className={`position-legend position-bg-${position.toLowerCase()}`} key={position}>
-              {position}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <p className="panel-intro">
-        Scan every roster by round. Team headers show remaining starter needs as position-colored pills,
-        and completed picks use the same position colors as the player board. Hover a pick for ADP,
-        tier, bye week, and projected points.
-      </p>
-
-      <div className="league-board-scroll">
-        <div
-          className="league-board-grid"
-          style={{ gridTemplateColumns: `4.25rem repeat(${teams.length}, minmax(8.6rem, 1fr))` }}
-        >
-          <div className="league-board-corner">Round</div>
-          {teams.map((team) => {
-            const teamPicks = state.picks.filter((pick) => pick.teamId === team.teamId);
-            const needs = getRemainingNeeds(state, teamPicks, playersById);
-            return (
-              <div
-                className={`league-board-team-header ${team.isUser ? "league-board-user-team" : ""}`}
-                key={team.teamId}
-              >
-                <span>{team.isUser ? "YOU" : `Slot ${team.draftSlot}`}</span>
-                <strong>{team.name}</strong>
-                {needs.length === 0 ? (
-                  <small>Starters filled</small>
-                ) : (
-                  <div className="team-needs" aria-label={`Needs ${formatNeeds(needs)}`}>
-                    {needs.map((need) => (
-                      <span
-                        className={`team-need-pill ${
-                          need.position === "FLEX"
-                            ? "position-bg-flex"
-                            : `position-bg-${need.position.toLowerCase()}`
-                        }`}
-                        key={need.position}
-                      >
-                        {need.position}
-                        {need.count > 1 ? ` ${need.count}` : ""}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {Array.from({ length: state.settings.rounds }, (_, index) => index + 1).flatMap((round) => [
-            <div className="league-board-round" key={`round-${round}`}>
-              <strong>{round}</strong>
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/NflverseHistoryCard.tsx`
-
-```text
-import { useRef, type ChangeEvent } from "react";
-import { BUNDLED_NFLVERSE_HISTORY_LABEL } from "../bundled-nflverse-history.js";
-import type {
-  NflverseEnrichmentReport,
-  NflverseHistoryRelease,
-} from "../nflverse-history.js";
-
-interface NflverseHistoryCardProps {
-  history: NflverseHistoryRelease | null;
-  report: NflverseEnrichmentReport | null;
-  filename: string | null;
-  onImport: (file: File) => Promise<void>;
-  onClear: () => void;
-}
-
-export function NflverseHistoryCard({
-  history,
-  report,
-  filename,
-  onImport,
-  onClear,
-}: NflverseHistoryCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const isBundled = filename === BUNDLED_NFLVERSE_HISTORY_LABEL;
-
-  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (file !== undefined) {
-      await onImport(file);
-    }
-    event.target.value = "";
-  }
-
-  return (
-    <section className="history-import-card field-wide" aria-labelledby="history-import-title">
-      <div className="history-import-heading">
-        <div>
-          <p className="eyebrow">Historical context</p>
-          <h3 id="history-import-title">NFLverse identity and prior-year stats</h3>
-          <p>
-            The app loads a validated NFLverse release automatically. Import a newer JSON release
-            only when you want to replace the bundled identities and prior-season production.
-          </p>
-        </div>
-        <div className="history-import-actions">
-          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            Import newer history
-          </button>
-          {history === null || isBundled ? null : (
-            <button className="ghost-button" type="button" onClick={onClear}>
-              Use bundled release
-            </button>
-          )}
-          <input
-            ref={inputRef}
-            data-testid="nflverse-history-input"
-            className="sr-only"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void handleImport(event)}
-          />
-        </div>
-      </div>
-
-      {history === null ? (
-        <div className="history-empty-state">
-          <strong>Loading bundled NFLverse history.</strong>
-          <span>The validated local release will be ready before you start the draft.</span>
-        </div>
-      ) : report === null ? (
-        <div className="history-ready-state" role="status">
-          <strong>NFLverse {history.prior_season} history is ready.</strong>
-          <span>{filename} · Import a UDK ZIP to match {history.players.length} identity records.</span>
-        </div>
-      ) : (
-        <div className="history-preview" role="status">
-          <div className="history-ready-row">
-            <span className="history-ready-badge">NFLverse {report.priorSeason} matched</span>
-            <span>{filename}</span>
-          </div>
-          <div className="history-metrics">
-            <Metric label="UDK matched" value={report.matchedPlayerCount} />
-            <Metric label="With prior stats" value={report.matchedWithHistoryCount} />
-            <Metric label="Exact names" value={report.exactMatchCount} />
-            <Metric label="Team resolved" value={report.teamDisambiguatedCount} />
-            <Metric
-              label="Needs review"
-              value={report.unmatchedPlayers.length + report.ambiguousPlayers.length}
-            />
-          </div>
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
-
-```text
-import { useRef, type ChangeEvent, type FormEvent } from "react";
-import type { DraftState } from "@fdi/shared-types";
-import {
-  SCORING_OPTIONS,
-  TEAM_COUNT_OPTIONS,
-  getStarterCapacity,
-  type DraftSetup,
-  type SupportedScoringPreset,
-} from "../draft-factory.js";
-import type {
-  NflverseEnrichmentReport,
-  NflverseHistoryRelease,
-} from "../nflverse-history.js";
-import {
-  UDK_ADP_SOURCES,
-  type UdkAdpSource,
-  type UdkBuildReport,
-} from "../udk-importer.js";
-import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
-import { RosterConfigurator } from "./RosterConfigurator.js";
-import { UdkImportCard } from "./UdkImportCard.js";
-
-interface RecoverySetupScreenProps {
-  setup: DraftSetup;
-  recoveredDraft: DraftState | null;
-  udkReport: UdkBuildReport | null;
-  udkFilename: string | null;
-  history: NflverseHistoryRelease | null;
-  historyReport: NflverseEnrichmentReport | null;
-  historyFilename: string | null;
-  errorMessage: string | null;
-  onSetupChange: (setup: DraftSetup) => void;
-  onStartDraft: () => void;
-  onResumeDraft: () => void;
-  onDiscardRecovery: () => void;
-  onImportDraft: (file: File) => Promise<boolean>;
-  onImportUdk: (file: File) => Promise<void>;
-  onClearUdk: () => void;
-  onImportHistory: (file: File) => Promise<void>;
-  onClearHistory: () => void;
-}
-
-const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
-  average: "Average market",
-  sleeper: "Sleeper",
-  espn: "ESPN",
-  yahoo: "Yahoo",
-  underdog: "Underdog",
-};
-
-export function RecoverySetupScreen({
-  setup,
-  recoveredDraft,
-  udkReport,
-  udkFilename,
-  history,
-  historyReport,
-  historyFilename,
-  errorMessage,
-  onSetupChange,
-  onStartDraft,
-  onResumeDraft,
-  onDiscardRecovery,
-  onImportDraft,
-  onImportUdk,
-  onClearUdk,
-  onImportHistory,
-  onClearHistory,
-}: RecoverySetupScreenProps) {
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
-  const starterCount = getStarterCapacity(setup.rosterCounts);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    onStartDraft();
-  }
-
-  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (file !== undefined) {
-      await onImportDraft(file);
-    }
-    event.target.value = "";
-  }
-
-  const sourceLabel =
-    udkReport === null
-      ? "Demonstration release"
-      : historyReport === null
-        ? `UDK ${udkReport.season}`
-        : `UDK ${udkReport.season} + NFLverse ${historyReport.priorSeason}`;
-
-  return (
-    <main className="setup-shell">
-      <section className="setup-hero">
-        <div className="brand-mark" aria-hidden="true">
-          FDI
-        </div>
-        <p className="eyebrow">Local-first draft intelligence</p>
-        <h1>Build your draft room.</h1>
-        <p className="setup-lede">
-          Configure the league and roster, load fresh UDK projections and NFLverse history, restore
-          a saved draft, and run the entire snake draft from one laptop.
-        </p>
-
-        <div className="feature-strip" aria-label="Draft room capabilities">
-          <span>UDK projections</span>
-          <span>NFLverse history</span>
-          <span>Custom rosters</span>
-          <span>Automatic recovery</span>
-        </div>
-      </section>
-
-      <section className="setup-card" aria-labelledby="setup-title">
-        <div className="section-heading">
-          <div>
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/SetupScreen.tsx`
-
-```text
-import type { FormEvent } from "react";
-import {
-  ROUND_OPTIONS,
-  SCORING_OPTIONS,
-  TEAM_COUNT_OPTIONS,
-  type DraftSetup,
-  type SupportedScoringPreset,
-} from "../draft-factory.js";
-
-interface SetupScreenProps {
-  setup: DraftSetup;
-  errorMessage: string | null;
-  onSetupChange: (setup: DraftSetup) => void;
-  onStartDraft: () => void;
-}
-
-export function SetupScreen({
-  setup,
-  errorMessage,
-  onSetupChange,
-  onStartDraft,
-}: SetupScreenProps) {
-  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    onStartDraft();
-  }
-
-  return (
-    <main className="setup-shell">
-      <section className="setup-hero">
-        <div className="brand-mark" aria-hidden="true">
-          FDI
-        </div>
-        <p className="eyebrow">Local-first draft intelligence</p>
-        <h1>Build your draft room.</h1>
-        <p className="setup-lede">
-          Configure the league, load an offline player pool, and run the entire snake draft from
-          one laptop. No platform login. No live sync dependency.
-        </p>
-
-        <div className="feature-strip" aria-label="Draft room capabilities">
-          <span>Manual pick entry</span>
-          <span>Live recommendations</span>
-          <span>Every roster tracked</span>
-          <span>Offline-safe engine</span>
-        </div>
-      </section>
-
-      <section className="setup-card" aria-labelledby="setup-title">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">New draft</p>
-            <h2 id="setup-title">League setup</h2>
-          </div>
-          <span className="alpha-badge">Interface alpha</span>
-        </div>
-
-        <form className="setup-form" onSubmit={handleSubmit}>
-          <label className="field field-wide">
-            <span>League name</span>
-            <input
-              value={setup.leagueName}
-              onChange={(event) =>
-                onSetupChange({
-                  ...setup,
-                  leagueName: event.target.value,
-                })
-              }
-              placeholder="Friday Night League"
-              autoComplete="off"
-            />
-          </label>
-
-          <label className="field">
-            <span>Teams</span>
-            <select
-              value={setup.teamCount}
-              onChange={(event) => {
-                const teamCount = Number(event.target.value);
-                onSetupChange({
-                  ...setup,
-                  teamCount,
-                  userDraftSlot: Math.min(setup.userDraftSlot, teamCount),
-                });
-              }}
-            >
-              {TEAM_COUNT_OPTIONS.map((teamCount) => (
-                <option key={teamCount} value={teamCount}>
-                  {teamCount} teams
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
-            <span>Your draft slot</span>
-            <select
-              value={setup.userDraftSlot}
-              onChange={(event) =>
-                onSetupChange({
-                  ...setup,
-                  userDraftSlot: Number(event.target.value),
-                })
-              }
-            >
-              {draftSlots.map((slot) => (
-                <option key={slot} value={slot}>
-                  Pick {slot}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/UdkImportCard.tsx`
-
-```text
-import { useRef, type ChangeEvent } from "react";
-import { zipSync } from "fflate";
-import type { UdkBuildReport } from "../udk-importer.js";
-
-interface UdkImportCardProps {
-  report: UdkBuildReport | null;
-  filename: string | null;
-  onImport: (file: File) => Promise<void>;
-  onClear: () => void;
-}
-
-export function UdkImportCard({ report, filename, onImport, onClear }: UdkImportCardProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length === 1 && /\.zip$/i.test(files[0]!.name)) {
-      await onImport(files[0]!);
-    } else if (files.length > 0) {
-      const archive: Record<string, Uint8Array> = {};
-      for (const [index, file] of files.entries()) {
-        const originalPath = (file.webkitRelativePath || file.name).replaceAll("\\", "/");
-        const path = archive[originalPath] === undefined ? originalPath : `selected-${index + 1}/${file.name}`;
-        archive[path] = new Uint8Array(await file.arrayBuffer());
-      }
-      const bundled = new File([zipSync(archive, { level: 0 })], `udk-${files.length}-files.zip`, {
-        type: "application/zip",
-      });
-      await onImport(bundled);
-    }
-    event.target.value = "";
-  }
-
-  return (
-    <section className="udk-import-card field-wide" aria-labelledby="udk-import-title">
-      <div className="udk-import-heading">
-        <div>
-          <p className="eyebrow">Player data</p>
-          <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
-          <p>
-            Choose the UDK ZIP, or select all exported CSV and PDF files together. The files are
-            recognized locally, combined in memory when needed, and never sent to a server.
-          </p>
-        </div>
-        <div className="udk-import-actions">
-          <button className="secondary-button" type="button" onClick={() => inputRef.current?.click()}>
-            {report === null ? "Import UDK files" : "Replace UDK files"}
-          </button>
-          {report === null ? null : (
-            <button className="ghost-button" type="button" onClick={onClear}>
-              Use demo data
-            </button>
-          )}
-          <input
-            ref={inputRef}
-            data-testid="udk-file-input"
-            className="sr-only"
-            type="file"
-            accept="application/zip,.zip,text/csv,.csv,application/pdf,.pdf"
-            multiple
-            onChange={(event) => void handleImport(event)}
-          />
-        </div>
-      </div>
-
-      {report === null ? (
-        <div className="udk-empty-state">
-          <strong>Demo player data is active.</strong>
-          <span>Import a ZIP or select the loose UDK exports to replace the fictional pool.</span>
-        </div>
-      ) : (
-        <div className="udk-preview" role="status">
-          <div className="udk-ready-row">
-            <span className="udk-ready-badge">UDK {report.season} ready</span>
-            <span>{filename}</span>
-          </div>
-          <div className="udk-metrics">
-            <Metric label="Players" value={report.playerCount} />
-            <Metric label="Projected" value={report.projectedPlayerCount} />
-            <Metric label="All 3 analysts" value={report.allAnalystProjectionCount} />
-            <Metric label="Selected ADP" value={report.selectedAdpPlayerCount} />
-            <Metric label="Files recognized" value={report.recognizedFileCount} /
 
 [TRUNCATED]
 ```
@@ -6644,6 +6754,199 @@ def test_assert_unique_key_raises_on_duplicates() -> None:
         assert_unique_key(df, ["season", "player"])
 ```
 
+### `apps/draft-room/test/player-research-modal.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type { PlayerDataRecord } from "@fdi/shared-types";
+import { PlayerResearchModal } from "../src/components/PlayerResearchModal.js";
+import {
+  buildPlayerResearchLinks,
+  type SleeperPlayerProfile,
+} from "../src/sleeper-players.js";
+
+const player: PlayerDataRecord = {
+  canonical_player_id: "puka-nacua",
+  display_name: "Puka Nacua",
+  position: "WR",
+  nfl_team: "LAR",
+  bye_week: 8,
+  overall_rank: 12,
+  position_rank: 5,
+  adp: 15.9,
+  projected_points: 284.6,
+  tier: 2,
+  risk_score: 24,
+  upside_score: 76,
+  availability_status: "Active",
+  nflverse_player_id: "00-0039075",
+  prior_season_stats: {
+    season: 2025,
+    games: 17,
+    fantasy_points_standard: 210,
+    fantasy_points_half_ppr: 252,
+    fantasy_points_ppr: 294,
+    points_per_game_standard: 12.4,
+    points_per_game_half_ppr: 14.8,
+    points_per_game_ppr: 17.3,
+    weekly_points_stddev_half_ppr: 7.2,
+    attempts: 0,
+    passing_yards: 0,
+    passing_tds: 0,
+    interceptions: 0,
+    carries: 8,
+    rushing_yards: 42,
+    rushing_tds: 0,
+    targets: 160,
+    receptions: 105,
+    receiving_yards: 1486,
+    receiving_tds: 6,
+    fumbles_lost: 1,
+  },
+};
+
+const sleeperProfile: SleeperPlayerProfile = {
+  sleeperPlayerId: "8130",
+  fullName: "Puka Nacua",
+  position: "WR",
+  fantasyPositions: ["WR"],
+  team: "LAR",
+  number: 17,
+  age: 25,
+  height: "6'2\"",
+  weight: "212",
+  college: "BYU",
+  yearsExperience: 3,
+  status: "Active",
+  injuryStatus: null,
+  injuryBodyPart: null,
+  injuryStartDate: null,
+  practiceParticipation: null,
+  depthChartPosition: "LWR",
+  depthChartOrder: 1,
+  espnId: "4426515",
+  yahooId: "40026",
+  rotowireId: "16888",
+  rotoworldId: "12345",
+};
+
+describe("player research modal", () => {
+  it("renders UDK market data and matched NFLverse production", () => {
+    const html = renderToStaticMarkup(
+      <PlayerResearchModal
+        player={player}
+        scoringPreset="half_ppr"
+        releaseSeason={2026}
+        sources={["UDK", "NFLverse"]}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("Puka Nacua");
+    expect(html).toContain("UDK snapshot");
+    expect(html).toContain("15.9");
+    expect(html).toContain("252.0");
+    expect(html).toContain("NFLverse");
+    expect(html).toContain("Data sources");
+  });
+
+  it("uses explicit unavailable states when NFLverse history is missing", () => {
+    const html = renderToStaticM
+
+[TRUNCATED]
+```
+
+### `apps/draft-room/test/roster-lineup.test.tsx`
+
+```text
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type {
+  DraftPick,
+  PlayerDataRecord,
+  RosterSlotRule,
+} from "@fdi/shared-types";
+import {
+  RosterLineup,
+  buildRosterLineupSlots,
+} from "../src/components/RosterLineup.js";
+
+const rules: RosterSlotRule[] = [
+  { slot: "QB", count: 1, eligiblePositions: ["QB"] },
+  { slot: "RB", count: 2, eligiblePositions: ["RB"] },
+  { slot: "WR", count: 2, eligiblePositions: ["WR"] },
+  { slot: "TE", count: 1, eligiblePositions: ["TE"] },
+  { slot: "FLEX", count: 1, eligiblePositions: ["RB", "WR", "TE"] },
+  {
+    slot: "BENCH",
+    count: 2,
+    eligiblePositions: ["QB", "RB", "WR", "TE", "K", "DST"],
+  },
+];
+
+const players: PlayerDataRecord[] = [
+  player("qb-one", "QB One", "QB", "BUF"),
+  player("rb-one", "RB One", "RB", "NYJ"),
+  player("wr-one", "Ja'Marr Chase", "WR", "CIN"),
+  player("wr-two", "WR Two", "WR", "LAR"),
+  player("wr-three", "WR Three", "WR", "MIN"),
+  player("wr-four", "WR Four", "WR", "SEA"),
+];
+
+const playersById = new Map(
+  players.map((value) => [value.canonical_player_id, value]),
+);
+
+const picks: DraftPick[] = [
+  pick(1, "qb-one", "QB", 1),
+  pick(2, "rb-one", "RB", 1),
+  pick(3, "wr-one", "FLEX", 1),
+];
+
+describe("roster lineup", () => {
+  it("expands every configured starting and bench slot", () => {
+    const slots = buildRosterLineupSlots(rules, picks, playersById);
+
+    expect(slots).toHaveLength(9);
+    expect(slots.map((slot) => `${slot.slot}:${slot.slotIndex}`)).toEqual([
+      "QB:1",
+      "RB:1",
+      "RB:2",
+      "WR:1",
+      "WR:2",
+      "TE:1",
+      "FLEX:1",
+      "BENCH:1",
+      "BENCH:2",
+    ]);
+    expect(slots.find((slot) => slot.slot === "WR")?.pick?.playerId).toBe("wr-one");
+  });
+
+  it("keeps earlier receivers fixed while later receivers fill WR2, FLEX, then bench", () => {
+    const receiverPicks = [
+      pick(1, "wr-one", "WR", 2),
+      pick(2, "wr-two", "WR", 1),
+      pick(3, "wr-three", "WR", 1),
+      pick(4, "wr-four", "WR", 1),
+    ];
+
+    const slots = buildRosterLineupSlots(rules, receiverPicks, playersById);
+
+    expect(findPlayer(slots, "WR", 1)).toBe("wr-one");
+    expect(findPlayer(slots, "WR", 2)).toBe("wr-two");
+    expect(findPlayer(slots, "FLEX", 1)).toBe("wr-three");
+    expect(findPlayer(slots, "BENCH", 1)).toBe("wr-four");
+  });
+
+  it("renders filled players and visible empty lineup spots", () => {
+    const html = renderToStaticMarkup(
+      <RosterLineup
+        rules={rul
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/tests/app.test.tsx`
 
 ```text
@@ -7043,159 +7346,6 @@ function createFixtureZip(): Uint8Array {
     "ADP Analysis/UDK -
 
 [TRUNCATED]
-```
-
-### `packages/draft-engine/tests/fixtures.ts`
-
-```text
-import type {
-  LeagueSettings,
-  PlayerDataRecord,
-  PlayerDataRelease,
-  PlayerPosition,
-  RosterSlotRule,
-} from "@fdi/shared-types";
-
-const ALL_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
-
-export function leagueSettings(overrides: Partial<LeagueSettings> = {}): LeagueSettings {
-  const rounds = overrides.rounds ?? 16;
-  const rosterSlots = overrides.rosterSlots ?? defaultRosterSlots(rounds);
-
-  return {
-    leagueName: "Test League",
-    teamCount: 12,
-    userDraftSlot: 6,
-    rounds,
-    scoring: {
-      preset: "half_ppr",
-      passingYardsPerPoint: 25,
-      passingTouchdown: 4,
-      interception: -2,
-      rushingYardsPerPoint: 10,
-      rushingTouchdown: 6,
-      receivingYardsPerPoint: 10,
-      receivingTouchdown: 6,
-      reception: 0.5,
-      fumbleLost: -2,
-    },
-    rosterSlots,
-    ...overrides,
-  };
-}
-
-export function playerRecord(
-  canonicalPlayerId: string,
-  position: PlayerPosition,
-  displayName: string = canonicalPlayerId,
-): PlayerDataRecord {
-  return {
-    canonical_player_id: canonicalPlayerId,
-    display_name: displayName,
-    position,
-    nfl_team: "TST",
-    bye_week: 7,
-    overall_rank: null,
-    position_rank: null,
-    adp: null,
-    projected_points: null,
-    tier: null,
-    risk_score: null,
-    upside_score: null,
-    availability_status: "active",
-  };
-}
-
-export function playerDataRelease(players: PlayerDataRecord[]): PlayerDataRelease {
-  return {
-    schema_version: "1.0",
-    season: 2026,
-    release_id: "test-release-v1",
-    generated_at: "2026-07-16T12:00:00Z",
-    sources: ["test-fixture"],
-    players,
-  };
-}
-
-export function generatedPlayerRelease(
-  count: number,
-  positions: PlayerPosition[] = ALL_POSITIONS,
-): PlayerDataRelease {
-  return playerDataRelease(
-    Array.from({ length: count }, (_, index) =>
-      playerRecord(`player-${index + 1}`, positions[index % positions.length]!),
-    ),
-  );
-}
-
-export function fullDraftPlayerRelease(settings: LeagueSettings): PlayerDataRelease {
-  const standardRoundPositions: PlayerPosition[] = [
-    "QB",
-    "RB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "RB",
-    "K",
-    "DST",
-    "QB",
-    "RB",
-    "WR",
-    "WR",
-    "TE",
-    "RB",
-    "WR",
-  ];
-
-  const requiredPlayers = settings.teamCount * settings.rounds;
-  const players = Array.from({ length: requiredPlayers + 20 }, (_, index) => {
-    const round = Math.floor(index / settings.teamCount);
-    const position = standardRoundPositions[round] ?? ALL_POSITIONS[index % ALL_
-
-[TRUNCATED]
-```
-
-### `packages/draft-engine/tests/order.test.ts`
-
-```text
-import { describe, expect, it } from "vitest";
-import { createDraftTeams, generateSnakeDraftOrder, validateLeagueSettings } from "@fdi/draft-engine";
-import { leagueSettings } from "./fixtures.js";
-
-describe("snake draft order", () => {
-  it("reverses team order in even rounds", () => {
-    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 2, rounds: 3 });
-    const order = generateSnakeDraftOrder(settings);
-
-    expect(order.map((slot) => slot.draftSlot)).toEqual([1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]);
-    expect(order.map((slot) => slot.overallPick)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-  });
-
-  it("identifies the configured user team", () => {
-    const settings = leagueSettings({ teamCount: 4, userDraftSlot: 3, rounds: 2 });
-    const teams = createDraftTeams(settings, ["A", "B", "Ryan", "D"]);
-
-    expect(teams.filter((team) => team.isUser)).toEqual([
-      { teamId: "team-3", name: "Ryan", draftSlot: 3, isUser: true },
-    ]);
-  });
-
-  it("rejects a user draft slot outside the league", () => {
-    const settings = leagueSettings({ teamCount: 10, userDraftSlot: 11 });
-
-    expect(() => validateLeagueSettings(settings)).toThrow(/userDraftSlot/);
-  });
-
-  it("requires roster capacity to equal the configured rounds", () => {
-    const settings = leagueSettings({
-      rounds: 3,
-      rosterSlots: [{ slot: "BENCH", count: 2, eligiblePositions: ["QB", "RB"] }],
-    });
-
-    expect(() => validateLeagueSettings(settings)).toThrow(/Roster capacity/);
-  });
-});
 ```
 
 ## Open Implementation Notes
