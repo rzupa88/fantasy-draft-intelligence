@@ -1,0 +1,88 @@
+.team-name-fieldset {
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 1rem;
+  background: rgb(9 13 19 / 45%);
+}
+
+.team-name-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.team-name-heading legend {
+  padding: 0;
+  font-weight: 800;
+}
+
+.team-name-heading p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.team-name-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.team-name-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.75rem;
+  background: rgb(12 18 26 / 68%);
+}
+
+.team-name-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.team-name-field > span strong {
+  padding: 0.18rem 0.38rem;
+  border-radius: 999px;
+  color: #06130e;
+  background: #72f1b8;
+  font-size: 0.56rem;
+}
+
+.team-name-field input {
+  width: 100%;
+  min-width: 0;
+}
+
+.team-name-field-user {
+  border-color: rgb(114 241 184 / 55%);
+  background: linear-gradient(145deg, rgb(20 58 45 / 72%), rgb(12 18 26 / 68%));
+}
+
+@media (max-width: 900px) {
+  .team-name-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 580px) {
+  .team-name-heading {
+    display: grid;
+  }
+
+  .team-name-grid {
+    grid-template-columns: 1fr;
+  }
+}
