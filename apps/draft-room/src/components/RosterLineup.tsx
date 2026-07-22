@@ -10,6 +10,7 @@ export interface RosterLineupSlot {
   slot: RosterSlotType;
   slotIndex: number;
   eligiblePositions: PlayerPosition[];
+  ruleOrder: number;
   pick: DraftPick | null;
 }
 
@@ -20,7 +21,7 @@ interface RosterLineupProps {
 }
 
 export function RosterLineup({ rules, picks, playersById }: RosterLineupProps) {
-  const slots = buildRosterLineupSlots(rules, picks);
+  const slots = buildRosterLineupSlots(rules, picks, playersById);
   const starters = slots.filter((slot) => slot.slot !== "BENCH");
   const bench = slots.filter((slot) => slot.slot === "BENCH");
 
@@ -41,14 +42,37 @@ export function RosterLineup({ rules, picks, playersById }: RosterLineupProps) {
 export function buildRosterLineupSlots(
   rules: RosterSlotRule[],
   picks: DraftPick[],
+  playersById: ReadonlyMap<string, PlayerDataRecord>,
 ): RosterLineupSlot[] {
-  const picksBySlot = new Map(
-    picks.map((pick) => [slotKey(pick.rosterSlot, pick.rosterSlotIndex), pick]),
+  const slots = expandRosterSlots(rules);
+  const chronologicalPicks = [...picks].sort(
+    (left, right) => left.overallPick - right.overallPick,
   );
+
+  for (const pick of chronologicalPicks) {
+    const player = playersById.get(pick.playerId);
+    if (player === undefined) continue;
+
+    const openSlot = slots
+      .filter(
+        (slot) =>
+          slot.pick === null && slot.eligiblePositions.includes(player.position),
+      )
+      .sort(compareEligibleSlots)[0];
+
+    if (openSlot !== undefined) {
+      openSlot.pick = pick;
+    }
+  }
+
+  return slots;
+}
+
+function expandRosterSlots(rules: RosterSlotRule[]): RosterLineupSlot[] {
   const slotCounts = new Map<RosterSlotType, number>();
   const slots: RosterLineupSlot[] = [];
 
-  for (const rule of rules) {
+  rules.forEach((rule, ruleOrder) => {
     for (let count = 0; count < rule.count; count += 1) {
       const slotIndex = (slotCounts.get(rule.slot) ?? 0) + 1;
       slotCounts.set(rule.slot, slotIndex);
@@ -56,12 +80,24 @@ export function buildRosterLineupSlots(
         slot: rule.slot,
         slotIndex,
         eligiblePositions: [...rule.eligiblePositions],
-        pick: picksBySlot.get(slotKey(rule.slot, slotIndex)) ?? null,
+        ruleOrder,
+        pick: null,
       });
     }
-  }
+  });
 
   return slots;
+}
+
+function compareEligibleSlots(
+  left: RosterLineupSlot,
+  right: RosterLineupSlot,
+): number {
+  return (
+    left.eligiblePositions.length - right.eligiblePositions.length ||
+    left.ruleOrder - right.ruleOrder ||
+    left.slotIndex - right.slotIndex
+  );
 }
 
 function RosterSection({
