@@ -11,6 +11,7 @@ import "./player-research.css";
 import "./roster-lineup.css";
 import "./decision-explanation.css";
 import "./team-names.css";
+import "./historical-league.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
