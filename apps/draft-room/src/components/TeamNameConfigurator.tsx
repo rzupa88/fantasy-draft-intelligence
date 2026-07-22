@@ -1,4 +1,8 @@
-import type { DraftSetup } from "../draft-factory.js";
+import {
+  createDefaultTeamNames,
+  normalizeTeamNames,
+  type DraftSetup,
+} from "../draft-factory.js";
 
 interface TeamNameConfiguratorProps {
   setup: DraftSetup;
@@ -58,19 +62,4 @@ export function TeamNameConfigurator({ setup, onSetupChange }: TeamNameConfigura
       </div>
     </fieldset>
   );
-}
-
-export function createDefaultTeamNames(teamCount: number, userDraftSlot: number): string[] {
-  return Array.from({ length: teamCount }, (_, index) =>
-    index + 1 === userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
-}
-
-export function normalizeTeamNames(
-  teamNames: string[],
-  teamCount: number,
-  userDraftSlot: number,
-): string[] {
-  const defaults = createDefaultTeamNames(teamCount, userDraftSlot);
-  return Array.from({ length: teamCount }, (_, index) => teamNames[index] ?? defaults[index]!);
 }
