@@ -26,8 +26,15 @@ const rules: RosterSlotRule[] = [
 const players: PlayerDataRecord[] = [
   player("qb-one", "QB One", "QB", "BUF"),
   player("rb-one", "RB One", "RB", "NYJ"),
-  player("wr-one", "WR One", "WR", "LAR"),
+  player("wr-one", "Ja'Marr Chase", "WR", "CIN"),
+  player("wr-two", "WR Two", "WR", "LAR"),
+  player("wr-three", "WR Three", "WR", "MIN"),
+  player("wr-four", "WR Four", "WR", "SEA"),
 ];
+
+const playersById = new Map(
+  players.map((value) => [value.canonical_player_id, value]),
+);
 
 const picks: DraftPick[] = [
   pick(1, "qb-one", "QB", 1),
@@ -37,7 +44,7 @@ const picks: DraftPick[] = [
 
 describe("roster lineup", () => {
   it("expands every configured starting and bench slot", () => {
-    const slots = buildRosterLineupSlots(rules, picks);
+    const slots = buildRosterLineupSlots(rules, picks, playersById);
 
     expect(slots).toHaveLength(9);
     expect(slots.map((slot) => `${slot.slot}:${slot.slotIndex}`)).toEqual([
@@ -51,7 +58,23 @@ describe("roster lineup", () => {
       "BENCH:1",
       "BENCH:2",
     ]);
-    expect(slots.find((slot) => slot.slot === "FLEX")?.pick?.playerId).toBe("wr-one");
+    expect(slots.find((slot) => slot.slot === "WR")?.pick?.playerId).toBe("wr-one");
+  });
+
+  it("keeps earlier receivers fixed while later receivers fill WR2, FLEX, then bench", () => {
+    const receiverPicks = [
+      pick(1, "wr-one", "WR", 2),
+      pick(2, "wr-two", "WR", 1),
+      pick(3, "wr-three", "WR", 1),
+      pick(4, "wr-four", "WR", 1),
+    ];
+
+    const slots = buildRosterLineupSlots(rules, receiverPicks, playersById);
+
+    expect(findPlayer(slots, "WR", 1)).toBe("wr-one");
+    expect(findPlayer(slots, "WR", 2)).toBe("wr-two");
+    expect(findPlayer(slots, "FLEX", 1)).toBe("wr-three");
+    expect(findPlayer(slots, "BENCH", 1)).toBe("wr-four");
   });
 
   it("renders filled players and visible empty lineup spots", () => {
@@ -59,7 +82,7 @@ describe("roster lineup", () => {
       <RosterLineup
         rules={rules}
         picks={picks}
-        playersById={new Map(players.map((value) => [value.canonical_player_id, value]))}
+        playersById={playersById}
       />,
     );
 
@@ -67,11 +90,21 @@ describe("roster lineup", () => {
     expect(html).toContain("Bench");
     expect(html).toContain("QB One");
     expect(html).toContain("RB One");
-    expect(html).toContain("WR One");
+    expect(html).toContain("Ja&#x27;Marr Chase");
     expect(html).toContain("Empty");
     expect(html).toContain("roster-lineup-slot-flex");
   });
 });
+
+function findPlayer(
+  slots: ReturnType<typeof buildRosterLineupSlots>,
+  slot: DraftPick["rosterSlot"],
+  slotIndex: number,
+): string | undefined {
+  return slots.find(
+    (candidate) => candidate.slot === slot && candidate.slotIndex === slotIndex,
+  )?.pick?.playerId;
+}
 
 function player(
   id: string,
