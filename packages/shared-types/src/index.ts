@@ -84,6 +84,7 @@ export interface PlayerDataRecord {
   risk_score: number | null;
   upside_score: number | null;
   availability_status: string | null;
+  outlook?: string | null;
   nflverse_player_id?: string | null;
   prior_season_stats?: PlayerSeasonHistory | null;
 }
@@ -208,6 +209,9 @@ function assertPlayerRecord(value: unknown, index: number): asserts value is Pla
   assertNullableNumber(value.upside_score, `players[${index}].upside_score`);
   assertNullableString(value.availability_status, `players[${index}].availability_status`);
 
+  if ("outlook" in value) {
+    assertNullableString(value.outlook, `players[${index}].outlook`);
+  }
   if ("nflverse_player_id" in value) {
     assertNullableString(value.nflverse_player_id, `players[${index}].nflverse_player_id`);
   }

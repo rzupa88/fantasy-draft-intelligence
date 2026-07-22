@@ -9,6 +9,7 @@ import {
 import type { DraftState } from "@fdi/shared-types";
 import { DraftWorkspace } from "./components/DraftWorkspace.js";
 import { LeagueDraftBoard } from "./components/LeagueDraftBoard.js";
+import { PlayerResearchModal } from "./components/PlayerResearchModal.js";
 import { RecoverySetupScreen } from "./components/RecoverySetupScreen.js";
 import {
   DEFAULT_DRAFT_SETUP,
@@ -36,6 +37,11 @@ import {
   parseUdkZip,
   type UdkImportPackage,
 } from "./udk-importer.js";
+import {
+  enrichReleaseWithUdkOutlooks,
+  extractUdkOutlooks,
+  type UdkOutlookMap,
+} from "./udk-outlook.js";
 
 export function App() {
   const [initialRecovery] = useState<DraftState | null>(() => loadDraftRecovery());
@@ -43,11 +49,13 @@ export function App() {
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
+  const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
   const [bundledHistory, setBundledHistory] = useState<NflverseHistoryRelease | null>(null);
   const [historyRelease, setHistoryRelease] = useState<NflverseHistoryRelease | null>(null);
   const [historyFilename, setHistoryFilename] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [selectedResearchPlayerId, setSelectedResearchPlayerId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(
     initialRecovery === null ? null : "Autosaved draft restored on this device.",
   );
@@ -56,13 +64,17 @@ export function App() {
     if (udkPackage === null) {
       return null;
     }
-    return buildUdkPlayerDataRelease(udkPackage, {
+    const build = buildUdkPlayerDataRelease(udkPackage, {
       scoring: createScoringSettings(setup.scoringPreset),
       adpTeamCount: setup.teamCount,
       adpSource: setup.adpSource,
       generatedAt: new Date().toISOString(),
     });
-  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkPackage]);
+    return {
+      ...build,
+      release: enrichReleaseWithUdkOutlooks(build.release, udkOutlooks),
+    };
+  }, [setup.adpSource, setup.scoringPreset, setup.teamCount, udkOutlooks, udkPackage]);
 
   const historyBuild = useMemo(() => {
     if (udkBuild === null || historyRelease === null) {
@@ -81,6 +93,9 @@ export function App() {
       ),
     [draftState],
   );
+
+  const selectedResearchPlayer =
+    selectedResearchPlayerId === null ? null : activePlayersById.get(selectedResearchPlayerId) ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -109,6 +124,35 @@ export function App() {
     saveDraftRecovery(draftState);
     setRecoveredDraft(draftState);
   }, [draftState]);
+
+  useEffect(() => {
+    if (draftState === null) return;
+
+    const handlePlayerNameClick = (event: MouseEvent): void => {
+      const target = event.target instanceof Element ? event.target : null;
+      const playerNameTarget = target?.closest(
+        ".player-identity strong, .recommendation-title-row h3, .roster-row strong, .recent-pick-card > strong",
+      );
+      if (playerNameTarget == null) return;
+
+      const playerRow = playerNameTarget.closest<HTMLElement>(".player-row[data-player-id]");
+      const directPlayerId = playerRow?.dataset.playerId;
+      if (directPlayerId !== undefined && activePlayersById.has(directPlayerId)) {
+        setSelectedResearchPlayerId(directPlayerId);
+        return;
+      }
+
+      const displayName = playerNameTarget.textContent?.trim();
+      if (displayName === undefined || displayName.length === 0) return;
+      const player = draftState.playerDataRelease.players.find(
+        (candidate) => candidate.display_name === displayName,
+      );
+      if (player !== undefined) setSelectedResearchPlayerId(player.canonical_player_id);
+    };
+
+    document.addEventListener("click", handlePlayerNameClick);
+    return () => document.removeEventListener("click", handlePlayerNameClick);
+  }, [activePlayersById, draftState]);
 
   function startDraft(): void {
     try {
@@ -142,11 +186,13 @@ export function App() {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const parsed = parseUdkZip(bytes);
       setUdkPackage(parsed);
+      setUdkOutlooks(extractUdkOutlooks(bytes));
       setUdkFilename(file.name);
       setErrorMessage(null);
       setNotice(null);
     } catch (error) {
       setUdkPackage(null);
+      setUdkOutlooks(new Map());
       setUdkFilename(null);
       setErrorMessage(toErrorMessage(error));
     }
@@ -154,6 +200,7 @@ export function App() {
 
   function clearUdkPackage(): void {
     setUdkPackage(null);
+    setUdkOutlooks(new Map());
     setUdkFilename(null);
     setErrorMessage(null);
   }
@@ -295,6 +342,7 @@ export function App() {
 
   function exitDraft(): void {
     setDraftState(null);
+    setSelectedResearchPlayerId(null);
     setNotice(null);
     setErrorMessage(null);
   }
@@ -341,6 +389,15 @@ export function App() {
         onImportDraft={importDraft}
         onExit={exitDraft}
       />
+      {selectedResearchPlayer === null ? null : (
+        <PlayerResearchModal
+          player={selectedResearchPlayer}
+          scoringPreset={draftState.settings.scoring.preset}
+          releaseSeason={draftState.playerDataRelease.season}
+          sources={draftState.playerDataRelease.sources}
+          onClose={() => setSelectedResearchPlayerId(null)}
+        />
+      )}
     </>
   );
 }
