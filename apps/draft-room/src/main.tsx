@@ -9,6 +9,7 @@ import "./nflverse-history.css";
 import "./draft-board.css";
 import "./player-research.css";
 import "./roster-lineup.css";
+import "./decision-explanation.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
