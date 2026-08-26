@@ -7,11 +7,25 @@ import pandas as pd
 
 from packages.data.constants import INTERMEDIATE_DATA_DIR
 from packages.data.io import write_parquet
-from packages.data.validation import assert_unique_key, require_columns
+from packages.data.validation import ValidationError, assert_unique_key, require_columns
 
 PROCESSED_DATA_DIR = Path("data/processed")
 
 FANTASY_POSITIONS = {"QB", "RB", "WR", "TE"}
+WAREHOUSE_KEY_COLUMNS = ["season", "canonical_player_id"]
+WAREHOUSE_REQUIRED_COLUMNS = [
+    "season",
+    "canonical_player_id",
+    "player_name",
+    "normalized_player_name",
+    "position",
+    "team",
+    "games_played",
+    "fantasy_points_per_game",
+    "adp_overall",
+    "adp_pos_rank",
+    "source_adp",
+]
 
 
 def _safe_mode(series: pd.Series):
@@ -44,6 +58,22 @@ def _build_adp_position_rank(adp_df: pd.DataFrame) -> pd.DataFrame:
     adp_df["adp_pos_rank"] = adp_df.groupby(["season", "position"]).cumcount() + 1
 
     return adp_df
+
+
+def _assert_player_reference_coverage(
+    player_reference_df: pd.DataFrame,
+    stats_df: pd.DataFrame,
+) -> None:
+    reference_ids = set(player_reference_df["canonical_player_id"].dropna().astype(str))
+    stats_ids = set(stats_df["canonical_player_id"].dropna().astype(str))
+    missing_ids = sorted(stats_ids - reference_ids)
+
+    if missing_ids:
+        sample = missing_ids[:10]
+        raise ValidationError(
+            "Player reference table is missing canonical IDs used by the warehouse: "
+            f"count={len(missing_ids)} sample={sample}"
+        )
 
 
 def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFrame:
@@ -81,17 +111,14 @@ def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFra
 
     if "week" in df.columns:
         games_played_series = (
-            df.groupby(["season", "canonical_player_id"])["week"].nunique().rename("games_played")
+            df.groupby(WAREHOUSE_KEY_COLUMNS)["week"].nunique().rename("games_played")
         )
     else:
-        games_played_series = (
-            df.groupby(["season", "canonical_player_id"]).size().rename("games_played")
-        )
+        games_played_series = df.groupby(WAREHOUSE_KEY_COLUMNS).size().rename("games_played")
 
-    grouped = df.groupby(["season", "canonical_player_id"], dropna=False)
+    grouped = df.groupby(WAREHOUSE_KEY_COLUMNS, dropna=False)
 
     agg_dict: dict[str, str] = {col: "sum" for col in sum_cols}
-
     season_df = grouped.agg(agg_dict).reset_index()
 
     identity_df = grouped.agg(
@@ -103,14 +130,14 @@ def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFra
 
     season_df = season_df.merge(
         identity_df,
-        on=["season", "canonical_player_id"],
+        on=WAREHOUSE_KEY_COLUMNS,
         how="left",
         validate="one_to_one",
     )
 
     season_df = season_df.merge(
         games_played_series.reset_index(),
-        on=["season", "canonical_player_id"],
+        on=WAREHOUSE_KEY_COLUMNS,
         how="left",
         validate="one_to_one",
     )
@@ -126,7 +153,7 @@ def aggregate_nflverse_to_player_season(nflverse_df: pd.DataFrame) -> pd.DataFra
     else:
         season_df["fantasy_points_per_game"] = None
 
-    assert_unique_key(season_df, ["season", "canonical_player_id"])
+    assert_unique_key(season_df, WAREHOUSE_KEY_COLUMNS)
 
     return season_df
 
@@ -143,12 +170,11 @@ def prepare_adp_player_season(adp_df: pd.DataFrame) -> pd.DataFrame:
     ]
     require_columns(adp_df, required)
 
-    df = adp_df.copy()
-    df = _build_adp_position_rank(df)
+    df = _build_adp_position_rank(adp_df.copy())
 
     grouped = (
         df.sort_values(["season", "canonical_player_id", "adp_overall"])
-        .groupby(["season", "canonical_player_id"], dropna=False, as_index=False)
+        .groupby(WAREHOUSE_KEY_COLUMNS, dropna=False, as_index=False)
         .first()
     )
 
@@ -166,7 +192,7 @@ def prepare_adp_player_season(adp_df: pd.DataFrame) -> pd.DataFrame:
     ]
     grouped = grouped[keep_cols]
 
-    assert_unique_key(grouped, ["season", "canonical_player_id"])
+    assert_unique_key(grouped, WAREHOUSE_KEY_COLUMNS)
 
     return grouped
 
@@ -186,6 +212,8 @@ def build_player_season_warehouse(
 
     stats_df = aggregate_nflverse_to_player_season(nflverse_df)
     stats_df = stats_df[stats_df["position"].isin(FANTASY_POSITIONS)].copy()
+    _assert_player_reference_coverage(player_reference_df, stats_df)
+
     adp_season_df = prepare_adp_player_season(adp_df)
     adp_season_df = adp_season_df[adp_season_df["position"].isin(FANTASY_POSITIONS)].copy()
 
@@ -199,13 +227,10 @@ def build_player_season_warehouse(
                 "source_adp",
             ]
         ],
-        on=["season", "canonical_player_id"],
+        on=WAREHOUSE_KEY_COLUMNS,
         how="left",
         validate="one_to_one",
     )
-
-    # Optional: use player reference as fallback identity source if needed later.
-    # For v1 we are not exploding reference rows into the warehouse grain.
 
     preferred_order = [
         "season",
@@ -232,7 +257,8 @@ def build_player_season_warehouse(
         na_position="last",
     ).reset_index(drop=True)
 
-    assert_unique_key(warehouse_df, ["season", "canonical_player_id"])
+    require_columns(warehouse_df, WAREHOUSE_REQUIRED_COLUMNS)
+    assert_unique_key(warehouse_df, WAREHOUSE_KEY_COLUMNS)
 
     return warehouse_df
 
