@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
+from packages.data.validation import ValidationError
 from packages.data.warehouse.player_season import (
+    WAREHOUSE_REQUIRED_COLUMNS,
     aggregate_nflverse_to_player_season,
     build_player_season_warehouse,
     prepare_adp_player_season,
@@ -140,6 +143,8 @@ def test_build_player_season_warehouse_merges_stats_and_adp():
     assert result.loc[0, "fantasy_points_ppr"] == 30.0
     assert result.loc[0, "games_played"] == 2
     assert result.loc[0, "adp_overall"] == 12.0
+    assert set(WAREHOUSE_REQUIRED_COLUMNS).issubset(result.columns)
+    assert not result.duplicated(["season", "canonical_player_id"]).any()
 
 
 def test_build_player_season_warehouse_filters_to_fantasy_positions():
@@ -206,3 +211,43 @@ def test_build_player_season_warehouse_filters_to_fantasy_positions():
 
     assert set(result["position"]) == {"QB"}
     assert list(result["canonical_player_id"]) == ["qb_1"]
+
+
+def test_build_player_season_warehouse_requires_reference_coverage():
+    nflverse_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "week": 1,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "team": "BUF",
+                "fantasy_points": 12.0,
+            }
+        ]
+    )
+    adp_df = pd.DataFrame(
+        [
+            {
+                "season": 2024,
+                "canonical_player_id": "player_1",
+                "player_name": "A Player",
+                "normalized_player_name": "a player",
+                "position": "WR",
+                "adp_overall": 20.0,
+                "source_name": "fantasypros",
+            }
+        ]
+    )
+    player_reference_df = pd.DataFrame(
+        [{"canonical_player_id": "different_player", "normalized_player_name": "different player"}]
+    )
+
+    with pytest.raises(ValidationError, match="missing canonical IDs"):
+        build_player_season_warehouse(
+            nflverse_df=nflverse_df,
+            adp_df=adp_df,
+            player_reference_df=player_reference_df,
+        )
