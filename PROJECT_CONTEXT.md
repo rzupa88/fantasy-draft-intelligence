@@ -269,11 +269,13 @@ test:
 │   ├── api
 │   ├── draft-room
 │   │   ├── public
-│   │   │   └── data
+│   │   │   ├── data
+│   │   │   └── udk
 │   │   ├── src
 │   │   │   ├── components
 │   │   │   ├── App.tsx
 │   │   │   ├── bundled-nflverse-history.ts
+│   │   │   ├── bundled-udk.ts
 │   │   │   ├── demo-data.ts
 │   │   │   ├── draft-board.css
 │   │   │   ├── draft-factory.ts
@@ -3320,6 +3322,12 @@ import {
   loadBundledNflverseHistory,
 } from "./bundled-nflverse-history.js";
 import {
+  BUNDLED_UDK_LABEL,
+  loadBundledUdk,
+  normalizeUdkArchiveFilenames,
+  type BundledUdkData,
+} from "./bundled-udk.js";
+import {
   enrichPlayerDataReleaseWithNflverse,
   importNflverseHistoryFile,
   type NflverseHistoryRelease,
@@ -3340,6 +3348,7 @@ export function App() {
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
+  const [bundledUdk, setBundledUdk] = useState<BundledUdkData | null>(null);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
@@ -3379,15 +3388,6 @@ export function App() {
     () =>
       new Map(
         (draftState?.playerDataRelease.players ?? []).map((player) => [
-          player.canonical_player_id,
-          player,
-        ]),
-      ),
-    [draftState],
-  );
-
-  const selectedResearchPlayer =
-    selectedResearchPlayerId === null ? null : activePlayersById.get(sele
 
 [TRUNCATED]
 ```
@@ -3441,6 +3441,60 @@ function defaultBundledUrl(): string {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+```
+
+### `apps/draft-room/src/bundled-udk.ts`
+
+```text
+import { unzipSync, zipSync } from "fflate";
+import { parseUdkZip, type UdkImportPackage } from "./udk-importer.js";
+import { extractUdkOutlooks, type UdkOutlookMap } from "./udk-outlook.js";
+
+export const BUNDLED_UDK_LABEL = "Bundled UDK 2026";
+
+export interface BundledUdkData {
+  udkPackage: UdkImportPackage;
+  outlooks: UdkOutlookMap;
+}
+
+export async function loadBundledUdk(): Promise<BundledUdkData> {
+  const url = `${import.meta.env.BASE_URL}udk/udk-docs-v2.zip`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Unable to fetch bundled UDK data (${response.status}).`);
+  }
+
+  const sourceBytes = new Uint8Array(await response.arrayBuffer());
+  const normalizedBytes = normalizeUdkArchiveFilenames(sourceBytes);
+  return {
+    udkPackage: parseUdkZip(normalizedBytes),
+    outlooks: extractUdkOutlooks(normalizedBytes),
+  };
+}
+
+export function normalizeUdkArchiveFilenames(bytes: Uint8Array): Uint8Array {
+  const archive = unzipSync(bytes);
+  const normalized: Record<string, Uint8Array> = {};
+  const seenFilenames = new Set<string>();
+
+  for (const [rawPath, fileBytes] of Object.entries(archive)) {
+    const path = rawPath.replaceAll("\\", "/");
+    if (path.endsWith("/") || fileBytes.length === 0) continue;
+
+    const filename = path.split("/").at(-1) ?? path;
+    const normalizedFilename = filename.replace(
+      /^UDK - Position Rankings - /i,
+      "UDK Position Rankings - ",
+    );
+    const dedupeKey = normalizedFilename.toLowerCase();
+    if (seenFilenames.has(dedupeKey)) continue;
+
+    seenFilenames.add(dedupeKey);
+    normalized[normalizedFilename] = fileBytes;
+  }
+
+  return zipSync(normalized, { level: 0 });
 }
 ```
 
@@ -4066,130 +4120,6 @@ export function PlayerResearchModal({
               <span>Bye {player.bye_week ?? "—"}</span>
               {sleeperProfile?.number === null || sleeperProfile?.number === undefined ? null : (
                 <span>
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/RecoverySetupScreen.tsx`
-
-```text
-import { useRef, type ChangeEvent, type FormEvent } from "react";
-import type { DraftState } from "@fdi/shared-types";
-import {
-  SCORING_OPTIONS,
-  TEAM_COUNT_OPTIONS,
-  getStarterCapacity,
-  type DraftSetup,
-  type SupportedScoringPreset,
-} from "../draft-factory.js";
-import type {
-  NflverseEnrichmentReport,
-  NflverseHistoryRelease,
-} from "../nflverse-history.js";
-import {
-  UDK_ADP_SOURCES,
-  type UdkAdpSource,
-  type UdkBuildReport,
-} from "../udk-importer.js";
-import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
-import { RosterConfigurator } from "./RosterConfigurator.js";
-import { UdkImportCard } from "./UdkImportCard.js";
-
-interface RecoverySetupScreenProps {
-  setup: DraftSetup;
-  recoveredDraft: DraftState | null;
-  udkReport: UdkBuildReport | null;
-  udkFilename: string | null;
-  history: NflverseHistoryRelease | null;
-  historyReport: NflverseEnrichmentReport | null;
-  historyFilename: string | null;
-  errorMessage: string | null;
-  onSetupChange: (setup: DraftSetup) => void;
-  onStartDraft: () => void;
-  onResumeDraft: () => void;
-  onDiscardRecovery: () => void;
-  onImportDraft: (file: File) => Promise<boolean>;
-  onImportUdk: (file: File) => Promise<void>;
-  onClearUdk: () => void;
-  onImportHistory: (file: File) => Promise<void>;
-  onClearHistory: () => void;
-}
-
-const ADP_SOURCE_LABELS: Record<UdkAdpSource, string> = {
-  average: "Average market",
-  sleeper: "Sleeper",
-  espn: "ESPN",
-  yahoo: "Yahoo",
-  underdog: "Underdog",
-};
-
-export function RecoverySetupScreen({
-  setup,
-  recoveredDraft,
-  udkReport,
-  udkFilename,
-  history,
-  historyReport,
-  historyFilename,
-  errorMessage,
-  onSetupChange,
-  onStartDraft,
-  onResumeDraft,
-  onDiscardRecovery,
-  onImportDraft,
-  onImportUdk,
-  onClearUdk,
-  onImportHistory,
-  onClearHistory,
-}: RecoverySetupScreenProps) {
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const draftSlots = Array.from({ length: setup.teamCount }, (_, index) => index + 1);
-  const starterCount = getStarterCapacity(setup.rosterCounts);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    onStartDraft();
-  }
-
-  async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (file !== undefined) {
-      await onImportDraft(file);
-    }
-    event.target.value = "";
-  }
-
-  const sourceLabel =
-    udkReport === null
-      ? "Demonstration release"
-      : historyReport === null
-        ? `UDK ${udkReport.season}`
-        : `UDK ${udkReport.season} + NFLverse ${historyReport.priorSeason}`;
-
-  return (
-    <main className="setup-shell">
-      <section className="setup-hero">
-        <div className="brand-mark" aria-hidden="true">
-          FDI
-        </div>
-        <p className="eyebrow">Local-first draft intelligence</p>
-        <h1>Build your draft room.</h1>
-        <p className="setup-lede">
-          Configure the league and roster, load fresh UDK projections and NFLverse history, restore
-          a saved draft, and run the entire snake draft from one laptop.
-        </p>
-
-        <div className="feature-strip" aria-label="Draft room capabilities">
-          <span>UDK projections</span>
-          <span>NFLverse history</span>
-          <span>Custom rosters</span>
-          <span>Automatic recovery</span>
-        </div>
-      </section>
-
-      <section className="setup-card" aria-labelledby="setup-title">
-        <div className="section-heading">
-          <div>
 
 [TRUNCATED]
 ```
@@ -5003,6 +4933,12 @@ import {
   loadBundledNflverseHistory,
 } from "./bundled-nflverse-history.js";
 import {
+  BUNDLED_UDK_LABEL,
+  loadBundledUdk,
+  normalizeUdkArchiveFilenames,
+  type BundledUdkData,
+} from "./bundled-udk.js";
+import {
   enrichPlayerDataReleaseWithNflverse,
   importNflverseHistoryFile,
   type NflverseHistoryRelease,
@@ -5023,6 +4959,7 @@ export function App() {
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
+  const [bundledUdk, setBundledUdk] = useState<BundledUdkData | null>(null);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
@@ -5062,15 +4999,6 @@ export function App() {
     () =>
       new Map(
         (draftState?.playerDataRelease.players ?? []).map((player) => [
-          player.canonical_player_id,
-          player,
-        ]),
-      ),
-    [draftState],
-  );
-
-  const selectedResearchPlayer =
-    selectedResearchPlayerId === null ? null : activePlayersById.get(sele
 
 [TRUNCATED]
 ```
@@ -5124,6 +5052,60 @@ function defaultBundledUrl(): string {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+```
+
+### `apps/draft-room/src/bundled-udk.ts`
+
+```text
+import { unzipSync, zipSync } from "fflate";
+import { parseUdkZip, type UdkImportPackage } from "./udk-importer.js";
+import { extractUdkOutlooks, type UdkOutlookMap } from "./udk-outlook.js";
+
+export const BUNDLED_UDK_LABEL = "Bundled UDK 2026";
+
+export interface BundledUdkData {
+  udkPackage: UdkImportPackage;
+  outlooks: UdkOutlookMap;
+}
+
+export async function loadBundledUdk(): Promise<BundledUdkData> {
+  const url = `${import.meta.env.BASE_URL}udk/udk-docs-v2.zip`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Unable to fetch bundled UDK data (${response.status}).`);
+  }
+
+  const sourceBytes = new Uint8Array(await response.arrayBuffer());
+  const normalizedBytes = normalizeUdkArchiveFilenames(sourceBytes);
+  return {
+    udkPackage: parseUdkZip(normalizedBytes),
+    outlooks: extractUdkOutlooks(normalizedBytes),
+  };
+}
+
+export function normalizeUdkArchiveFilenames(bytes: Uint8Array): Uint8Array {
+  const archive = unzipSync(bytes);
+  const normalized: Record<string, Uint8Array> = {};
+  const seenFilenames = new Set<string>();
+
+  for (const [rawPath, fileBytes] of Object.entries(archive)) {
+    const path = rawPath.replaceAll("\\", "/");
+    if (path.endsWith("/") || fileBytes.length === 0) continue;
+
+    const filename = path.split("/").at(-1) ?? path;
+    const normalizedFilename = filename.replace(
+      /^UDK - Position Rankings - /i,
+      "UDK Position Rankings - ",
+    );
+    const dedupeKey = normalizedFilename.toLowerCase();
+    if (seenFilenames.has(dedupeKey)) continue;
+
+    seenFilenames.add(dedupeKey);
+    normalized[normalizedFilename] = fileBytes;
+  }
+
+  return zipSync(normalized, { level: 0 });
 }
 ```
 
@@ -5340,116 +5322,6 @@ export function DraftRoom({
           <div>
             <p className="eyebrow">Fantasy Draft Intelligence</p>
             <h1>{state.settings.leagueName}</h1>
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/DraftWorkspace.tsx`
-
-```text
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
-import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
-import { recommendPlayers } from "@fdi/recommendation-engine";
-import type {
-  DraftPick,
-  DraftState,
-  PlayerDataRecord,
-  PlayerPosition,
-  RosterSlotType,
-} from "@fdi/shared-types";
-import { CorrectionDialog } from "./CorrectionDialog.js";
-import { RosterLineup } from "./RosterLineup.js";
-
-interface DraftWorkspaceProps {
-  state: DraftState;
-  notice: string | null;
-  onDraftPlayer: (playerId: string) => void;
-  onUndo: () => void;
-  onExport: () => void;
-  onExit: () => void;
-  onCorrectPick: (overallPick: number, playerId: string) => boolean;
-  onImportDraft: (file: File) => Promise<boolean>;
-}
-
-type PositionFilter = "ALL" | PlayerPosition;
-
-const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
-const ROSTER_SLOT_ORDER: RosterSlotType[] = [
-  "QB",
-  "RB",
-  "WR",
-  "TE",
-  "FLEX",
-  "SUPERFLEX",
-  "K",
-  "DST",
-  "BENCH",
-];
-
-export function DraftWorkspace({
-  state,
-  notice,
-  onDraftPlayer,
-  onUndo,
-  onExport,
-  onExit,
-  onCorrectPick,
-  onImportDraft,
-}: DraftWorkspaceProps) {
-  const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const importInputRef = useRef<HTMLInputElement>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
-  const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [correctionPickNumber, setCorrectionPickNumber] = useState<number | null>(null);
-
-  const currentSlot = getCurrentOrderSlot(state);
-  const currentTeam =
-    currentSlot === null
-      ? null
-      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
-  const isUserOnClock = currentTeam?.isUser ?? false;
-  const rosters = useMemo(() => buildRosterAssignments(state), [state]);
-  const playersById = useMemo(
-    () =>
-      new Map(
-        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
-      ),
-    [state.playerDataRelease],
-  );
-
-  const recommendationResult = useMemo(() => {
-    if (state.availablePlayerIds.length === 0) {
-      return null;
-    }
-    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
-  }, [state, userTeam.teamId]);
-
-  const filteredPlayers = useMemo(() => {
-    const available = new Set(state.availablePlayerIds);
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return state.playerDataRelease.players
-      .filter((player) => available.has(player.canonical_player_id))
-      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
-      .filter((player) => {
-        if (normalizedQuery.length === 0) {
-          return true;
-        }
-        return [player.display_name, player.position, player.nfl_team ?? ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery);
-      })
-      .sort(compareAvailablePlayers)
-      .slice(0, 100);
-  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
-
-  useEffect(() => {
-    if (!filteredPlayers.some((player) => player.canonical_player_id === selectedPlayerId)) {
-      setSelectedPlayerId(filteredPlayers[0]?.canonical_player_id ?? null);
 
 [TRUNCATED]
 ```
@@ -6025,8 +5897,8 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
           <p className="eyebrow">Player data</p>
           <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
           <p>
-            Choose the UDK ZIP, or select all exported CSV and PDF files together. The files are
-            recognized locally, combined in memory when needed, and never sent to a server.
+            The current UDK package is bundled with the app and loads automatically. You can still
+            replace it with a newer UDK ZIP or exported CSV set at any time.
           </p>
         </div>
         <div className="udk-import-actions">
@@ -6035,7 +5907,7 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
           </button>
           {report === null ? null : (
             <button className="ghost-button" type="button" onClick={onClear}>
-              Use demo data
+              Restore bundled UDK
             </button>
           )}
           <input
@@ -6052,8 +5924,8 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
 
       {report === null ? (
         <div className="udk-empty-state">
-          <strong>Demo player data is active.</strong>
-          <span>Import a ZIP or select the loose UDK exports to replace the fictional pool.</span>
+          <strong>Player data is still loading.</strong>
+          <span>The bundled UDK package will become active automatically when it is ready.</span>
         </div>
       ) : (
         <div className="udk-preview" role="status">
@@ -6066,7 +5938,7 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
             <Metric label="Projected" value={report.projectedPlayerCount} />
             <Metric label="All 3 analysts" value={report.allAnalystProjectionCount} />
             <Metric label="Selected ADP" value={report.selectedAdpPlayerCount} />
-            <Metric label="Files recognized" value={report.recognizedFileCount} /
+            <Metric label="Files recognized" value={report.recognizedFileCount} />
 
 [TRUNCATED]
 ```
