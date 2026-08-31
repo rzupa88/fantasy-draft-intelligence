@@ -19,6 +19,7 @@ export interface DraftSetup {
   leagueName: string;
   teamCount: number;
   userDraftSlot: number;
+  teamNames: string[];
   rounds: number;
   scoringPreset: SupportedScoringPreset;
   adpSource: UdkAdpSource;
@@ -58,10 +59,29 @@ export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
   BENCH: 7,
 };
 
+export function createDefaultTeamNames(teamCount: number, userDraftSlot: number): string[] {
+  return Array.from({ length: teamCount }, (_, index) =>
+    index + 1 === userDraftSlot ? "My Team" : `Team ${index + 1}`,
+  );
+}
+
+export function normalizeTeamNames(
+  teamNames: string[],
+  teamCount: number,
+  userDraftSlot: number,
+): string[] {
+  const defaults = createDefaultTeamNames(teamCount, userDraftSlot);
+  return Array.from({ length: teamCount }, (_, index) => {
+    const name = teamNames[index]?.trim();
+    return name === undefined || name.length === 0 ? defaults[index]! : name;
+  });
+}
+
 export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   leagueName: "Friday Night League",
   teamCount: 12,
   userDraftSlot: 6,
+  teamNames: createDefaultTeamNames(12, 6),
   rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
   adpSource: "sleeper",
@@ -88,9 +108,7 @@ export function createDraftFromSetup(
 ): DraftState {
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
-  const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
+  const teamNames = normalizeTeamNames(setup.teamNames, setup.teamCount, setup.userDraftSlot);
 
   return createDraftState({
     draftId,
@@ -164,6 +182,7 @@ function validateDraftSetup(setup: DraftSetup): void {
   if (!Number.isInteger(setup.userDraftSlot) || setup.userDraftSlot < 1 || setup.userDraftSlot > setup.teamCount) {
     throw new RangeError("Draft slot must be within the configured league size.");
   }
+  if (!Array.isArray(setup.teamNames)) throw new RangeError("Team names must be provided as a list.");
   for (const option of ROSTER_SLOT_OPTIONS) {
     const count = setup.rosterCounts[option.slot];
     if (!Number.isInteger(count) || count < option.min || count > option.max) {

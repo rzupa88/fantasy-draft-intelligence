@@ -4,6 +4,7 @@ import {
   SCORING_OPTIONS,
   TEAM_COUNT_OPTIONS,
   getStarterCapacity,
+  normalizeTeamNames,
   type DraftSetup,
   type SupportedScoringPreset,
 } from "../draft-factory.js";
@@ -18,6 +19,7 @@ import {
 } from "../udk-importer.js";
 import { NflverseHistoryCard } from "./NflverseHistoryCard.js";
 import { RosterConfigurator } from "./RosterConfigurator.js";
+import { TeamNameConfigurator } from "./TeamNameConfigurator.js";
 import { UdkImportCard } from "./UdkImportCard.js";
 
 interface RecoverySetupScreenProps {
@@ -78,9 +80,7 @@ export function RecoverySetupScreen({
 
   async function handleImport(event: ChangeEvent<HTMLInputElement>): Promise<void> {
     const file = event.target.files?.[0];
-    if (file !== undefined) {
-      await onImportDraft(file);
-    }
+    if (file !== undefined) await onImportDraft(file);
     event.target.value = "";
   }
 
@@ -94,20 +94,17 @@ export function RecoverySetupScreen({
   return (
     <main className="setup-shell">
       <section className="setup-hero">
-        <div className="brand-mark" aria-hidden="true">
-          FDI
-        </div>
+        <div className="brand-mark" aria-hidden="true">FDI</div>
         <p className="eyebrow">Local-first draft intelligence</p>
         <h1>Build your draft room.</h1>
         <p className="setup-lede">
-          Configure the league and roster, load fresh UDK projections and NFLverse history, restore
-          a saved draft, and run the entire snake draft from one laptop.
+          Configure the league and roster, name every draft slot, load fresh UDK projections and
+          NFLverse history, restore a saved draft, and run the entire snake draft from one laptop.
         </p>
-
         <div className="feature-strip" aria-label="Draft room capabilities">
           <span>UDK projections</span>
           <span>NFLverse history</span>
-          <span>Custom rosters</span>
+          <span>Named teams</span>
           <span>Automatic recovery</span>
         </div>
       </section>
@@ -118,11 +115,7 @@ export function RecoverySetupScreen({
             <p className="eyebrow">Draft control</p>
             <h2 id="setup-title">League setup</h2>
           </div>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => importInputRef.current?.click()}
-          >
+          <button className="secondary-button" type="button" onClick={() => importInputRef.current?.click()}>
             Import backup
           </button>
           <input
@@ -140,17 +133,12 @@ export function RecoverySetupScreen({
               <p className="eyebrow">Autosaved draft found</p>
               <h3 id="recovery-title">{recoveredDraft.settings.leagueName}</h3>
               <p>
-                {recoveredDraft.picks.length} of {recoveredDraft.order.length} picks recorded ·
-                revision {recoveredDraft.revision}
+                {recoveredDraft.picks.length} of {recoveredDraft.order.length} picks recorded · revision {recoveredDraft.revision}
               </p>
             </div>
             <div className="recovery-actions">
-              <button className="primary-button" type="button" onClick={onResumeDraft}>
-                Resume draft
-              </button>
-              <button className="ghost-button" type="button" onClick={onDiscardRecovery}>
-                Discard save
-              </button>
+              <button className="primary-button" type="button" onClick={onResumeDraft}>Resume draft</button>
+              <button className="ghost-button" type="button" onClick={onDiscardRecovery}>Discard save</button>
             </div>
           </section>
         )}
@@ -160,12 +148,7 @@ export function RecoverySetupScreen({
             <span>League name</span>
             <input
               value={setup.leagueName}
-              onChange={(event) =>
-                onSetupChange({
-                  ...setup,
-                  leagueName: event.target.value,
-                })
-              }
+              onChange={(event) => onSetupChange({ ...setup, leagueName: event.target.value })}
               placeholder="Friday Night League"
               autoComplete="off"
             />
@@ -177,17 +160,17 @@ export function RecoverySetupScreen({
               value={setup.teamCount}
               onChange={(event) => {
                 const teamCount = Number(event.target.value);
+                const userDraftSlot = Math.min(setup.userDraftSlot, teamCount);
                 onSetupChange({
                   ...setup,
                   teamCount,
-                  userDraftSlot: Math.min(setup.userDraftSlot, teamCount),
+                  userDraftSlot,
+                  teamNames: normalizeTeamNames(setup.teamNames, teamCount, userDraftSlot),
                 });
               }}
             >
               {TEAM_COUNT_OPTIONS.map((teamCount) => (
-                <option key={teamCount} value={teamCount}>
-                  {teamCount} teams
-                </option>
+                <option key={teamCount} value={teamCount}>{teamCount} teams</option>
               ))}
             </select>
           </label>
@@ -196,17 +179,10 @@ export function RecoverySetupScreen({
             <span>Your draft slot</span>
             <select
               value={setup.userDraftSlot}
-              onChange={(event) =>
-                onSetupChange({
-                  ...setup,
-                  userDraftSlot: Number(event.target.value),
-                })
-              }
+              onChange={(event) => onSetupChange({ ...setup, userDraftSlot: Number(event.target.value) })}
             >
               {draftSlots.map((slot) => (
-                <option key={slot} value={slot}>
-                  Pick {slot}
-                </option>
+                <option key={slot} value={slot}>Pick {slot}</option>
               ))}
             </select>
           </label>
@@ -217,15 +193,15 @@ export function RecoverySetupScreen({
             <small>{setup.teamCount * setup.rounds} total picks</small>
           </div>
 
+          <TeamNameConfigurator setup={setup} onSetupChange={onSetupChange} />
+
           <fieldset className="scoring-fieldset field-wide">
             <legend>Scoring</legend>
             <div className="scoring-grid">
               {SCORING_OPTIONS.map((option) => (
                 <label
                   key={option.value}
-                  className={`scoring-option ${
-                    setup.scoringPreset === option.value ? "scoring-option-active" : ""
-                  }`}
+                  className={`scoring-option ${setup.scoringPreset === option.value ? "scoring-option-active" : ""}`}
                 >
                   <input
                     type="radio"
@@ -233,10 +209,7 @@ export function RecoverySetupScreen({
                     value={option.value}
                     checked={setup.scoringPreset === option.value}
                     onChange={(event) =>
-                      onSetupChange({
-                        ...setup,
-                        scoringPreset: event.target.value as SupportedScoringPreset,
-                      })
+                      onSetupChange({ ...setup, scoringPreset: event.target.value as SupportedScoringPreset })
                     }
                   />
                   <strong>{option.label}</strong>
@@ -250,34 +223,19 @@ export function RecoverySetupScreen({
             <span>ADP market</span>
             <select
               value={setup.adpSource}
-              onChange={(event) =>
-                onSetupChange({
-                  ...setup,
-                  adpSource: event.target.value as UdkAdpSource,
-                })
-              }
+              onChange={(event) => onSetupChange({ ...setup, adpSource: event.target.value as UdkAdpSource })}
             >
               {UDK_ADP_SOURCES.map((source) => (
-                <option key={source} value={source}>
-                  {ADP_SOURCE_LABELS[source]}
-                </option>
+                <option key={source} value={source}>{ADP_SOURCE_LABELS[source]}</option>
               ))}
             </select>
             <small>
-              UDK round-and-pick values are converted using this league&apos;s {setup.teamCount}-team
-              size.
+              UDK round-and-pick values are converted using this league&apos;s {setup.teamCount}-team size.
             </small>
           </label>
 
           <RosterConfigurator setup={setup} onSetupChange={onSetupChange} />
-
-          <UdkImportCard
-            report={udkReport}
-            filename={udkFilename}
-            onImport={onImportUdk}
-            onClear={onClearUdk}
-          />
-
+          <UdkImportCard report={udkReport} filename={udkFilename} onImport={onImportUdk} onClear={onClearUdk} />
           <NflverseHistoryCard
             history={history}
             report={historyReport}
@@ -287,35 +245,19 @@ export function RecoverySetupScreen({
           />
 
           <div className="setup-summary field-wide">
-            <div>
-              <span>Starting lineup</span>
-              <strong>{starterCount} active roster spots</strong>
-            </div>
-            <div>
-              <span>Bench</span>
-              <strong>{setup.rosterCounts.BENCH} reserve spots</strong>
-            </div>
+            <div><span>Starting lineup</span><strong>{starterCount} active roster spots</strong></div>
+            <div><span>Bench</span><strong>{setup.rosterCounts.BENCH} reserve spots</strong></div>
             <div>
               <span>Draft size</span>
-              <strong>
-                {setup.rounds} rounds · {setup.teamCount * setup.rounds} selections
-              </strong>
+              <strong>{setup.rounds} rounds · {setup.teamCount * setup.rounds} selections</strong>
             </div>
-            <div>
-              <span>Player source</span>
-              <strong>{sourceLabel}</strong>
-            </div>
+            <div><span>Player source</span><strong>{sourceLabel}</strong></div>
           </div>
 
-          {errorMessage === null ? null : (
-            <p className="form-error" role="alert">
-              {errorMessage}
-            </p>
-          )}
+          {errorMessage === null ? null : <p className="form-error" role="alert">{errorMessage}</p>}
 
           <button className="primary-button field-wide" type="submit">
-            Start new draft
-            <span aria-hidden="true">→</span>
+            Start new draft <span aria-hidden="true">→</span>
           </button>
         </form>
       </section>
