@@ -11,10 +11,15 @@ test("supports keyboard drafting, recovery, correction, and undo", async ({ page
   await page.getByRole("button", { name: "Start new draft" }).click();
 
   await expect(page.getByRole("heading", { name: "Keyboard League" })).toBeVisible();
+  const firstPlayerName = (
+    await page.locator(".player-row .player-identity strong").first().textContent()
+  )?.trim();
+  expect(firstPlayerName).toBeTruthy();
+
   await page.keyboard.press("/");
   const search = page.getByPlaceholder("Search player, team, position…");
   await expect(search).toBeFocused();
-  await search.fill("Avery");
+  await search.fill(firstPlayerName!);
   await expect(page.locator(".player-row-selected").first()).toBeVisible();
 
   await page.keyboard.press("Enter");
@@ -155,7 +160,7 @@ test("imports UDK and NFLverse releases into one stable player pool", async ({ p
   );
 
   await page.getByTestId("nflverse-history-input").setInputFiles(historyPath);
-  await expect(page.getByText("NFLverse 2025 history is ready.")).toBeVisible();
+  await expect(page.getByText("NFLverse 2025 matched")).toBeVisible();
   await page.getByTestId("udk-file-input").setInputFiles(zipPath);
   await expect(page.getByText("UDK 2026 ready")).toBeVisible();
   await expect(page.getByText("NFLverse 2025 matched")).toBeVisible();

@@ -38,8 +38,8 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
           <p className="eyebrow">Player data</p>
           <h3 id="udk-import-title">Fantasy Footballers UDK package</h3>
           <p>
-            Choose the UDK ZIP, or select all exported CSV and PDF files together. The files are
-            recognized locally, combined in memory when needed, and never sent to a server.
+            The current UDK package is bundled with the app and loads automatically. You can still
+            replace it with a newer UDK ZIP or exported CSV set at any time.
           </p>
         </div>
         <div className="udk-import-actions">
@@ -48,7 +48,7 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
           </button>
           {report === null ? null : (
             <button className="ghost-button" type="button" onClick={onClear}>
-              Use demo data
+              Restore bundled UDK
             </button>
           )}
           <input
@@ -65,8 +65,8 @@ export function UdkImportCard({ report, filename, onImport, onClear }: UdkImport
 
       {report === null ? (
         <div className="udk-empty-state">
-          <strong>Demo player data is active.</strong>
-          <span>Import a ZIP or select the loose UDK exports to replace the fictional pool.</span>
+          <strong>Player data is still loading.</strong>
+          <span>The bundled UDK package will become active automatically when it is ready.</span>
         </div>
       ) : (
         <div className="udk-preview" role="status">

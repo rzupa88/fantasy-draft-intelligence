@@ -28,6 +28,12 @@ import {
   loadBundledNflverseHistory,
 } from "./bundled-nflverse-history.js";
 import {
+  BUNDLED_UDK_LABEL,
+  loadBundledUdk,
+  normalizeUdkArchiveFilenames,
+  type BundledUdkData,
+} from "./bundled-udk.js";
+import {
   enrichPlayerDataReleaseWithNflverse,
   importNflverseHistoryFile,
   type NflverseHistoryRelease,
@@ -48,6 +54,7 @@ export function App() {
   const [setup, setSetup] = useState<DraftSetup>(DEFAULT_DRAFT_SETUP);
   const [draftState, setDraftState] = useState<DraftState | null>(initialRecovery);
   const [recoveredDraft, setRecoveredDraft] = useState<DraftState | null>(initialRecovery);
+  const [bundledUdk, setBundledUdk] = useState<BundledUdkData | null>(null);
   const [udkPackage, setUdkPackage] = useState<UdkImportPackage | null>(null);
   const [udkOutlooks, setUdkOutlooks] = useState<UdkOutlookMap>(new Map());
   const [udkFilename, setUdkFilename] = useState<string | null>(null);
@@ -96,6 +103,27 @@ export function App() {
 
   const selectedResearchPlayer =
     selectedResearchPlayerId === null ? null : activePlayersById.get(selectedResearchPlayerId) ?? null;
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadBundledUdk()
+      .then((data) => {
+        if (cancelled) return;
+        setBundledUdk(data);
+        setUdkPackage((current) => current ?? data.udkPackage);
+        setUdkOutlooks((current) => (current.size === 0 ? data.outlooks : current));
+        setUdkFilename((current) => current ?? BUNDLED_UDK_LABEL);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setErrorMessage((current) =>
+          current ?? `Bundled UDK failed to load: ${toErrorMessage(error)}`,
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,9 +212,10 @@ export function App() {
   async function importUdkPackage(file: File): Promise<void> {
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
-      const parsed = parseUdkZip(bytes);
+      const normalizedBytes = normalizeUdkArchiveFilenames(bytes);
+      const parsed = parseUdkZip(normalizedBytes);
       setUdkPackage(parsed);
-      setUdkOutlooks(extractUdkOutlooks(bytes));
+      setUdkOutlooks(extractUdkOutlooks(normalizedBytes));
       setUdkFilename(file.name);
       setErrorMessage(null);
       setNotice(null);
@@ -199,9 +228,9 @@ export function App() {
   }
 
   function clearUdkPackage(): void {
-    setUdkPackage(null);
-    setUdkOutlooks(new Map());
-    setUdkFilename(null);
+    setUdkPackage(bundledUdk?.udkPackage ?? null);
+    setUdkOutlooks(bundledUdk?.outlooks ?? new Map());
+    setUdkFilename(bundledUdk === null ? null : BUNDLED_UDK_LABEL);
     setErrorMessage(null);
   }
 
