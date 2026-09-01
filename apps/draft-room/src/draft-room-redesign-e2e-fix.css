@@ -1,0 +1,72 @@
+@media (min-width: 901px) {
+  .recent-picks-panel {
+    position: fixed;
+    top: 5.35rem;
+    right: 0.8rem;
+    z-index: 59;
+    display: block;
+    width: auto;
+    max-width: 18rem;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .recent-picks-panel > .panel-heading,
+  .recent-pick-card:not(:first-child),
+  .recent-pick-card .position-pill,
+  .recent-pick-card > span:not(.recent-pick-number) {
+    display: none;
+  }
+
+  .recent-picks-grid {
+    display: block;
+  }
+
+  .recent-picks-panel .recent-empty {
+    display: none;
+  }
+
+  .recent-pick-card:first-child {
+    display: flex;
+    min-height: 2.2rem;
+    padding: 0.35rem 0.45rem;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid #263857;
+    border-radius: 0.55rem;
+    background: rgb(10 20 38 / 94%);
+    box-shadow: 0 8px 22px rgb(0 0 0 / 22%);
+  }
+
+  .recent-pick-card:first-child .recent-pick-number {
+    color: #7e90b1;
+    font-size: 0.58rem;
+    font-weight: 800;
+  }
+
+  .recent-pick-card:first-child strong {
+    max-width: 8.5rem;
+    overflow: hidden;
+    font-size: 0.65rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .recent-pick-card:first-child .correct-pick-button {
+    min-width: auto;
+    padding: 0.3rem 0.45rem;
+    border: 1px solid #30425f;
+    border-radius: 0.45rem;
+    background: #14223a;
+    color: #c9d6eb;
+    font-size: 0.58rem;
+  }
+
+  .notice-banner + .draft-workspace ~ .recent-picks-panel {
+    top: 7.9rem;
+  }
+}
