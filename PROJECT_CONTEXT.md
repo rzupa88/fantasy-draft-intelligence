@@ -400,7 +400,8 @@ test:
 │   │   ├── tests
 │   │   │   ├── evaluation.test.ts
 │   │   │   ├── fixtures.ts
-│   │   │   └── recommendation.test.ts
+│   │   │   ├── recommendation.test.ts
+│   │   │   └── return-probability.test.ts
 │   │   ├── package.json
 │   │   └── tsconfig.json
 │   ├── shared
