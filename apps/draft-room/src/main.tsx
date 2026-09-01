@@ -11,6 +11,8 @@ import "./player-research.css";
 import "./roster-lineup.css";
 import "./mobile-draft-drawer.css";
 import "./desktop-draft-drawer.css";
+import "./draft-room-redesign.css";
+import "./draft-room-redesign-e2e-fix.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
