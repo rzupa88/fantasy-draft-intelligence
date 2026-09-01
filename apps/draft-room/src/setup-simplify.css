@@ -1,0 +1,255 @@
+/* Simplified start screen: the app bundles its player data, so setup should focus only on league structure. */
+body:has(.setup-shell) {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.setup-shell {
+  width: min(1120px, calc(100% - 2rem));
+  min-height: 100vh;
+  padding: 2rem 0 4rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+  gap: 1.25rem;
+}
+
+.setup-hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.85rem 1rem;
+  padding: 0.25rem 0.2rem;
+}
+
+.setup-hero .brand-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+  margin: 0;
+  border-radius: 0.9rem;
+  grid-row: 1 / 3;
+  font-size: 0.82rem;
+}
+
+.setup-hero .eyebrow,
+.setup-hero .feature-strip {
+  display: none;
+}
+
+.setup-hero h1 {
+  max-width: none;
+  margin: 0;
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  line-height: 1;
+}
+
+.setup-lede {
+  max-width: 48rem;
+  margin: 0;
+  color: #aebbd0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.setup-card {
+  padding: 1.35rem;
+}
+
+.setup-card > .section-heading {
+  margin-bottom: 1rem;
+}
+
+.setup-card > .section-heading .eyebrow,
+.setup-card > .section-heading > .secondary-button,
+.setup-form > .field-wide:first-child,
+.setup-form > label.field:nth-of-type(3),
+.draft-length-field,
+.adp-market-field,
+.udk-import-card,
+.nflverse-history-card,
+.setup-summary {
+  display: none !important;
+}
+
+.setup-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.setup-form > label.field:nth-of-type(2) {
+  grid-column: 1 / -1;
+  max-width: 18rem;
+}
+
+.scoring-fieldset {
+  margin: 0;
+}
+
+.scoring-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.scoring-option {
+  min-height: 4.4rem;
+  padding: 0.75rem;
+}
+
+.scoring-option span {
+  font-size: 0.68rem;
+}
+
+.team-order-fieldset,
+.roster-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0.9rem;
+  border: 1px solid var(--border-soft);
+  border-radius: 0.9rem;
+  background: rgb(9 13 19 / 52%);
+}
+
+.team-order-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.team-order-row {
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: #0b111a;
+}
+
+.team-order-row-user {
+  border-color: rgb(114 241 184 / 55%);
+  background: rgb(16 45 36 / 48%);
+}
+
+.draft-slot-badge {
+  display: grid;
+  text-align: center;
+  gap: 0.05rem;
+}
+
+.draft-slot-badge span {
+  color: var(--muted);
+  font-size: 0.52rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.draft-slot-badge strong {
+  font-size: 0.95rem;
+}
+
+.team-name-field input {
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  color: var(--text);
+  background: #111a28;
+}
+
+.my-team-control {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #c8d4e7;
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.team-order-actions {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.team-order-actions button {
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  color: var(--text);
+  background: var(--surface-strong);
+  cursor: pointer;
+}
+
+.team-order-actions button:disabled {
+  opacity: 0.3;
+}
+
+.team-order-note {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.roster-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.roster-slot-card {
+  padding: 0.6rem;
+  gap: 0.45rem;
+}
+
+.roster-slot-copy small {
+  display: none;
+}
+
+.roster-capacity {
+  margin-top: 0.65rem;
+}
+
+.setup-form > .primary-button {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 5;
+  min-height: 3.3rem;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 38%);
+}
+
+@media (max-width: 900px) {
+  .setup-shell {
+    width: min(100% - 1rem, 760px);
+    padding-top: 1rem;
+  }
+
+  .team-order-list {
+    grid-template-columns: 1fr;
+  }
+
+  .roster-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .setup-card {
+    padding: 0.9rem;
+  }
+
+  .setup-form,
+  .scoring-grid,
+  .roster-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-order-row {
+    grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  }
+
+  .team-order-actions {
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+  }
+}
