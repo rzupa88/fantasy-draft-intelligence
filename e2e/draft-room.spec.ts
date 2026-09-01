@@ -68,8 +68,10 @@ test("derives draft length from a custom superflex roster", async ({ page }) => 
   await page.getByLabel("Kicker roster slots").fill("0");
   await page.getByLabel("Bench roster slots").fill("8");
 
-  await expect(page.getByText("17 rounds", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("204 total selections.")).toBeVisible();
+  const rosterSummary = page.locator(".roster-capacity");
+  await expect(rosterSummary).toBeVisible();
+  await expect(rosterSummary).toContainText("17 rounds");
+  await expect(rosterSummary).toContainText("204 total selections.");
 
   await page.getByRole("button", { name: "Start new draft" }).click();
   await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
