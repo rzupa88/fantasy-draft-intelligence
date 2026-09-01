@@ -345,8 +345,8 @@ function calculatePositionOpportunityCost(
   const valueLostByWaiting = Math.max(0, player.projected_points - expectedNextPickPositionValue);
   const relativeDrop = valueLostByWaiting / Math.max(1, player.projected_points);
 
-  // A roughly 25% expected positional drop is treated as maximum urgency. Flat positions stay patient.
-  const opportunityCost = clamp(relativeDrop * 400, 0, 100);
+  // A roughly 50% expected positional drop is treated as maximum urgency. Flat positions stay patient.
+  const opportunityCost = clamp(relativeDrop * 200, 0, 100);
   return {
     expectedNextPickPositionValue: round(expectedNextPickPositionValue),
     valueLostByWaiting: round(valueLostByWaiting),
@@ -574,7 +574,7 @@ function buildReasons(
     .map((item) => item.reason);
 
   if (context.opportunityCost >= 70 && context.valueLostByWaiting !== null) {
-    ordered.unshift(`Waiting is expected to cost about ${round(context.valueLostByWaiting)} ${player.position} points before your next pick.`);
+    ordered.push(`Waiting is expected to cost about ${round(context.valueLostByWaiting)} ${player.position} points before your next pick.`);
   } else if (context.opportunityCost <= 25 && context.expectedNextPickPositionValue !== null) {
     ordered.push(`Comparable ${player.position} value is likely to remain available at your next pick.`);
   }
