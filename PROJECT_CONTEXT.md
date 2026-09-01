@@ -280,6 +280,7 @@ test:
 │   │   │   ├── desktop-draft-drawer.css
 │   │   │   ├── draft-board.css
 │   │   │   ├── draft-factory.ts
+│   │   │   ├── draft-room-readability.css
 │   │   │   ├── draft-room-redesign-e2e-fix.css
 │   │   │   ├── draft-room-redesign.css
 │   │   │   ├── draft-storage.ts
