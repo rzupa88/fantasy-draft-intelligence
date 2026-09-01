@@ -123,6 +123,12 @@
     gap: 0.9rem;
   }
 
+  /* Before the first pick, keep the drawer fully open and motionless so draft controls do not shift under the pointer. */
+  body:not(:has(.recent-pick-card)) .draft-workspace {
+    transform: translateY(0) !important;
+    transition: none;
+  }
+
   .draft-workspace::after {
     height: 3.65rem;
     padding-left: 1.45rem;
