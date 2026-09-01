@@ -68,6 +68,9 @@ export interface RecommendationContext extends ReturnProbabilityEstimate {
   replacementRank: number;
   replacementProjectedPoints: number | null;
   projectedPointsAboveReplacement: number | null;
+  expectedNextPickPositionValue: number | null;
+  valueLostByWaiting: number | null;
+  opportunityCost: number;
 }
 
 export interface PlayerRecommendation {
@@ -110,6 +113,12 @@ interface CandidateScore {
   reasons: string[];
 }
 
+interface OpportunityCostEstimate {
+  expectedNextPickPositionValue: number | null;
+  valueLostByWaiting: number | null;
+  opportunityCost: number;
+}
+
 interface ScoringContext {
   state: DraftState;
   teamId: string;
@@ -119,7 +128,6 @@ interface ScoringContext {
   weights: RecommendationWeights;
   replacementLevels: Map<PlayerPosition, ReplacementLevel>;
   rawVorByPlayerId: Map<string, number | null>;
-  projectionValues: number[];
   overallRankValues: number[];
   adpValues: number[];
   upsideValues: number[];
@@ -162,7 +170,6 @@ export function recommendPlayers(
     weights,
     replacementLevels,
     rawVorByPlayerId,
-    projectionValues: compactNumbers(availablePlayers.map((player) => player.projected_points)),
     overallRankValues: compactNumbers(availablePlayers.map((player) => player.overall_rank)),
     adpValues: compactNumbers(availablePlayers.map((player) => player.adp)),
     upsideValues: compactNumbers(availablePlayers.map((player) => player.upside_score)),
@@ -252,6 +259,8 @@ function scoreCandidate(player: PlayerDataRecord, context: ScoringContext): Cand
     context.currentOverallPick,
     context.nextUserPick,
   );
+  const opportunity = calculatePositionOpportunityCost(player, context);
+  const urgencyAdjustedForDropoff = returnEstimate.takeNowUrgency * (0.55 + opportunity.opportunityCost * 0.0045);
   const upside = normalizeHigher(player.upside_score, context.upsideValues);
   const riskSafety = normalizeLower(player.risk_score, context.riskValues);
   const metrics: RecommendationMetrics = {
@@ -260,11 +269,12 @@ function scoreCandidate(player: PlayerDataRecord, context: ScoringContext): Cand
     tierUrgency: tier.score,
     rosterNeed,
     adpValue,
-    expectedAvailability: returnEstimate.takeNowUrgency,
+    expectedAvailability: clamp(urgencyAdjustedForDropoff, 0, 100),
     upside,
     riskSafety,
   };
-  const score = weightedScore(metrics, context.weights);
+  const blendedScore = weightedScore(metrics, context.weights);
+  const score = clamp(blendedScore + (opportunity.opportunityCost - 50) * 0.18, 0, 100);
   const replacement = context.replacementLevels.get(player.position);
   const rawVor = context.rawVorByPlayerId.get(player.canonical_player_id) ?? null;
   const picksUntilNextUserPick = context.nextUserPick === null ? null : context.nextUserPick - context.currentOverallPick;
@@ -277,9 +287,71 @@ function scoreCandidate(player: PlayerDataRecord, context: ScoringContext): Cand
     projectedPointsAboveReplacement: rawVor === null ? null : round(rawVor),
     ...returnEstimate,
     sameTierRemaining: tier.sameTierRemaining,
+    expectedNextPickPositionValue: opportunity.expectedNextPickPositionValue,
+    valueLostByWaiting: opportunity.valueLostByWaiting,
+    opportunityCost: round(opportunity.opportunityCost),
   };
   const reasons = buildReasons(player, metrics, recommendationContext, context.weights);
   return { player, score, metrics, context: recommendationContext, reasons };
+}
+
+function calculatePositionOpportunityCost(
+  player: PlayerDataRecord,
+  context: ScoringContext,
+): OpportunityCostEstimate {
+  if (player.projected_points === null || context.nextUserPick === null) {
+    return {
+      expectedNextPickPositionValue: player.projected_points,
+      valueLostByWaiting: 0,
+      opportunityCost: 50,
+    };
+  }
+
+  const alternatives = context.availablePlayers
+    .filter(
+      (candidate) =>
+        candidate.position === player.position &&
+        candidate.canonical_player_id !== player.canonical_player_id &&
+        candidate.projected_points !== null,
+    )
+    .map((candidate) => ({
+      player: candidate,
+      returnProbability: calculateReturnProbability(
+        candidate,
+        context.state,
+        context.teamId,
+        context.currentOverallPick,
+        context.nextUserPick,
+      ).returnProbability,
+    }))
+    .filter((candidate) => candidate.returnProbability >= 0.25)
+    .sort((left, right) => {
+      const leftExpected = (left.player.projected_points ?? 0) * left.returnProbability;
+      const rightExpected = (right.player.projected_points ?? 0) * right.returnProbability;
+      return rightExpected - leftExpected;
+    });
+
+  const bestAlternative = alternatives[0];
+  if (bestAlternative === undefined || bestAlternative.player.projected_points === null) {
+    return {
+      expectedNextPickPositionValue: null,
+      valueLostByWaiting: player.projected_points,
+      opportunityCost: 100,
+    };
+  }
+
+  const expectedNextPickPositionValue =
+    bestAlternative.player.projected_points * bestAlternative.returnProbability;
+  const valueLostByWaiting = Math.max(0, player.projected_points - expectedNextPickPositionValue);
+  const relativeDrop = valueLostByWaiting / Math.max(1, player.projected_points);
+
+  // A roughly 25% expected positional drop is treated as maximum urgency. Flat positions stay patient.
+  const opportunityCost = clamp(relativeDrop * 400, 0, 100);
+  return {
+    expectedNextPickPositionValue: round(expectedNextPickPositionValue),
+    valueLostByWaiting: round(valueLostByWaiting),
+    opportunityCost,
+  };
 }
 
 function calculateReturnProbability(
@@ -315,11 +387,9 @@ function calculateReturnProbability(
     ? 0.5
     : logistic((adjustedMarketPick - nextUserPick) / Math.max(3, picksUntilNext * 0.45));
 
-  // A position run and teams with open needs both raise the chance that this player is selected.
   probability -= Math.max(0, recentPositionRun - 0.25) * 0.55;
   probability -= positionDemand * 0.15;
 
-  // Thin tiers create additional urgency beyond raw ADP because drafters lose substitutes quickly.
   if (sameTierRemaining === 1) probability -= 0.12;
   else if (sameTierRemaining === 2) probability -= 0.07;
   else if (sameTierRemaining === 3) probability -= 0.03;
@@ -391,7 +461,12 @@ function hasOpenStartingNeed(state: DraftState, teamId: string, position: Player
 function calculateBaseValue(player: PlayerDataRecord, context: ScoringContext): number {
   const weighted: Array<{ value: number; weight: number }> = [];
   if (player.projected_points !== null) {
-    weighted.push({ value: normalizeHigher(player.projected_points, context.projectionValues), weight: 0.7 });
+    const positionProjectionValues = compactNumbers(
+      context.availablePlayers
+        .filter((candidate) => candidate.position === player.position)
+        .map((candidate) => candidate.projected_points),
+    );
+    weighted.push({ value: normalizeHigher(player.projected_points, positionProjectionValues), weight: 0.7 });
   }
   if (player.overall_rank !== null) {
     weighted.push({ value: normalizeLower(player.overall_rank, context.overallRankValues), weight: 0.3 });
@@ -497,8 +572,15 @@ function buildReasons(
     .filter((item): item is { component: RecommendationComponent; priority: number; reason: string } => item.reason !== null)
     .sort((left, right) => right.priority - left.priority)
     .map((item) => item.reason);
+
+  if (context.opportunityCost >= 70 && context.valueLostByWaiting !== null) {
+    ordered.unshift(`Waiting is expected to cost about ${round(context.valueLostByWaiting)} ${player.position} points before your next pick.`);
+  } else if (context.opportunityCost <= 25 && context.expectedNextPickPositionValue !== null) {
+    ordered.push(`Comparable ${player.position} value is likely to remain available at your next pick.`);
+  }
+
   if (ordered.length === 0) ordered.push(`Offers balanced value across projection, roster fit, and draft cost.`);
-  return ordered.slice(0, 3);
+  return [...new Set(ordered)].slice(0, 3);
 }
 
 function weightedScore(metrics: RecommendationMetrics, weights: RecommendationWeights): number {
