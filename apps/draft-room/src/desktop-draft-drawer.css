@@ -13,7 +13,7 @@
     width: 100%;
     max-width: none;
     margin: 0;
-    padding: 0;
+    padding: 0 0 calc(var(--desktop-drawer-peek) + 1rem);
   }
 
   .draft-header,
@@ -34,6 +34,7 @@
     height: min(44rem, 68vh);
     margin: 0;
     padding: 0.75rem clamp(1rem, 2vw, 2rem) 1rem;
+    overflow: hidden;
     border-top: 1px solid rgb(117 183 255 / 18%);
     background: linear-gradient(180deg, rgb(14 22 39 / 99%), rgb(7 12 22 / 99%));
     box-shadow: 0 -20px 60px rgb(0 0 0 / 42%);
@@ -103,6 +104,10 @@
 
   .draft-workspace .player-row {
     min-height: 4.2rem;
+  }
+
+  .recent-picks-panel {
+    margin-bottom: 0;
   }
 }
 
