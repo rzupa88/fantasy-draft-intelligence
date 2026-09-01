@@ -5,6 +5,17 @@
   color: #e8eef8;
 }
 
+/* The production draft room locks the document viewport. Draft Lab is a long
+   diagnostic page, so explicitly restore normal document scrolling here. */
+html:has(.draft-lab-shell),
+body:has(.draft-lab-shell),
+body:has(.draft-lab-shell) #root {
+  min-height: 100%;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
 .draft-lab-header,
 .draft-lab-controls,
 .draft-lab-scenario-card,
