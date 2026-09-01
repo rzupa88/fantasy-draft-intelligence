@@ -19,6 +19,7 @@ export interface DraftSetup {
   leagueName: string;
   teamCount: number;
   userDraftSlot: number;
+  teamNames: string[];
   rounds: number;
   scoringPreset: SupportedScoringPreset;
   adpSource: UdkAdpSource;
@@ -58,10 +59,13 @@ export const DEFAULT_ROSTER_COUNTS: RosterCounts = {
   BENCH: 7,
 };
 
+export const DEFAULT_TEAM_NAMES = Array.from({ length: 14 }, (_, index) => `Team ${index + 1}`);
+
 export const DEFAULT_DRAFT_SETUP: DraftSetup = {
   leagueName: "Friday Night League",
   teamCount: 12,
   userDraftSlot: 6,
+  teamNames: [...DEFAULT_TEAM_NAMES],
   rounds: getRosterCapacity(DEFAULT_ROSTER_COUNTS),
   scoringPreset: "half_ppr",
   adpSource: "sleeper",
@@ -88,9 +92,10 @@ export function createDraftFromSetup(
 ): DraftState {
   validateDraftSetup(setup);
   const settings = createLeagueSettings(setup);
-  const teamNames = Array.from({ length: setup.teamCount }, (_, index) =>
-    index + 1 === setup.userDraftSlot ? "My Team" : `Team ${index + 1}`,
-  );
+  const teamNames = setup.teamNames.slice(0, setup.teamCount).map((name, index) => {
+    const cleaned = name.trim();
+    return cleaned.length > 0 ? cleaned : `Team ${index + 1}`;
+  });
 
   return createDraftState({
     draftId,
@@ -163,6 +168,9 @@ function validateDraftSetup(setup: DraftSetup): void {
   }
   if (!Number.isInteger(setup.userDraftSlot) || setup.userDraftSlot < 1 || setup.userDraftSlot > setup.teamCount) {
     throw new RangeError("Draft slot must be within the configured league size.");
+  }
+  if (setup.teamNames.length < setup.teamCount) {
+    throw new RangeError("A team name is required for every draft slot.");
   }
   for (const option of ROSTER_SLOT_OPTIONS) {
     const count = setup.rosterCounts[option.slot];
