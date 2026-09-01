@@ -28,15 +28,22 @@ export function DraftLab() {
     [profile, scenario],
   );
 
-  const teamId = scenario.teamId ?? scenario.state.teams.find((team) => team.isUser)?.teamId ?? scenario.state.teams[0]!.teamId;
+  const teamId =
+    scenario.teamId ??
+    scenario.state.teams.find((team) => team.isUser)?.teamId ??
+    scenario.state.teams[0]!.teamId;
   const userTeam = scenario.state.teams.find((team) => team.teamId === teamId);
-  const currentOrderSlot = scenario.state.order.find(
-    (slot) => slot.overallPick === scenario.state.nextOverallPick,
-  );
+  const nextOverallPick = scenario.state.nextOverallPick;
+  const currentOrderSlot =
+    nextOverallPick === null
+      ? undefined
+      : scenario.state.order.find((slot) => slot.overallPick === nextOverallPick);
   const nextUserOrderSlot =
-    scenario.state.order.find(
-      (slot) => slot.overallPick > scenario.state.nextOverallPick && slot.teamId === teamId,
-    ) ?? null;
+    nextOverallPick === null
+      ? null
+      : scenario.state.order.find(
+          (slot) => slot.overallPick > nextOverallPick && slot.teamId === teamId,
+        ) ?? null;
   const playerById = new Map(
     scenario.state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
   );
@@ -57,7 +64,8 @@ export function DraftLab() {
     Array.from({ length: slot.count }, (_, index) => {
       const rosterSlotIndex = index + 1;
       const pick = teamPicks.find(
-        (candidate) => candidate.rosterSlot === slot.slot && candidate.rosterSlotIndex === rosterSlotIndex,
+        (candidate) =>
+          candidate.rosterSlot === slot.slot && candidate.rosterSlotIndex === rosterSlotIndex,
       );
       return {
         key: `${slot.slot}-${rosterSlotIndex}`,
@@ -139,7 +147,9 @@ export function DraftLab() {
               <p className="draft-lab-eyebrow">League context</p>
               <h3>{scenario.state.settings.leagueName}</h3>
             </div>
-            <span className="draft-lab-chip">{scenario.state.settings.scoring.preset.replaceAll("_", " ")}</span>
+            <span className="draft-lab-chip">
+              {scenario.state.settings.scoring.preset.replaceAll("_", " ")}
+            </span>
           </div>
           <dl className="draft-lab-facts">
             <div><dt>Teams</dt><dd>{scenario.state.settings.teamCount}</dd></div>
@@ -159,7 +169,10 @@ export function DraftLab() {
           </div>
           <div className="draft-lab-roster-grid">
             {rosterSlots.map((slot) => (
-              <div className={slot.player === undefined ? "draft-lab-roster-slot is-open" : "draft-lab-roster-slot"} key={slot.key}>
+              <div
+                className={slot.player === undefined ? "draft-lab-roster-slot is-open" : "draft-lab-roster-slot"}
+                key={slot.key}
+              >
                 <span>{slot.label}</span>
                 {slot.player === undefined ? (
                   <div><strong>OPEN</strong><small>{slot.eligible}</small></div>
@@ -208,7 +221,9 @@ export function DraftLab() {
         </div>
         <div className="draft-lab-pool-grid">
           {availablePlayers.map((player) => {
-            const recommendation = result.recommendations.find((candidate) => candidate.playerId === player.canonical_player_id);
+            const recommendation = result.recommendations.find(
+              (candidate) => candidate.playerId === player.canonical_player_id,
+            );
             return (
               <div className="draft-lab-pool-player" key={player.canonical_player_id}>
                 <span className="draft-lab-position-pill">{player.position}</span>
@@ -240,9 +255,7 @@ export function DraftLab() {
               <div className="draft-lab-rank">#{recommendation.rank}</div>
               <div>
                 <h3>{recommendation.displayName}</h3>
-                <p>
-                  {recommendation.position} · {recommendation.playerId}
-                </p>
+                <p>{recommendation.position} · {recommendation.playerId}</p>
               </div>
               <div className="draft-lab-score">
                 <strong>{recommendation.score}</strong>
@@ -264,18 +277,9 @@ export function DraftLab() {
                   { label: "Return probability", value: formatContext("returnProbability", recommendation.context.returnProbability) },
                   { label: "Take-now urgency", value: formatNumber(recommendation.context.takeNowUrgency) },
                   { label: "Opportunity cost", value: formatNumber(recommendation.context.opportunityCost) },
-                  {
-                    label: "Expected next-pick position value",
-                    value: formatNullable(recommendation.context.expectedNextPickPositionValue),
-                  },
-                  {
-                    label: "Value lost by waiting",
-                    value: formatNullable(recommendation.context.valueLostByWaiting),
-                  },
-                  {
-                    label: "Adjusted market pick",
-                    value: formatNullable(recommendation.context.adjustedMarketPick),
-                  },
+                  { label: "Expected next-pick position value", value: formatNullable(recommendation.context.expectedNextPickPositionValue) },
+                  { label: "Value lost by waiting", value: formatNullable(recommendation.context.valueLostByWaiting) },
+                  { label: "Adjusted market pick", value: formatNullable(recommendation.context.adjustedMarketPick) },
                   { label: "Market shift", value: formatNumber(recommendation.context.marketShift) },
                   { label: "Recent position run", value: formatNumber(recommendation.context.recentPositionRun) },
                   { label: "Position demand", value: formatNumber(recommendation.context.positionDemand) },
@@ -286,18 +290,9 @@ export function DraftLab() {
                 title="Replacement context"
                 rows={[
                   { label: "Replacement rank", value: String(recommendation.context.replacementRank) },
-                  {
-                    label: "Replacement projected points",
-                    value: formatNullable(recommendation.context.replacementProjectedPoints),
-                  },
-                  {
-                    label: "Points above replacement",
-                    value: formatNullable(recommendation.context.projectedPointsAboveReplacement),
-                  },
-                  {
-                    label: "Picks until next user pick",
-                    value: formatNullable(recommendation.context.picksUntilNextUserPick),
-                  },
+                  { label: "Replacement projected points", value: formatNullable(recommendation.context.replacementProjectedPoints) },
+                  { label: "Points above replacement", value: formatNullable(recommendation.context.projectedPointsAboveReplacement) },
+                  { label: "Picks until next user pick", value: formatNullable(recommendation.context.picksUntilNextUserPick) },
                 ]}
               />
             </div>
