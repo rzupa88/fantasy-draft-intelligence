@@ -13,9 +13,14 @@ test("loads bundled UDK and NFLverse data without a manual import", async ({ pag
 
   await page.goto("/");
 
-  await expect(page.getByText("UDK 2026 ready")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Bundled UDK 2026")).toBeVisible();
-  await expect(page.getByText("NFLverse 2025 matched")).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Bundled NFLverse 2025/2026")).toBeVisible();
+  await expect(page.locator(".udk-ready-badge")).toHaveText("UDK 2026 ready", {
+    timeout: 60_000,
+  });
+  await expect(page.locator(".history-ready-badge")).toContainText("NFLverse 2025", {
+    timeout: 60_000,
+  });
   await expect(page.locator(".form-error")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Start new draft" }).click();
+  await expect(page.getByRole("status")).toContainText("NFLverse identity matches");
 });
