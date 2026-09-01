@@ -40,8 +40,12 @@
     box-shadow: 0 -20px 60px rgb(0 0 0 / 42%);
     grid-template-columns: minmax(32rem, 1.55fr) minmax(21rem, 0.85fr) minmax(20rem, 0.8fr);
     gap: 0.85rem;
-    transform: translateY(calc(100% - var(--desktop-drawer-peek)));
+    transform: translateY(0);
     transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body:has(.recent-pick-card) .draft-workspace:not(:hover):not(:focus-within) {
+    transform: translateY(calc(100% - var(--desktop-drawer-peek)));
   }
 
   .draft-workspace::before {
