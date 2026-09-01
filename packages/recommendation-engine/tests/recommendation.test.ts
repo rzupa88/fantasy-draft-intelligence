@@ -139,6 +139,72 @@ describe("recommendation engine v1", () => {
     expect(result.recommendations[0]?.primaryReason).toMatch(/pick 8/);
   });
 
+  it("favors a shallow RB pool over an early QB when comparable QB value can wait", () => {
+    const players = [
+      player("qb-elite", "QB", {
+        projected_points: 330,
+        overall_rank: 8,
+        adp: 7,
+        tier: 1,
+      }),
+      player("qb-later-a", "QB", {
+        projected_points: 315,
+        overall_rank: 35,
+        adp: 24,
+        tier: 2,
+      }),
+      player("qb-later-b", "QB", {
+        projected_points: 305,
+        overall_rank: 50,
+        adp: 38,
+        tier: 2,
+      }),
+      player("rb-elite", "RB", {
+        projected_points: 255,
+        overall_rank: 9,
+        adp: 8,
+        tier: 1,
+      }),
+      player("rb-later-a", "RB", {
+        projected_points: 190,
+        overall_rank: 25,
+        adp: 18,
+        tier: 3,
+      }),
+      player("rb-later-b", "RB", {
+        projected_points: 175,
+        overall_rank: 40,
+        adp: 30,
+        tier: 4,
+      }),
+    ];
+
+    const result = recommendPlayers(draftState(players, { nextOverallPick: 1 }), { limit: 6 });
+    const qb = result.recommendations.find((item) => item.playerId === "qb-elite");
+    const rb = result.recommendations.find((item) => item.playerId === "rb-elite");
+
+    expect(result.recommendations[0]?.playerId).toBe("rb-elite");
+    expect(rb?.context.opportunityCost).toBeGreaterThan(qb?.context.opportunityCost ?? 0);
+    expect(qb?.context.expectedNextPickPositionValue).toBeGreaterThan(0);
+  });
+
+  it("reports a larger wait penalty when same-position alternatives are unlikely to survive", () => {
+    const players = [
+      player("wr-now", "WR", { projected_points: 230, adp: 5, tier: 1 }),
+      player("wr-soon", "WR", { projected_points: 210, adp: 6, tier: 2 }),
+      player("wr-late", "WR", { projected_points: 170, adp: 30, tier: 4 }),
+      player("qb-now", "QB", { projected_points: 320, adp: 5, tier: 1 }),
+      player("qb-late", "QB", { projected_points: 305, adp: 30, tier: 2 }),
+    ];
+
+    const result = recommendPlayers(draftState(players, { nextOverallPick: 1 }), { limit: 5 });
+    const wr = result.recommendations.find((item) => item.playerId === "wr-now");
+    const qb = result.recommendations.find((item) => item.playerId === "qb-now");
+
+    expect(wr?.context.valueLostByWaiting).toBeGreaterThan(qb?.context.valueLostByWaiting ?? 0);
+    expect(wr?.context.opportunityCost).toBeGreaterThan(qb?.context.opportunityCost ?? 0);
+  });
+
   it("never recommends a drafted player and remains deterministic", () => {
     const drafted = player("already-drafted", "RB", { projected_points: 300 });
     const available = player("available", "WR", { projected_points: 180 });
