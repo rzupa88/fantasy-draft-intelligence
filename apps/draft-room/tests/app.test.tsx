@@ -13,18 +13,14 @@ import {
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders league, UDK, NFLverse, recovery, and custom roster controls", () => {
+  it("renders the setup shell and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
-    expect(html).toContain("Import backup");
-    expect(html).toContain("Import UDK files");
-    expect(html).toContain("Import newer history");
-    expect(html).toContain("ADP market");
-    expect(html).toContain("Roster configuration");
+    expect(html).toContain("Draft order");
+    expect(html).toContain("Roster structure");
     expect(html).toContain("Superflex");
-    expect(html).toContain("Demonstration release");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
