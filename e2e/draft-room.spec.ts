@@ -7,10 +7,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("supports keyboard drafting, recovery, correction, and undo", async ({ page }) => {
-  await page.getByLabel("League name").fill("Keyboard League");
   await page.getByRole("button", { name: "Start new draft" }).click();
 
-  await expect(page.getByRole("heading", { name: "Keyboard League" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
   const firstPlayerName = (
     await page.locator(".player-row .player-identity strong").first().textContent()
   )?.trim();
@@ -26,7 +25,7 @@ test("supports keyboard drafting, recovery, correction, and undo", async ({ page
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Keyboard League" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
   await expect(page.getByRole("status")).toContainText("Autosaved draft restored");
 
@@ -42,7 +41,6 @@ test("supports keyboard drafting, recovery, correction, and undo", async ({ page
 });
 
 test("exports a backup and imports it after clearing recovery", async ({ page }) => {
-  await page.getByLabel("League name").fill("Backup League");
   await page.getByRole("button", { name: "Start new draft" }).click();
   await page.getByRole("button", { name: /Draft for .*:/ }).first().click();
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
@@ -51,7 +49,7 @@ test("exports a backup and imports it after clearing recovery", async ({ page })
   await page.getByRole("button", { name: "Export" }).click();
   const download = await downloadPromise;
   const downloadPath = await download.path();
-  expect(download.suggestedFilename()).toBe("backup-league-draft.json");
+  expect(download.suggestedFilename()).toBe("fantasy-draft-draft.json");
   expect(downloadPath).not.toBeNull();
 
   await page.getByRole("button", { name: "Exit" }).click();
@@ -60,22 +58,21 @@ test("exports a backup and imports it after clearing recovery", async ({ page })
   await expect(page.getByText("Autosaved draft found")).toHaveCount(0);
 
   await page.locator('input[accept*="json"]').first().setInputFiles(downloadPath!);
-  await expect(page.getByRole("heading", { name: "Backup League" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
   await expect(page.getByRole("status")).toContainText("imported with 1 recorded picks");
 });
 
 test("derives draft length from a custom superflex roster", async ({ page }) => {
-  await page.getByLabel("League name").fill("Custom Superflex League");
   await page.getByLabel("Superflex roster slots").fill("1");
   await page.getByLabel("Kicker roster slots").fill("0");
   await page.getByLabel("Bench roster slots").fill("8");
 
   await expect(page.getByText("17 rounds", { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("204 total selections in this league.")).toBeVisible();
+  await expect(page.getByText("204 total selections.")).toBeVisible();
 
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await expect(page.getByRole("heading", { name: "Custom Superflex League" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
   await expect(page.locator(".draft-progress-label")).toContainText("0 / 204 picks");
 });
 
@@ -160,15 +157,14 @@ test("imports UDK and NFLverse releases into one stable player pool", async ({ p
   );
 
   await page.getByTestId("nflverse-history-input").setInputFiles(historyPath);
-  await expect(page.getByText("NFLverse 2025 matched")).toBeVisible();
+  await expect(page.locator(".history-ready-badge")).toContainText("NFLverse 2025");
   await page.getByTestId("udk-file-input").setInputFiles(zipPath);
-  await expect(page.getByText("UDK 2026 ready")).toBeVisible();
-  await expect(page.getByText("NFLverse 2025 matched")).toBeVisible();
-  await expect(page.getByText("200 of 200 UDK players now use stable NFLverse IDs.")).toBeVisible();
+  await expect(page.locator(".udk-ready-badge")).toHaveText("UDK 2026 ready");
+  await expect(page.locator(".history-ready-badge")).toContainText("NFLverse 2025");
+  await expect(page.getByText("200 of 200 UDK players now use stable NFLverse IDs.")).toHaveCount(1);
 
-  await page.getByLabel("League name").fill("Enriched UDK League");
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await expect(page.getByRole("heading", { name: "Enriched UDK League" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("200 NFLverse identity matches");
 
   const search = page.getByPlaceholder("Search player, team, position…");
