@@ -283,6 +283,7 @@ test:
 │   │   │   ├── draft-room-readability.css
 │   │   │   ├── draft-room-redesign-e2e-fix.css
 │   │   │   ├── draft-room-redesign.css
+│   │   │   ├── draft-room-usability.css
 │   │   │   ├── draft-storage.ts
 │   │   │   ├── main.tsx
 │   │   │   ├── mobile-draft-drawer.css
