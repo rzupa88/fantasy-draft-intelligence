@@ -280,6 +280,7 @@ test:
 │   │   │   ├── desktop-draft-drawer.css
 │   │   │   ├── draft-board.css
 │   │   │   ├── draft-factory.ts
+│   │   │   ├── draft-lab.css
 │   │   │   ├── draft-room-readability.css
 │   │   │   ├── draft-room-redesign-e2e-fix.css
 │   │   │   ├── draft-room-redesign.css
@@ -3607,6 +3608,108 @@ export function CorrectionDialog({ state, pick, onClose, onCorrect }: Correction
 [TRUNCATED]
 ```
 
+### `apps/draft-room/src/components/DraftLab.tsx`
+
+```text
+import { useMemo, useState } from "react";
+import { recommendPlayers } from "@fdi/recommendation-engine";
+import {
+  BUILT_IN_RECOMMENDATION_PROFILES,
+  BUILT_IN_RECOMMENDATION_SCENARIOS,
+} from "@fdi/recommendation-engine/benchmarks";
+
+const PERCENT_CONTEXT_KEYS = new Set(["returnProbability"]);
+
+export function DraftLab() {
+  const [scenarioId, setScenarioId] = useState(BUILT_IN_RECOMMENDATION_SCENARIOS[0]!.id);
+  const [profileId, setProfileId] = useState("default");
+
+  const scenario =
+    BUILT_IN_RECOMMENDATION_SCENARIOS.find((candidate) => candidate.id === scenarioId) ??
+    BUILT_IN_RECOMMENDATION_SCENARIOS[0]!;
+  const profile =
+    BUILT_IN_RECOMMENDATION_PROFILES.find((candidate) => candidate.id === profileId) ??
+    BUILT_IN_RECOMMENDATION_PROFILES[0]!;
+
+  const result = useMemo(
+    () =>
+      recommendPlayers(scenario.state, {
+        ...(scenario.teamId === undefined ? {} : { teamId: scenario.teamId }),
+        limit: scenario.limit ?? 10,
+        ...(profile.weights === undefined ? {} : { weights: profile.weights }),
+      }),
+    [profile, scenario],
+  );
+
+  return (
+    <main className="draft-lab-shell">
+      <header className="draft-lab-header">
+        <div>
+          <p className="draft-lab-eyebrow">Decision Engine Validation</p>
+          <h1>Draft Lab</h1>
+          <p>
+            Inspect deterministic draft scenarios and see exactly why the recommendation engine ranks
+            one player above another.
+          </p>
+        </div>
+        <a className="draft-lab-exit" href={window.location.pathname}>
+          Exit lab
+        </a>
+      </header>
+
+      <section className="draft-lab-controls" aria-label="Draft Lab controls">
+        <label>
+          Scenario
+          <select value={scenario.id} onChange={(event) => setScenarioId(event.target.value)}>
+            {BUILT_IN_RECOMMENDATION_SCENARIOS.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Weight profile
+          <select value={profile.id} onChange={(event) => setProfileId(event.target.value)}>
+            {BUILT_IN_RECOMMENDATION_PROFILES.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="draft-lab-state-summary">
+          <span>Current pick</span>
+          <strong>{result.currentOverallPick}</strong>
+          <span>Next user pick</span>
+          <strong>{result.nextUserPick ?? "—"}</strong>
+        </div>
+      </section>
+
+      <section className="draft-lab-scenario-card">
+        <div>
+          <h2>{scenario.name}</h2>
+          <p>{scenario.description}</p>
+        </div>
+        <div>
+          <span>{scenario.expectations.length}</span>
+          <small>regression checks</small>
+        </div>
+      </section>
+
+      <section className="draft-lab-ranking" aria-label="Recommendation breakdown">
+        {result.recommendations.map((recommendation) => (
+          <article className="draft-lab-player-card" key={recommendation.playerId}>
+            <div className="draft-lab-player-heading">
+              <div className="draft-lab-rank">#{recommendation.rank}</div>
+              <div>
+                <h3>{recommendation.displayName}</h3>
+                <p>
+                  {recommendation.position} · {reco
+
+[TRUNCATED]
+```
+
 ### `apps/draft-room/src/components/DraftRoom.tsx`
 
 ```text
@@ -4018,116 +4121,6 @@ export function NflverseHistoryCard({
               value={report.unmatchedPlayers.length + report.ambiguousPlayers.length}
             />
           </div>
-
-[TRUNCATED]
-```
-
-### `apps/draft-room/src/components/PlayerResearchModal.tsx`
-
-```text
-import { useEffect, useState } from "react";
-import type { PlayerDataRecord, ScoringPreset } from "@fdi/shared-types";
-import {
-  buildPlayerResearchLinks,
-  loadSleeperPlayerDirectory,
-  matchSleeperPlayer,
-  type SleeperPlayerProfile,
-} from "../sleeper-players.js";
-
-interface PlayerResearchModalProps {
-  player: PlayerDataRecord;
-  scoringPreset: ScoringPreset;
-  releaseSeason: number;
-  sources: string[];
-  onClose: () => void;
-}
-
-type ResearchTab = "overview" | "production" | "data";
-
-type SleeperLoadState = "idle" | "loading" | "ready" | "error";
-
-export function PlayerResearchModal({
-  player,
-  scoringPreset,
-  releaseSeason,
-  sources,
-  onClose,
-}: PlayerResearchModalProps) {
-  const [activeTab, setActiveTab] = useState<ResearchTab>("overview");
-  const [sleeperProfile, setSleeperProfile] = useState<SleeperPlayerProfile | null>(null);
-  const [sleeperState, setSleeperState] = useState<SleeperLoadState>("idle");
-  const history = player.prior_season_stats ?? null;
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Escape") onClose();
-    };
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setSleeperState("loading");
-    setSleeperProfile(null);
-
-    void loadSleeperPlayerDirectory()
-      .then((directory) => {
-        if (cancelled) return;
-        setSleeperProfile(matchSleeperPlayer(player, directory));
-        setSleeperState("ready");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSleeperState("error");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [player]);
-
-  const priorPoints = getScoringValue(history, scoringPreset, "season");
-  const priorPpg = getScoringValue(history, scoringPreset, "game");
-  const researchLinks = sleeperProfile === null ? [] : buildPlayerResearchLinks(sleeperProfile);
-  const currentStatus =
-    sleeperProfile?.injuryStatus ??
-    sleeperProfile?.status ??
-    player.availability_status ??
-    "Status unavailable";
-  const initials = player.display_name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("");
-
-  return (
-    <div className="player-research-backdrop" role="presentation" onMouseDown={onClose}>
-      <section
-        className="player-research-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="player-research-title"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <button className="player-research-close" type="button" onClick={onClose} aria-label="Close player research">
-          ×
-        </button>
-
-        <header className={`player-research-hero research-position-${player.position.toLowerCase()}`}>
-          <div className="player-research-avatar" aria-hidden="true">{initials}</div>
-          <div className="player-research-identity">
-            <div className="player-research-position-line">
-              <span>{player.position}</span>
-              <span>{sleeperProfile?.team ?? player.nfl_team ?? "Free agent"}</span>
-              <span>Bye {player.bye_week ?? "—"}</span>
-              {sleeperProfile?.number === null || sleeperProfile?.number === undefined ? null : (
-                <span>
 
 [TRUNCATED]
 ```
@@ -5207,118 +5200,104 @@ export function CorrectionDialog({ state, pick, onClose, onCorrect }: Correction
 [TRUNCATED]
 ```
 
-### `apps/draft-room/src/components/DraftRoom.tsx`
+### `apps/draft-room/src/components/DraftLab.tsx`
 
 ```text
 import { useMemo, useState } from "react";
-import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
 import { recommendPlayers } from "@fdi/recommendation-engine";
-import type {
-  DraftPick,
-  DraftState,
-  PlayerDataRecord,
-  PlayerPosition,
-  RosterSlotType,
-} from "@fdi/shared-types";
+import {
+  BUILT_IN_RECOMMENDATION_PROFILES,
+  BUILT_IN_RECOMMENDATION_SCENARIOS,
+} from "@fdi/recommendation-engine/benchmarks";
 
-interface DraftRoomProps {
-  state: DraftState;
-  notice: string | null;
-  onDraftPlayer: (playerId: string) => void;
-  onUndo: () => void;
-  onExport: () => void;
-  onExit: () => void;
-}
+const PERCENT_CONTEXT_KEYS = new Set(["returnProbability"]);
 
-type PositionFilter = "ALL" | PlayerPosition;
+export function DraftLab() {
+  const [scenarioId, setScenarioId] = useState(BUILT_IN_RECOMMENDATION_SCENARIOS[0]!.id);
+  const [profileId, setProfileId] = useState("default");
 
-const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+  const scenario =
+    BUILT_IN_RECOMMENDATION_SCENARIOS.find((candidate) => candidate.id === scenarioId) ??
+    BUILT_IN_RECOMMENDATION_SCENARIOS[0]!;
+  const profile =
+    BUILT_IN_RECOMMENDATION_PROFILES.find((candidate) => candidate.id === profileId) ??
+    BUILT_IN_RECOMMENDATION_PROFILES[0]!;
 
-const ROSTER_SLOT_ORDER: RosterSlotType[] = [
-  "QB",
-  "RB",
-  "WR",
-  "TE",
-  "FLEX",
-  "SUPERFLEX",
-  "K",
-  "DST",
-  "BENCH",
-];
-
-export function DraftRoom({
-  state,
-  notice,
-  onDraftPlayer,
-  onUndo,
-  onExport,
-  onExit,
-}: DraftRoomProps) {
-  const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
-  const [searchQuery, setSearchQuery] = useState("");
-  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
-  const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
-
-  const currentSlot = getCurrentOrderSlot(state);
-  const currentTeam =
-    currentSlot === null
-      ? null
-      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
-  const isUserOnClock = currentTeam?.isUser ?? false;
-  const rosters = useMemo(() => buildRosterAssignments(state), [state]);
-  const playersById = useMemo(
+  const result = useMemo(
     () =>
-      new Map(
-        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
-      ),
-    [state.playerDataRelease],
+      recommendPlayers(scenario.state, {
+        ...(scenario.teamId === undefined ? {} : { teamId: scenario.teamId }),
+        limit: scenario.limit ?? 10,
+        ...(profile.weights === undefined ? {} : { weights: profile.weights }),
+      }),
+    [profile, scenario],
   );
 
-  const recommendationResult = useMemo(() => {
-    if (state.availablePlayerIds.length === 0) {
-      return null;
-    }
-    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
-  }, [state, userTeam.teamId]);
-
-  const filteredPlayers = useMemo(() => {
-    const available = new Set(state.availablePlayerIds);
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return state.playerDataRelease.players
-      .filter((player) => available.has(player.canonical_player_id))
-      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
-      .filter((player) => {
-        if (normalizedQuery.length === 0) {
-          return true;
-        }
-        return [player.display_name, player.position, player.nfl_team ?? ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery);
-      })
-      .sort(compareAvailablePlayers)
-      .slice(0, 80);
-  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
-
-  const selectedTeam =
-    state.teams.find((team) => team.teamId === selectedTeamId) ?? userTeam;
-  const selectedRoster = [...(rosters[selectedTeam.teamId] ?? [])].sort(compareRosterPicks);
-  const recentPicks = [...state.picks].slice(-12).reverse();
-  const completedPicks = state.picks.length;
-  const totalPicks = state.order.length;
-  const completionPercent = Math.round((completedPicks / totalPicks) * 100);
-
   return (
-    <main className="draft-room-shell">
-      <header className="draft-header">
-        <div className="draft-brand">
-          <div className="brand-mark brand-mark-small" aria-hidden="true">
-            FDI
-          </div>
-          <div>
-            <p className="eyebrow">Fantasy Draft Intelligence</p>
-            <h1>{state.settings.leagueName}</h1>
+    <main className="draft-lab-shell">
+      <header className="draft-lab-header">
+        <div>
+          <p className="draft-lab-eyebrow">Decision Engine Validation</p>
+          <h1>Draft Lab</h1>
+          <p>
+            Inspect deterministic draft scenarios and see exactly why the recommendation engine ranks
+            one player above another.
+          </p>
+        </div>
+        <a className="draft-lab-exit" href={window.location.pathname}>
+          Exit lab
+        </a>
+      </header>
+
+      <section className="draft-lab-controls" aria-label="Draft Lab controls">
+        <label>
+          Scenario
+          <select value={scenario.id} onChange={(event) => setScenarioId(event.target.value)}>
+            {BUILT_IN_RECOMMENDATION_SCENARIOS.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Weight profile
+          <select value={profile.id} onChange={(event) => setProfileId(event.target.value)}>
+            {BUILT_IN_RECOMMENDATION_PROFILES.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="draft-lab-state-summary">
+          <span>Current pick</span>
+          <strong>{result.currentOverallPick}</strong>
+          <span>Next user pick</span>
+          <strong>{result.nextUserPick ?? "—"}</strong>
+        </div>
+      </section>
+
+      <section className="draft-lab-scenario-card">
+        <div>
+          <h2>{scenario.name}</h2>
+          <p>{scenario.description}</p>
+        </div>
+        <div>
+          <span>{scenario.expectations.length}</span>
+          <small>regression checks</small>
+        </div>
+      </section>
+
+      <section className="draft-lab-ranking" aria-label="Recommendation breakdown">
+        {result.recommendations.map((recommendation) => (
+          <article className="draft-lab-player-card" key={recommendation.playerId}>
+            <div className="draft-lab-player-heading">
+              <div className="draft-lab-rank">#{recommendation.rank}</div>
+              <div>
+                <h3>{recommendation.displayName}</h3>
+                <p>
+                  {recommendation.position} · {reco
 
 [TRUNCATED]
 ```
