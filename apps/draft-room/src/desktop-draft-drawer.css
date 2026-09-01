@@ -1,0 +1,126 @@
+/* Desktop draft-room drawer: keep the draft board as the primary canvas and dock decision tools over it. */
+@media (min-width: 901px) {
+  :root {
+    --desktop-drawer-peek: 4.75rem;
+  }
+
+  .draft-board-standalone {
+    min-height: 34rem;
+    padding-bottom: var(--desktop-drawer-peek);
+  }
+
+  .draft-room-shell {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0 0 calc(var(--desktop-drawer-peek) + 1rem);
+  }
+
+  .draft-header,
+  .on-clock-banner,
+  .shortcut-strip,
+  .notice-banner {
+    margin-right: clamp(1rem, 2vw, 2rem);
+    margin-left: clamp(1rem, 2vw, 2rem);
+  }
+
+  .draft-workspace {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 45;
+    display: grid;
+    height: min(44rem, 68vh);
+    margin: 0;
+    padding: 0.75rem clamp(1rem, 2vw, 2rem) 1rem;
+    overflow: hidden;
+    border-top: 1px solid rgb(117 183 255 / 18%);
+    background: linear-gradient(180deg, rgb(14 22 39 / 99%), rgb(7 12 22 / 99%));
+    box-shadow: 0 -20px 60px rgb(0 0 0 / 42%);
+    grid-template-columns: minmax(32rem, 1.55fr) minmax(21rem, 0.85fr) minmax(20rem, 0.8fr);
+    gap: 0.85rem;
+    transform: translateY(0);
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  body:has(.recent-pick-card) .draft-workspace:not(:hover):not(:focus-within) {
+    transform: translateY(calc(100% - var(--desktop-drawer-peek)));
+  }
+
+  .draft-workspace::before {
+    position: absolute;
+    top: 0.42rem;
+    left: 50%;
+    width: 4rem;
+    height: 0.3rem;
+    border-radius: 999px;
+    background: #5b6577;
+    content: "";
+    transform: translateX(-50%);
+  }
+
+  .draft-workspace:focus-within,
+  .draft-workspace:hover {
+    transform: translateY(0);
+  }
+
+  .draft-workspace > .panel {
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    border-color: rgb(117 183 255 / 12%);
+    background: #0b1322;
+  }
+
+  .draft-workspace .player-board-panel {
+    position: relative;
+    inset: auto;
+    z-index: auto;
+    transform: none;
+  }
+
+  .draft-workspace .player-list,
+  .draft-workspace .recommendation-list,
+  .draft-workspace .roster-list {
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .draft-workspace .player-list {
+    height: calc(100% - 9.5rem);
+  }
+
+  .draft-workspace .recommendation-list,
+  .draft-workspace .roster-list {
+    max-height: calc(100% - 8rem);
+  }
+
+  .draft-workspace .panel-heading {
+    min-height: 3.9rem;
+  }
+
+  .draft-workspace .player-tools {
+    padding-top: 0.55rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .draft-workspace .player-row {
+    min-height: 4.2rem;
+  }
+
+  .recent-picks-panel {
+    margin-bottom: 0;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .draft-workspace {
+    grid-template-columns: minmax(30rem, 1.4fr) minmax(20rem, 0.8fr);
+  }
+
+  .draft-workspace .roster-panel {
+    display: none;
+  }
+}
