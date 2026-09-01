@@ -21,9 +21,9 @@ export function DraftLab() {
   const result = useMemo(
     () =>
       recommendPlayers(scenario.state, {
-        teamId: scenario.teamId,
+        ...(scenario.teamId === undefined ? {} : { teamId: scenario.teamId }),
         limit: scenario.limit ?? 10,
-        weights: profile.weights,
+        ...(profile.weights === undefined ? {} : { weights: profile.weights }),
       }),
     [profile, scenario],
   );
