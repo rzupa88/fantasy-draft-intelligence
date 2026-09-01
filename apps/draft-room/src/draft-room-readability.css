@@ -1,0 +1,292 @@
+/* Readability pass for desktop/tablet draft room. Prioritize legibility over density. */
+@media (min-width: 901px) {
+  :root {
+    --drawer-height: min(34rem, 52vh);
+    --drawer-peek: 5.2rem;
+  }
+
+  body {
+    background: #08101d;
+  }
+
+  .draft-header {
+    min-height: 5.6rem;
+    padding: 0.9rem 1.4rem;
+    background: rgb(7 13 25 / 98%);
+  }
+
+  .draft-brand h1 {
+    max-width: 22rem;
+    font-size: 1.08rem;
+  }
+
+  .draft-progress-label,
+  .draft-progress-label strong,
+  .header-actions button {
+    font-size: 0.78rem;
+  }
+
+  .header-actions button {
+    padding: 0.58rem 0.78rem;
+    color: #d7e2f4;
+  }
+
+  .draft-board-standalone {
+    top: 5.6rem;
+    padding: 0.7rem 0.85rem 0.5rem;
+  }
+
+  .league-board-scroll {
+    border-color: #2b3b57;
+    background: #0c1525;
+  }
+
+  .league-board-corner,
+  .league-board-team-header {
+    min-height: 4rem;
+    background: #111c30;
+    border-color: #32415d;
+  }
+
+  .league-board-corner {
+    color: #c7d3e6;
+    font-size: 0.68rem;
+  }
+
+  .league-board-team-header {
+    padding: 0.52rem 0.62rem;
+  }
+
+  .league-board-team-header strong {
+    color: #f5f8fd;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .league-board-user-team {
+    background: #1b3156;
+    box-shadow: inset 0 -3px 0 #75a7ff;
+  }
+
+  .league-board-round,
+  .league-board-cell {
+    min-height: 3.8rem;
+  }
+
+  .league-board-round {
+    color: #f1f5fb;
+    background: #111b2d;
+    border-color: #2a3952;
+    font-size: 0.82rem;
+  }
+
+  .league-board-cell {
+    min-height: 3.8rem;
+    padding: 0.48rem 0.56rem;
+    border-color: #263650;
+  }
+
+  .league-board-empty {
+    color: #93a7c7;
+    background: #101d34;
+  }
+
+  .league-board-empty:nth-child(even) {
+    background: #12213b;
+  }
+
+  .league-board-cell span {
+    color: #a9bad4;
+    font-size: 0.62rem;
+  }
+
+  .league-board-cell strong {
+    color: #f8fbff;
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+
+  .league-board-cell small {
+    color: #d2dceb;
+    font-size: 0.62rem;
+  }
+
+  .league-board-on-clock {
+    background: #2b4f85;
+    box-shadow: inset 0 0 0 2px #83b5ff;
+  }
+
+  /* Keep the desktop command drawer stationary. The hover-to-expand treatment caused
+     pointer targets to move while a draft button was being clicked. */
+  .draft-workspace,
+  .draft-workspace:hover,
+  .draft-workspace:focus-within,
+  body:has(.recent-pick-card) .draft-workspace:not(:hover):not(:focus-within),
+  body:not(:has(.recent-pick-card)) .draft-workspace {
+    transform: translateY(0) !important;
+    transition: none !important;
+  }
+
+  .draft-workspace {
+    padding: 4.15rem 1rem 1rem;
+    border-color: #354766;
+    background: linear-gradient(180deg, #1b2b4f, #0b1527 25%);
+    grid-template-columns: minmax(40rem, 2fr) minmax(22rem, 0.95fr) minmax(21rem, 0.9fr);
+    gap: 0.9rem;
+  }
+
+  .draft-workspace::after {
+    height: 3.65rem;
+    padding-left: 1.45rem;
+    border-color: #3a4b69;
+    font-size: 0.86rem;
+  }
+
+  .draft-workspace > .panel {
+    padding: 0.85rem;
+    border-color: #30415e;
+    background: #101c30;
+  }
+
+  .draft-workspace .panel-heading {
+    min-height: 2.8rem;
+  }
+
+  .draft-workspace .panel-heading h2 {
+    color: #f6f9ff;
+    font-size: 0.92rem;
+  }
+
+  .draft-workspace .count-badge,
+  .draft-workspace .live-badge {
+    font-size: 0.66rem;
+  }
+
+  /* Give the player list its own stacking order so row actions always sit above the
+     filter bar and surrounding drawer surface, even when the list is scrolled. */
+  .player-board-panel {
+    isolation: isolate;
+  }
+
+  .player-tools {
+    position: relative;
+    z-index: 1;
+    gap: 0.7rem;
+    padding: 0.45rem 0 0.65rem;
+  }
+
+  .search-field input {
+    height: 3rem;
+    padding-inline: 0.9rem;
+    border-color: #3a4d70;
+    background: #17263e;
+    color: #f6f9ff;
+    font-size: 0.84rem;
+  }
+
+  .search-field input::placeholder {
+    color: #a5b3c8;
+  }
+
+  .position-filters button {
+    min-width: 3rem;
+    height: 2.95rem;
+    padding: 0 0.7rem;
+    border-color: #3a4b68;
+    background: #1a2944;
+    color: #edf3fc;
+    font-size: 0.75rem;
+  }
+
+  .position-filters button.filter-active {
+    border-color: #a6c8ff;
+    background: #eaf2ff;
+    color: #10203a;
+  }
+
+  .player-list {
+    position: relative;
+    z-index: 2;
+    height: calc(100% - 6.8rem) !important;
+    border-top-color: #344560;
+  }
+
+  .player-row {
+    min-height: 4.25rem !important;
+    padding: 0.62rem 0.68rem;
+    border-bottom-color: #2d3c55;
+  }
+
+  .player-row:hover,
+  .player-row-selected {
+    background: #1a2e4c;
+  }
+
+  .player-identity strong {
+    color: #f8fbff;
+    font-size: 0.9rem;
+  }
+
+  .player-identity span,
+  .player-row .player-meta,
+  .player-row small {
+    color: #bdc9da;
+    font-size: 0.68rem;
+  }
+
+  .player-row > button {
+    position: relative;
+    z-index: 3;
+    min-width: 4.6rem;
+    padding: 0.5rem 0.68rem;
+    font-size: 0.7rem;
+  }
+
+  .recommendation-card {
+    padding: 0.8rem;
+    border-color: #30425f;
+    background: #15233a;
+  }
+
+  .recommendation-main h3,
+  .selected-team-summary h3 {
+    color: #f6f9ff;
+    font-size: 0.9rem;
+  }
+
+  .recommendation-card p,
+  .recommendation-card small,
+  .selected-team-summary p,
+  .roster-panel small {
+    color: #c1cddd;
+    font-size: 0.7rem;
+    line-height: 1.45;
+  }
+
+  .metric-row > * {
+    padding: 0.4rem;
+    font-size: 0.7rem;
+  }
+
+  .notice-banner {
+    top: 5.95rem;
+    max-width: 30rem;
+    padding: 0.58rem 0.8rem;
+    color: #eef8f4;
+    font-size: 0.76rem;
+  }
+
+  .recent-picks-panel {
+    top: 5.95rem;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  :root {
+    --drawer-height: min(32rem, 54vh);
+  }
+
+  .draft-workspace {
+    grid-template-columns: minmax(34rem, 1.55fr) minmax(21rem, 0.9fr);
+  }
+}
