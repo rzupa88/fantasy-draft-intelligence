@@ -277,6 +277,7 @@ test:
 │   │   │   ├── bundled-nflverse-history.ts
 │   │   │   ├── bundled-udk.ts
 │   │   │   ├── demo-data.ts
+│   │   │   ├── desktop-draft-drawer.css
 │   │   │   ├── draft-board.css
 │   │   │   ├── draft-factory.ts
 │   │   │   ├── draft-storage.ts
