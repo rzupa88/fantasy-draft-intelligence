@@ -26,6 +26,9 @@ if (rootElement === null) {
 
 const isDraftLab = new URLSearchParams(window.location.search).get("lab") === "1";
 
+document.documentElement.classList.toggle("draft-lab-mode", isDraftLab);
+document.body.classList.toggle("draft-lab-mode", isDraftLab);
+
 createRoot(rootElement).render(
   <StrictMode>{isDraftLab ? <DraftLab /> : <App />}</StrictMode>,
 );
