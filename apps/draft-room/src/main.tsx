@@ -14,6 +14,7 @@ import "./desktop-draft-drawer.css";
 import "./draft-room-redesign.css";
 import "./draft-room-redesign-e2e-fix.css";
 import "./draft-room-readability.css";
+import "./draft-room-usability.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
