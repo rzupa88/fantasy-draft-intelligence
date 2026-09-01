@@ -293,6 +293,7 @@ test:
 │   │   │   ├── recovery.css
 │   │   │   ├── roster-config.css
 │   │   │   ├── roster-lineup.css
+│   │   │   ├── setup-simplify.css
 │   │   │   ├── sleeper-players.ts
 │   │   │   ├── styles.css
 │   │   │   ├── udk-import.css
@@ -4384,85 +4385,74 @@ export function RosterConfigurator({ setup, onSetupChange }: RosterConfiguratorP
 
   function changeCount(slot: RosterSlotType, nextCount: number): void {
     const option = ROSTER_SLOT_OPTIONS.find((candidate) => candidate.slot === slot);
-    if (option === undefined) {
-      return;
-    }
+    if (option === undefined) return;
     const boundedCount = Math.max(option.min, Math.min(option.max, nextCount));
     onSetupChange(setRosterCount(setup, slot, boundedCount));
   }
 
+  function changeTeamName(index: number, value: string): void {
+    const teamNames = [...setup.teamNames];
+    teamNames[index] = value;
+    onSetupChange({ ...setup, teamNames });
+  }
+
+  function moveTeam(index: number, direction: -1 | 1): void {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= setup.teamCount) return;
+
+    const teamNames = [...setup.teamNames];
+    [teamNames[index], teamNames[targetIndex]] = [teamNames[targetIndex]!, teamNames[index]!];
+
+    let userDraftSlot = setup.userDraftSlot;
+    const currentSlot = index + 1;
+    const targetSlot = targetIndex + 1;
+    if (userDraftSlot === currentSlot) userDraftSlot = targetSlot;
+    else if (userDraftSlot === targetSlot) userDraftSlot = currentSlot;
+
+    onSetupChange({ ...setup, teamNames, userDraftSlot });
+  }
+
   return (
-    <fieldset className="roster-fieldset field-wide">
-      <legend className="sr-only">Roster configuration</legend>
-      <div className="roster-heading">
-        <div>
-          <h3>Roster configuration</h3>
-          <p>Draft rounds update automatically from the total number of roster slots.</p>
+    <>
+      <fieldset className="team-order-fieldset field-wide">
+        <legend className="sr-only">Team names and draft order</legend>
+        <div className="roster-heading">
+          <div>
+            <h3>Draft order</h3>
+            <p>Enter teams in first-round order and mark your team.</p>
+          </div>
         </div>
-        <button
-          className="ghost-button roster-reset-button"
-          type="button"
-          onClick={() => onSetupChange(resetRosterCounts(setup))}
-        >
-          Reset standard
-        </button>
-      </div>
 
-      <div className="roster-grid">
-        {ROSTER_SLOT_OPTIONS.map((option) => {
-          const count = setup.rosterCounts[option.slot];
-          return (
-            <div className="roster-slot-card" key={option.slot}>
-              <div className="roster-slot-copy">
-                <strong>{option.slot}</strong>
-                <span>{option.label}</span>
-                <small>{option.description}</small>
-              </div>
-              <div className="roster-stepper">
-                <button
-                  type="button"
-                  aria-label={`Decrease ${option.label}`}
-                  disabled={count <= option.min}
-                  onClick={() => changeCount(option.slot, count - 1)}
-                >
-                  −
-                </button>
-                <input
-                  type="number"
-                  min={option.min}
-                  max={option.max}
-                  step="1"
-                  value={count}
-                  aria-label={`${option.label} roster slots`}
-                  onChange={(event) => changeCount(option.slot, Number(event.target.value))}
-                />
-                <button
-                  type="button"
-                  aria-label={`Increase ${option.label}`}
-                  disabled={count >= option.max}
-                  onClick={() => changeCount(option.slot, count + 1)}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className={`roster-capacity ${isCapacityValid ? "" : "roster-capacity-invalid"}`}>
-        <span>
-          <strong>{starterSlots}</strong> starters
-        </span>
-        <span>
-          <strong>{setup.rosterCounts.BENCH}</strong> bench
-        </span>
-        <span>
-          <strong>{totalSlots}</strong> rounds
-        </span>
-        <small>
-          {isCapacityValid
-            ? `${setup.teamCount * totalSlots} total selections
+        <div className="team-order-list">
+          {Array.from({ length: setup.teamCount }, (_, index) => {
+            const slot = index + 1;
+            const isUser = setup.userDraftSlot === slot;
+            return (
+              <div className={`team-order-row ${isUser ? "team-order-row-user" : ""}`} key={slot}>
+                <div className="draft-slot-badge">
+                  <span>Pick</span>
+                  <strong>{slot}</strong>
+                </div>
+                <label className="team-name-field">
+                  <span className="sr-only">Team name for draft slot {slot}</span>
+                  <input
+                    type="text"
+                    value={setup.teamNames[index] ?? `Team ${slot}`}
+                    onChange={(event) => changeTeamName(index, event.target.value)}
+                    placeholder={`Team ${slot}`}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="my-team-control">
+                  <input
+                    type="radio"
+                    name="user-draft-team"
+                    checked={isUser}
+                    onChange={() => onSetupChange({ ...setup, userDraftSlot: slot })}
+                  />
+                  <span>My team</span>
+                </label>
+                <div className="team-order-actions" a
 
 [TRUNCATED]
 ```
@@ -6843,18 +6833,14 @@ import {
 } from "../src/draft-factory.js";
 
 describe("draft room application shell", () => {
-  it("renders league, UDK, NFLverse, recovery, and custom roster controls", () => {
+  it("renders the setup shell and custom roster controls", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("Build your draft room.");
     expect(html).toContain("Start new draft");
-    expect(html).toContain("Import backup");
-    expect(html).toContain("Import UDK files");
-    expect(html).toContain("Import newer history");
-    expect(html).toContain("ADP market");
-    expect(html).toContain("Roster configuration");
+    expect(html).toContain("Draft order");
+    expect(html).toContain("Roster structure");
     expect(html).toContain("Superflex");
-    expect(html).toContain("Demonstration release");
   });
 
   it("creates a complete engine-backed snake draft from setup", () => {
@@ -6889,7 +6875,11 @@ describe("draft room application shell", () => {
       K: 0,
       DST: 0,
     };
-    const rosterSlots = createRosterSlots(rosterC
+    const rosterSlots = createRosterSlots(rosterCounts);
+    const capacity = rosterSlots.reduce((sum, rule) => sum + rule.count, 0);
+    const superflex = rosterSlots.find((rule) => rule.slot === "SUPERFLEX");
+
+    expect(capacity).toBe(getRosterCapacity(rosterCount
 
 [TRUNCATED]
 ```
