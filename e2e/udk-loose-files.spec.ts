@@ -31,6 +31,7 @@ test("imports loose UDK exports without requiring a ZIP", async ({ page }, testI
   await expect(page.getByText("udk-2-files.zip")).toHaveCount(1);
 
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Available players" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Best available by position" })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("Draft created with UDK projections");
 });
