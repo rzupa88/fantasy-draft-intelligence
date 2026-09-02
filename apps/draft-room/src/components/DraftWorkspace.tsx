@@ -25,6 +25,7 @@ interface DraftWorkspaceProps {
 type PositionFilter = "ALL" | PlayerPosition;
 
 const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
+const BEST_AVAILABLE_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
 const ROSTER_SLOT_ORDER: RosterSlotType[] = [
   "QB",
   "RB",
@@ -75,8 +76,28 @@ export function DraftWorkspace({
     if (state.availablePlayerIds.length === 0) {
       return null;
     }
-    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
+    return recommendPlayers(state, {
+      teamId: userTeam.teamId,
+      limit: state.availablePlayerIds.length,
+    });
   }, [state, userTeam.teamId]);
+
+  const bestAvailableByPosition = useMemo(() => {
+    if (recommendationResult === null) {
+      return [];
+    }
+
+    return BEST_AVAILABLE_POSITIONS.flatMap((position) => {
+      const recommendation = recommendationResult.recommendations.find(
+        (candidate) => candidate.position === position,
+      );
+      if (recommendation === undefined) {
+        return [];
+      }
+      const player = playersById.get(recommendation.playerId);
+      return player === undefined ? [] : [{ position, recommendation, player }];
+    });
+  }, [playersById, recommendationResult]);
 
   const filteredPlayers = useMemo(() => {
     const available = new Set(state.availablePlayerIds);
@@ -209,9 +230,7 @@ export function DraftWorkspace({
 
         <div className="draft-progress" aria-label={`${completionPercent}% of draft completed`}>
           <div className="draft-progress-label">
-            <span>
-              {completedPicks} / {totalPicks} picks
-            </span>
+            <span>{completedPicks} / {totalPicks} picks</span>
             <strong>{completionPercent}%</strong>
           </div>
           <div className="progress-track">
@@ -220,34 +239,11 @@ export function DraftWorkspace({
         </div>
 
         <div className="header-actions">
-          <button className="secondary-button" type="button" onClick={onExport}>
-            Export
-          </button>
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={() => importInputRef.current?.click()}
-          >
-            Import
-          </button>
-          <input
-            ref={importInputRef}
-            className="sr-only"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void handleImport(event)}
-          />
-          <button
-            className="secondary-button"
-            type="button"
-            onClick={onUndo}
-            disabled={state.picks.length === 0}
-          >
-            Undo
-          </button>
-          <button className="ghost-button" type="button" onClick={onExit}>
-            Exit
-          </button>
+          <button className="secondary-button" type="button" onClick={onExport}>Export</button>
+          <button className="secondary-button" type="button" onClick={() => importInputRef.current?.click()}>Import</button>
+          <input ref={importInputRef} className="sr-only" type="file" accept="application/json,.json" onChange={(event) => void handleImport(event)} />
+          <button className="secondary-button" type="button" onClick={onUndo} disabled={state.picks.length === 0}>Undo</button>
+          <button className="ghost-button" type="button" onClick={onExit}>Exit</button>
         </div>
       </header>
 
@@ -259,25 +255,13 @@ export function DraftWorkspace({
           </div>
         ) : (
           <>
-            <div className="pick-orb">
-              <span>Pick</span>
-              <strong>{currentSlot.overallPick}</strong>
-            </div>
+            <div className="pick-orb"><span>Pick</span><strong>{currentSlot.overallPick}</strong></div>
             <div className="on-clock-copy">
-              <p className="eyebrow">
-                Round {currentSlot.round} · Pick {currentSlot.pickInRound}
-              </p>
+              <p className="eyebrow">Round {currentSlot.round} · Pick {currentSlot.pickInRound}</p>
               <h2>{isUserOnClock ? "You are on the clock" : `${currentTeam.name} is on the clock`}</h2>
-              <p>
-                {isUserOnClock
-                  ? "Use the recommendation panel or player board to make your selection."
-                  : "Record the pick from the live draft using the available-player board."}
-              </p>
+              <p>{isUserOnClock ? "Choose the position you want to attack, then take the best available player in that group." : "Record the pick from the live draft using the available-player board."}</p>
             </div>
-            <div className="clock-team-chip">
-              <span>Draft slot</span>
-              <strong>#{currentTeam.draftSlot}</strong>
-            </div>
+            <div className="clock-team-chip"><span>Draft slot</span><strong>#{currentTeam.draftSlot}</strong></div>
           </>
         )}
       </section>
@@ -291,224 +275,142 @@ export function DraftWorkspace({
         <span className="autosave-status">Autosave active · revision {state.revision}</span>
       </div>
 
-      {notice === null ? null : (
-        <div className="notice-banner" role="status">
-          {notice}
-        </div>
-      )}
+      {notice === null ? null : <div className="notice-banner" role="status">{notice}</div>}
 
       <section className="draft-workspace">
         <section className="panel player-board-panel" aria-labelledby="available-title">
           <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Player board</p>
-              <h2 id="available-title">Available players</h2>
-            </div>
+            <div><p className="eyebrow">Player board</p><h2 id="available-title">Available players</h2></div>
             <span className="count-badge">{state.availablePlayerIds.length} left</span>
           </div>
 
           <div className="player-tools">
             <label className="search-field">
               <span className="sr-only">Search available players</span>
-              <input
-                ref={searchInputRef}
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search player, team, position…"
-              />
+              <input ref={searchInputRef} type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search player, team, position…" />
             </label>
             <div className="position-filters" aria-label="Filter by position">
               {POSITION_FILTERS.map((position) => (
-                <button
-                  key={position}
-                  type="button"
-                  className={positionFilter === position ? "filter-active" : ""}
-                  onClick={() => setPositionFilter(position)}
-                >
-                  {position}
-                </button>
+                <button key={position} type="button" className={positionFilter === position ? "filter-active" : ""} onClick={() => setPositionFilter(position)}>{position}</button>
               ))}
             </div>
           </div>
 
           <div className="player-list" aria-live="polite">
             {filteredPlayers.length === 0 ? (
-              <div className="empty-state">
-                <strong>No players found.</strong>
-                <span>Clear the search or select another position.</span>
-              </div>
-            ) : (
-              filteredPlayers.map((player) => (
-                <PlayerRow
-                  key={player.canonical_player_id}
-                  player={player}
-                  selected={selectedPlayerId === player.canonical_player_id}
-                  disabled={currentSlot === null}
-                  actionLabel={currentTeam === null ? "Complete" : `Draft for ${currentTeam.name}`}
-                  onSelect={() => setSelectedPlayerId(player.canonical_player_id)}
-                  onDraft={() => onDraftPlayer(player.canonical_player_id)}
-                />
-              ))
-            )}
+              <div className="empty-state"><strong>No players found.</strong><span>Clear the search or select another position.</span></div>
+            ) : filteredPlayers.map((player) => (
+              <PlayerRow
+                key={player.canonical_player_id}
+                player={player}
+                selected={selectedPlayerId === player.canonical_player_id}
+                disabled={currentSlot === null}
+                actionLabel={currentTeam === null ? "Complete" : `Draft for ${currentTeam.name}`}
+                onSelect={() => setSelectedPlayerId(player.canonical_player_id)}
+                onDraft={() => onDraftPlayer(player.canonical_player_id)}
+              />
+            ))}
           </div>
         </section>
 
         <section className="panel recommendation-panel" aria-labelledby="recommendations-title">
           <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Decision support</p>
-              <h2 id="recommendations-title">Best options for you</h2>
-            </div>
+            <div><p className="eyebrow">Decision support</p><h2 id="recommendations-title">Best available by position</h2></div>
             <span className="live-badge">Live</span>
           </div>
 
           <p className="panel-intro">
-            Rankings blend projection, replacement value, tier urgency, roster fit, market cost,
-            expected availability, upside, and risk.
+            You choose the position. FDI identifies the best remaining player in each group. Tier is highlighted so you can see where talent cliffs are forming.
           </p>
 
           <div className="recommendation-list">
             {recommendationResult === null ? (
-              <div className="empty-state">
-                <strong>Draft complete.</strong>
-                <span>No remaining players to evaluate.</span>
-              </div>
-            ) : (
-              recommendationResult.recommendations.map((recommendation) => (
-                <article className="recommendation-card" key={recommendation.playerId}>
-                  <div className="recommendation-rank">{recommendation.rank}</div>
-                  <div className="recommendation-main">
-                    <div className="recommendation-title-row">
-                      <div>
-                        <h3>{recommendation.displayName}</h3>
-                        <span>
-                          {recommendation.position} · Score {recommendation.score.toFixed(1)}
-                        </span>
-                      </div>
-                      <PositionPill position={recommendation.position} />
+              <div className="empty-state"><strong>Draft complete.</strong><span>No remaining players to evaluate.</span></div>
+            ) : bestAvailableByPosition.map(({ position, recommendation, player }) => (
+              <article className="recommendation-card" key={position}>
+                <div className="recommendation-rank">{position}</div>
+                <div className="recommendation-main">
+                  <div className="recommendation-title-row">
+                    <div>
+                      <h3>{recommendation.displayName}</h3>
+                      <span>{player.nfl_team ?? "FA"} · ADP {player.adp?.toFixed(1) ?? "—"}</span>
                     </div>
-                    <p>{recommendation.primaryReason}</p>
-                    <div className="metric-row">
-                      <Metric label="Value" value={recommendation.metrics.baseValue} />
-                      <Metric label="VOR" value={recommendation.metrics.valueOverReplacement} />
-                      <Metric label="Need" value={recommendation.metrics.rosterNeed} />
-                      <Metric label="Urgency" value={recommendation.metrics.expectedAvailability} />
-                    </div>
-                    {isUserOnClock ? (
-                      <button
-                        type="button"
-                        className="recommendation-draft-button"
-                        onClick={() => onDraftPlayer(recommendation.playerId)}
-                      >
-                        Draft this player
-                      </button>
-                    ) : (
-                      <span className="watch-label">Recommendation for your next selection</span>
-                    )}
+                    <PositionPill position={position} />
                   </div>
-                </article>
-              ))
-            )}
+                  <p><strong>Tier {player.tier ?? "—"}</strong> · {recommendation.primaryReason}</p>
+                  <div className="metric-row">
+                    <Metric label="Tier" value={player.tier ?? 0} />
+                    <Metric label="Value" value={recommendation.metrics.baseValue} />
+                    <Metric label="VOR" value={recommendation.metrics.valueOverReplacement} />
+                    <Metric label="Urgency" value={recommendation.metrics.expectedAvailability} />
+                  </div>
+                  {isUserOnClock ? (
+                    <button type="button" className="recommendation-draft-button" onClick={() => onDraftPlayer(recommendation.playerId)}>Draft {recommendation.displayName}</button>
+                  ) : (
+                    <span className="watch-label">Best {position} for your next selection</span>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 
         <section className="panel roster-panel" aria-labelledby="roster-title">
           <div className="panel-heading">
-            <div>
-              <p className="eyebrow">League rosters</p>
-              <h2 id="roster-title">Team tracker</h2>
-            </div>
+            <div><p className="eyebrow">League rosters</p><h2 id="roster-title">Team tracker</h2></div>
             <span className="count-badge">{selectedRoster.length} drafted</span>
           </div>
 
           <div className="team-selector" role="tablist" aria-label="Fantasy teams">
             {state.teams.map((team) => (
-              <button
-                key={team.teamId}
-                type="button"
-                role="tab"
-                aria-selected={selectedTeam.teamId === team.teamId}
-                className={selectedTeam.teamId === team.teamId ? "team-tab-active" : ""}
-                onClick={() => setSelectedTeamId(team.teamId)}
-              >
-                <span>{team.isUser ? "YOU" : `#${team.draftSlot}`}</span>
-                <strong>{team.name}</strong>
+              <button key={team.teamId} type="button" role="tab" aria-selected={selectedTeam.teamId === team.teamId} className={selectedTeam.teamId === team.teamId ? "team-tab-active" : ""} onClick={() => setSelectedTeamId(team.teamId)}>
+                <span>{team.isUser ? "YOU" : `#${team.draftSlot}`}</span><strong>{team.name}</strong>
               </button>
             ))}
           </div>
 
           <div className="selected-team-summary">
-            <div>
-              <p className="eyebrow">Draft slot {selectedTeam.draftSlot}</p>
-              <h3>{selectedTeam.name}</h3>
-            </div>
+            <div><p className="eyebrow">Draft slot {selectedTeam.draftSlot}</p><h3>{selectedTeam.name}</h3></div>
             <div className="position-counts">
               {(["QB", "RB", "WR", "TE"] as PlayerPosition[]).map((position) => (
-                <span key={position}>
-                  {position} {countPosition(selectedRoster, position, playersById)}
-                </span>
+                <span key={position}>{position} {countPosition(selectedRoster, position, playersById)}</span>
               ))}
             </div>
           </div>
 
           <div className="roster-list">
-            <RosterLineup
-              rules={state.settings.rosterSlots}
-              picks={selectedRoster}
-              playersById={playersById}
-            />
+            <RosterLineup rules={state.settings.rosterSlots} picks={selectedRoster} playersById={playersById} />
           </div>
         </section>
       </section>
 
       <section className="panel recent-picks-panel" aria-labelledby="recent-picks-title">
         <div className="panel-heading compact-heading">
-          <div>
-            <p className="eyebrow">Draft feed</p>
-            <h2 id="recent-picks-title">Recent selections</h2>
-          </div>
+          <div><p className="eyebrow">Draft feed</p><h2 id="recent-picks-title">Recent selections</h2></div>
           <span className="count-badge">Newest first</span>
         </div>
 
         <div className="recent-picks-grid">
           {recentPicks.length === 0 ? (
-            <div className="empty-state recent-empty">
-              <strong>The board is ready.</strong>
-              <span>The first selection will appear here.</span>
-            </div>
-          ) : (
-            recentPicks.map((pick) => {
-              const team = state.teams.find((candidate) => candidate.teamId === pick.teamId);
-              const player = playersById.get(pick.playerId);
-              return (
-                <article className="recent-pick-card" key={`${pick.overallPick}-${pick.playerId}`}>
-                  <span className="recent-pick-number">#{pick.overallPick}</span>
-                  <PositionPill position={player?.position ?? "RB"} />
-                  <strong>{player?.display_name ?? pick.playerId}</strong>
-                  <span>{team?.name ?? pick.teamId}</span>
-                  <button
-                    type="button"
-                    className="correct-pick-button"
-                    onClick={() => setCorrectionPickNumber(pick.overallPick)}
-                    aria-label={`Correct pick ${pick.overallPick}`}
-                  >
-                    Correct
-                  </button>
-                </article>
-              );
-            })
-          )}
+            <div className="empty-state recent-empty"><strong>The board is ready.</strong><span>The first selection will appear here.</span></div>
+          ) : recentPicks.map((pick) => {
+            const team = state.teams.find((candidate) => candidate.teamId === pick.teamId);
+            const player = playersById.get(pick.playerId);
+            return (
+              <article className="recent-pick-card" key={`${pick.overallPick}-${pick.playerId}`}>
+                <span className="recent-pick-number">#{pick.overallPick}</span>
+                <PositionPill position={player?.position ?? "RB"} />
+                <strong>{player?.display_name ?? pick.playerId}</strong>
+                <span>{team?.name ?? pick.teamId}</span>
+                <button type="button" className="correct-pick-button" onClick={() => setCorrectionPickNumber(pick.overallPick)} aria-label={`Correct pick ${pick.overallPick}`}>Correct</button>
+              </article>
+            );
+          })}
         </div>
       </section>
 
       {correctionPick === null ? null : (
-        <CorrectionDialog
-          state={state}
-          pick={correctionPick}
-          onClose={() => setCorrectionPickNumber(null)}
-          onCorrect={onCorrectPick}
-        />
+        <CorrectionDialog state={state} pick={correctionPick} onClose={() => setCorrectionPickNumber(null)} onCorrect={onCorrectPick} />
       )}
     </main>
   );
@@ -523,47 +425,18 @@ interface PlayerRowProps {
   onDraft: () => void;
 }
 
-function PlayerRow({
-  player,
-  actionLabel,
-  disabled,
-  selected,
-  onSelect,
-  onDraft,
-}: PlayerRowProps) {
+function PlayerRow({ player, actionLabel, disabled, selected, onSelect, onDraft }: PlayerRowProps) {
   return (
-    <article
-      className={`player-row ${selected ? "player-row-selected" : ""}`}
-      data-player-id={player.canonical_player_id}
-      onClick={onSelect}
-    >
+    <article className={`player-row ${selected ? "player-row-selected" : ""}`} data-player-id={player.canonical_player_id} onClick={onSelect}>
       <span className="player-rank">{player.overall_rank ?? "—"}</span>
       <PositionPill position={player.position} />
       <div className="player-identity">
         <strong>{player.display_name}</strong>
-        <span>
-          {player.nfl_team ?? "FA"} · Bye {player.bye_week ?? "—"} · Tier {player.tier ?? "—"}
-        </span>
+        <span>{player.nfl_team ?? "FA"} · Bye {player.bye_week ?? "—"} · Tier {player.tier ?? "—"}</span>
       </div>
-      <div className="player-market">
-        <span>ADP</span>
-        <strong>{player.adp?.toFixed(1) ?? "—"}</strong>
-      </div>
-      <div className="player-projection">
-        <span>Proj</span>
-        <strong>{player.projected_points?.toFixed(1) ?? "—"}</strong>
-      </div>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDraft();
-        }}
-        disabled={disabled}
-        aria-label={`${actionLabel}: ${player.display_name}`}
-      >
-        Draft
-      </button>
+      <div className="player-market"><span>ADP</span><strong>{player.adp?.toFixed(1) ?? "—"}</strong></div>
+      <div className="player-projection"><span>Proj</span><strong>{player.projected_points?.toFixed(1) ?? "—"}</strong></div>
+      <button type="button" onClick={(event) => { event.stopPropagation(); onDraft(); }} disabled={disabled} aria-label={`${actionLabel}: ${player.display_name}`}>Draft</button>
     </article>
   );
 }
@@ -573,51 +446,28 @@ function PositionPill({ position }: { position: PlayerPosition }) {
 }
 
 function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <span className="metric-chip">
-      <span>{label}</span>
-      <strong>{Math.round(value)}</strong>
-    </span>
-  );
+  return <span className="metric-chip"><span>{label}</span><strong>{Math.round(value)}</strong></span>;
 }
 
 function compareAvailablePlayers(left: PlayerDataRecord, right: PlayerDataRecord): number {
   const leftRank = left.overall_rank ?? Number.POSITIVE_INFINITY;
   const rightRank = right.overall_rank ?? Number.POSITIVE_INFINITY;
-  if (leftRank !== rightRank) {
-    return leftRank - rightRank;
-  }
+  if (leftRank !== rightRank) return leftRank - rightRank;
   return left.display_name.localeCompare(right.display_name);
 }
 
 function compareRosterPicks(left: DraftPick, right: DraftPick): number {
-  const slotDifference =
-    ROSTER_SLOT_ORDER.indexOf(left.rosterSlot) - ROSTER_SLOT_ORDER.indexOf(right.rosterSlot);
-  if (slotDifference !== 0) {
-    return slotDifference;
-  }
-  if (left.rosterSlotIndex !== right.rosterSlotIndex) {
-    return left.rosterSlotIndex - right.rosterSlotIndex;
-  }
+  const slotDifference = ROSTER_SLOT_ORDER.indexOf(left.rosterSlot) - ROSTER_SLOT_ORDER.indexOf(right.rosterSlot);
+  if (slotDifference !== 0) return slotDifference;
+  if (left.rosterSlotIndex !== right.rosterSlotIndex) return left.rosterSlotIndex - right.rosterSlotIndex;
   return left.overallPick - right.overallPick;
 }
 
-function countPosition(
-  picks: DraftPick[],
-  position: PlayerPosition,
-  playersById: Map<string, PlayerDataRecord>,
-): number {
+function countPosition(picks: DraftPick[], position: PlayerPosition, playersById: Map<string, PlayerDataRecord>): number {
   return picks.filter((pick) => playersById.get(pick.playerId)?.position === position).length;
 }
 
 function isEditableTarget(target: HTMLElement | null): boolean {
-  if (target === null) {
-    return false;
-  }
-  return (
-    target.isContentEditable ||
-    target.tagName === "INPUT" ||
-    target.tagName === "TEXTAREA" ||
-    target.tagName === "SELECT"
-  );
+  if (target === null) return false;
+  return target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT";
 }
