@@ -279,6 +279,7 @@ test:
 │   │   │   ├── demo-data.ts
 │   │   │   ├── desktop-draft-drawer.css
 │   │   │   ├── draft-board.css
+│   │   │   ├── draft-drawer-resize.css
 │   │   │   ├── draft-factory.ts
 │   │   │   ├── draft-lab.css
 │   │   │   ├── draft-room-readability.css
@@ -3854,6 +3855,7 @@ export function DraftWorkspace({ state, notice, onDraftPlayer, onUndo, onExport,
   const [selectedTeamId, setSelectedTeamId] = useState(userTeam.teamId);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [correctionPickNumber, setCorrectionPickNumber] = useState<number | null>(null);
+  const [drawerExpanded, setDrawerExpanded] = useState(false);
 
   const currentSlot = getCurrentOrderSlot(state);
   const currentTeam = currentSlot === null ? null : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
@@ -3881,7 +3883,6 @@ export function DraftWorkspace({ state, notice, onDraftPlayer, onUndo, onExport,
     const available = new Set(state.availablePlayerIds);
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return state.playerDataRelease.players
-      .filter((player) => available.has(player.canonical_playe
 
 [TRUNCATED]
 ```
