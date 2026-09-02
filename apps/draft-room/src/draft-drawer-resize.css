@@ -1,21 +1,26 @@
 @media (min-width: 901px) {
-  .draft-room-shell.drawer-compact {
-    --drawer-height: 25vh;
+  .draft-room-shell.drawer-compact .draft-workspace {
+    height: 25vh !important;
   }
 
-  .draft-room-shell.drawer-expanded {
-    --drawer-height: 75vh;
+  .draft-room-shell.drawer-expanded .draft-workspace {
+    height: 75vh !important;
   }
 
   .draft-room-shell .draft-workspace {
-    height: var(--drawer-height) !important;
     transition: height 220ms ease !important;
     overflow: visible;
   }
 
-  .draft-room-shell.drawer-compact .draft-board-standalone,
-  .draft-room-shell.drawer-expanded .draft-board-standalone {
-    bottom: var(--drawer-height);
+  body:has(.draft-room-shell.drawer-compact) .draft-board-standalone {
+    bottom: 25vh !important;
+  }
+
+  body:has(.draft-room-shell.drawer-expanded) .draft-board-standalone {
+    bottom: 75vh !important;
+  }
+
+  .draft-board-standalone {
     transition: bottom 220ms ease;
   }
 
