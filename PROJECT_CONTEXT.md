@@ -3825,13 +3825,7 @@ export function DraftRoom({
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { buildRosterAssignments, getCurrentOrderSlot } from "@fdi/draft-engine";
 import { recommendPlayers } from "@fdi/recommendation-engine";
-import type {
-  DraftPick,
-  DraftState,
-  PlayerDataRecord,
-  PlayerPosition,
-  RosterSlotType,
-} from "@fdi/shared-types";
+import type { DraftPick, DraftState, PlayerDataRecord, PlayerPosition, RosterSlotType } from "@fdi/shared-types";
 import { CorrectionDialog } from "./CorrectionDialog.js";
 import { RosterLineup } from "./RosterLineup.js";
 
@@ -3847,30 +3841,11 @@ interface DraftWorkspaceProps {
 }
 
 type PositionFilter = "ALL" | PlayerPosition;
-
 const POSITION_FILTERS: PositionFilter[] = ["ALL", "QB", "RB", "WR", "TE", "K", "DST"];
-const ROSTER_SLOT_ORDER: RosterSlotType[] = [
-  "QB",
-  "RB",
-  "WR",
-  "TE",
-  "FLEX",
-  "SUPERFLEX",
-  "K",
-  "DST",
-  "BENCH",
-];
+const BEST_AVAILABLE_POSITIONS: PlayerPosition[] = ["QB", "RB", "WR", "TE", "K", "DST"];
+const ROSTER_SLOT_ORDER: RosterSlotType[] = ["QB", "RB", "WR", "TE", "FLEX", "SUPERFLEX", "K", "DST", "BENCH"];
 
-export function DraftWorkspace({
-  state,
-  notice,
-  onDraftPlayer,
-  onUndo,
-  onExport,
-  onExit,
-  onCorrectPick,
-  onImportDraft,
-}: DraftWorkspaceProps) {
+export function DraftWorkspace({ state, notice, onDraftPlayer, onUndo, onExport, onExit, onCorrectPick, onImportDraft }: DraftWorkspaceProps) {
   const userTeam = state.teams.find((team) => team.isUser) ?? state.teams[0]!;
   const searchInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -3881,50 +3856,32 @@ export function DraftWorkspace({
   const [correctionPickNumber, setCorrectionPickNumber] = useState<number | null>(null);
 
   const currentSlot = getCurrentOrderSlot(state);
-  const currentTeam =
-    currentSlot === null
-      ? null
-      : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
+  const currentTeam = currentSlot === null ? null : state.teams.find((team) => team.teamId === currentSlot.teamId) ?? null;
   const isUserOnClock = currentTeam?.isUser ?? false;
   const rosters = useMemo(() => buildRosterAssignments(state), [state]);
-  const playersById = useMemo(
-    () =>
-      new Map(
-        state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
-      ),
-    [state.playerDataRelease],
-  );
+  const playersById = useMemo(() => new Map(state.playerDataRelease.players.map((player) => [player.canonical_player_id, player])), [state.playerDataRelease]);
 
-  const recommendationResult = useMemo(() => {
-    if (state.availablePlayerIds.length === 0) {
-      return null;
-    }
-    return recommendPlayers(state, { teamId: userTeam.teamId, limit: 5 });
-  }, [state, userTeam.teamId]);
+  const bestAvailableByPosition = useMemo(() => {
+    if (state.availablePlayerIds.length === 0) return [];
+    const available = new Set(state.availablePlayerIds);
+    return BEST_AVAILABLE_POSITIONS.flatMap((position) => {
+      const positionPlayerIds = state.playerDataRelease.players
+        .filter((player) => available.has(player.canonical_player_id) && player.position === position)
+        .map((player) => player.canonical_player_id);
+      if (positionPlayerIds.length === 0) return [];
+      const positionState: DraftState = { ...state, availablePlayerIds: positionPlayerIds };
+      const recommendation = recommendPlayers(positionState, { teamId: userTeam.teamId, limit: 1 }).recommendations[0];
+      if (recommendation === undefined) return [];
+      const player = playersById.get(recommendation.playerId);
+      return player === undefined ? [] : [{ position, recommendation, player }];
+    });
+  }, [playersById, state, userTeam.teamId]);
 
   const filteredPlayers = useMemo(() => {
     const available = new Set(state.availablePlayerIds);
     const normalizedQuery = searchQuery.trim().toLowerCase();
-
     return state.playerDataRelease.players
-      .filter((player) => available.has(player.canonical_player_id))
-      .filter((player) => positionFilter === "ALL" || player.position === positionFilter)
-      .filter((player) => {
-        if (normalizedQuery.length === 0) {
-          return true;
-        }
-        return [player.display_name, player.position, player.nfl_team ?? ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(normalizedQuery);
-      })
-      .sort(compareAvailablePlayers)
-      .slice(0, 100);
-  }, [positionFilter, searchQuery, state.availablePlayerIds, state.playerDataRelease.players]);
-
-  useEffect(() => {
-    if (!filteredPlayers.some((player) => player.canonical_player_id === selectedPlayerId)) {
-      setSelectedPlayerId(filteredPlayers[0]?.canonical_player_id ?? null);
+      .filter((player) => available.has(player.canonical_playe
 
 [TRUNCATED]
 ```
