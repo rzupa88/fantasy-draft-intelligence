@@ -3641,6 +3641,54 @@ export function DraftLab() {
     [profile, scenario],
   );
 
+  const teamId =
+    scenario.teamId ??
+    scenario.state.teams.find((team) => team.isUser)?.teamId ??
+    scenario.state.teams[0]!.teamId;
+  const userTeam = scenario.state.teams.find((team) => team.teamId === teamId);
+  const nextOverallPick = scenario.state.nextOverallPick;
+  const currentOrderSlot =
+    nextOverallPick === null
+      ? undefined
+      : scenario.state.order.find((slot) => slot.overallPick === nextOverallPick);
+  const nextUserOrderSlot =
+    nextOverallPick === null
+      ? null
+      : scenario.state.order.find(
+          (slot) => slot.overallPick > nextOverallPick && slot.teamId === teamId,
+        ) ?? null;
+  const playerById = new Map(
+    scenario.state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+  );
+  const teamPicks = scenario.state.picks
+    .filter((pick) => pick.teamId === teamId)
+    .sort((a, b) => a.overallPick - b.overallPick);
+  const recentPicks = [...scenario.state.picks]
+    .sort((a, b) => b.overallPick - a.overallPick)
+    .slice(0, 8)
+    .reverse();
+  const availablePlayers = scenario.state.availablePlayerIds
+    .map((playerId) => playerById.get(playerId))
+    .filter((player): player is NonNullable<typeof player> => player !== undefined)
+    .sort((a, b) => (a.overall_rank ?? 999) - (b.overall_rank ?? 999))
+    .slice(0, 14);
+
+  const rosterSlots = scenario.state.settings.rosterSlots.flatMap((slot) =>
+    Array.from({ length: slot.count }, (_, index) => {
+      const rosterSlotIndex = index + 1;
+      const pick = teamPicks.find(
+        (candidate) =>
+          candidate.rosterSlot === slot.slot && candidate.rosterSlotIndex === rosterSlotIndex,
+      );
+      return {
+        key: `${slot.slot}-${rosterSlotIndex}`,
+        label: slot.count === 1 ? slot.slot : `${slot.slot}${rosterSlotIndex}`,
+        eligible: slot.eligiblePositions.join("/"),
+        player: pick === undefined ? undefined : playerById.get(pick.playerId),
+      };
+    }),
+  );
+
   return (
     <main className="draft-lab-shell">
       <header className="draft-lab-header">
@@ -3648,64 +3696,9 @@ export function DraftLab() {
           <p className="draft-lab-eyebrow">Decision Engine Validation</p>
           <h1>Draft Lab</h1>
           <p>
-            Inspect deterministic draft scenarios and see exactly why the recommendation engine ranks
-            one player above another.
+            Judge the football decision first, then inspect the math. Each scenario now shows roster
+            construction, draft position, recent room behavior, and the available player pool.
           </p>
-        </div>
-        <a className="draft-lab-exit" href={window.location.pathname}>
-          Exit lab
-        </a>
-      </header>
-
-      <section className="draft-lab-controls" aria-label="Draft Lab controls">
-        <label>
-          Scenario
-          <select value={scenario.id} onChange={(event) => setScenarioId(event.target.value)}>
-            {BUILT_IN_RECOMMENDATION_SCENARIOS.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Weight profile
-          <select value={profile.id} onChange={(event) => setProfileId(event.target.value)}>
-            {BUILT_IN_RECOMMENDATION_PROFILES.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="draft-lab-state-summary">
-          <span>Current pick</span>
-          <strong>{result.currentOverallPick}</strong>
-          <span>Next user pick</span>
-          <strong>{result.nextUserPick ?? "—"}</strong>
-        </div>
-      </section>
-
-      <section className="draft-lab-scenario-card">
-        <div>
-          <h2>{scenario.name}</h2>
-          <p>{scenario.description}</p>
-        </div>
-        <div>
-          <span>{scenario.expectations.length}</span>
-          <small>regression checks</small>
-        </div>
-      </section>
-
-      <section className="draft-lab-ranking" aria-label="Recommendation breakdown">
-        {result.recommendations.map((recommendation) => (
-          <article className="draft-lab-player-card" key={recommendation.playerId}>
-            <div className="draft-lab-player-heading">
-              <div className="draft-lab-rank">#{recommendation.rank}</div>
-              <div>
-                <h3>{recommendation.displayName}</h3>
-                <p>
-                  {recommendation.position} · {reco
 
 [TRUNCATED]
 ```
@@ -5233,6 +5226,54 @@ export function DraftLab() {
     [profile, scenario],
   );
 
+  const teamId =
+    scenario.teamId ??
+    scenario.state.teams.find((team) => team.isUser)?.teamId ??
+    scenario.state.teams[0]!.teamId;
+  const userTeam = scenario.state.teams.find((team) => team.teamId === teamId);
+  const nextOverallPick = scenario.state.nextOverallPick;
+  const currentOrderSlot =
+    nextOverallPick === null
+      ? undefined
+      : scenario.state.order.find((slot) => slot.overallPick === nextOverallPick);
+  const nextUserOrderSlot =
+    nextOverallPick === null
+      ? null
+      : scenario.state.order.find(
+          (slot) => slot.overallPick > nextOverallPick && slot.teamId === teamId,
+        ) ?? null;
+  const playerById = new Map(
+    scenario.state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+  );
+  const teamPicks = scenario.state.picks
+    .filter((pick) => pick.teamId === teamId)
+    .sort((a, b) => a.overallPick - b.overallPick);
+  const recentPicks = [...scenario.state.picks]
+    .sort((a, b) => b.overallPick - a.overallPick)
+    .slice(0, 8)
+    .reverse();
+  const availablePlayers = scenario.state.availablePlayerIds
+    .map((playerId) => playerById.get(playerId))
+    .filter((player): player is NonNullable<typeof player> => player !== undefined)
+    .sort((a, b) => (a.overall_rank ?? 999) - (b.overall_rank ?? 999))
+    .slice(0, 14);
+
+  const rosterSlots = scenario.state.settings.rosterSlots.flatMap((slot) =>
+    Array.from({ length: slot.count }, (_, index) => {
+      const rosterSlotIndex = index + 1;
+      const pick = teamPicks.find(
+        (candidate) =>
+          candidate.rosterSlot === slot.slot && candidate.rosterSlotIndex === rosterSlotIndex,
+      );
+      return {
+        key: `${slot.slot}-${rosterSlotIndex}`,
+        label: slot.count === 1 ? slot.slot : `${slot.slot}${rosterSlotIndex}`,
+        eligible: slot.eligiblePositions.join("/"),
+        player: pick === undefined ? undefined : playerById.get(pick.playerId),
+      };
+    }),
+  );
+
   return (
     <main className="draft-lab-shell">
       <header className="draft-lab-header">
@@ -5240,64 +5281,9 @@ export function DraftLab() {
           <p className="draft-lab-eyebrow">Decision Engine Validation</p>
           <h1>Draft Lab</h1>
           <p>
-            Inspect deterministic draft scenarios and see exactly why the recommendation engine ranks
-            one player above another.
+            Judge the football decision first, then inspect the math. Each scenario now shows roster
+            construction, draft position, recent room behavior, and the available player pool.
           </p>
-        </div>
-        <a className="draft-lab-exit" href={window.location.pathname}>
-          Exit lab
-        </a>
-      </header>
-
-      <section className="draft-lab-controls" aria-label="Draft Lab controls">
-        <label>
-          Scenario
-          <select value={scenario.id} onChange={(event) => setScenarioId(event.target.value)}>
-            {BUILT_IN_RECOMMENDATION_SCENARIOS.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Weight profile
-          <select value={profile.id} onChange={(event) => setProfileId(event.target.value)}>
-            {BUILT_IN_RECOMMENDATION_PROFILES.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="draft-lab-state-summary">
-          <span>Current pick</span>
-          <strong>{result.currentOverallPick}</strong>
-          <span>Next user pick</span>
-          <strong>{result.nextUserPick ?? "—"}</strong>
-        </div>
-      </section>
-
-      <section className="draft-lab-scenario-card">
-        <div>
-          <h2>{scenario.name}</h2>
-          <p>{scenario.description}</p>
-        </div>
-        <div>
-          <span>{scenario.expectations.length}</span>
-          <small>regression checks</small>
-        </div>
-      </section>
-
-      <section className="draft-lab-ranking" aria-label="Recommendation breakdown">
-        {result.recommendations.map((recommendation) => (
-          <article className="draft-lab-player-card" key={recommendation.playerId}>
-            <div className="draft-lab-player-heading">
-              <div className="draft-lab-rank">#{recommendation.rank}</div>
-              <div>
-                <h3>{recommendation.displayName}</h3>
-                <p>
-                  {recommendation.position} · {reco
 
 [TRUNCATED]
 ```
