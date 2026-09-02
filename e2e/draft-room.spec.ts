@@ -6,10 +6,15 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
+async function expectDraftRoom(page: import("@playwright/test").Page): Promise<void> {
+  await expect(page.getByRole("heading", { name: "Available players" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Best available by position" })).toBeVisible();
+}
+
 test("supports keyboard drafting, recovery, correction, and undo", async ({ page }) => {
   await page.getByRole("button", { name: "Start new draft" }).click();
 
-  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
+  await expectDraftRoom(page);
   const firstPlayerName = (
     await page.locator(".player-row .player-identity strong").first().textContent()
   )?.trim();
@@ -25,7 +30,7 @@ test("supports keyboard drafting, recovery, correction, and undo", async ({ page
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
 
   await page.reload();
-  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
+  await expectDraftRoom(page);
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
   await expect(page.getByRole("status")).toContainText("Autosaved draft restored");
 
@@ -42,7 +47,7 @@ test("supports keyboard drafting, recovery, correction, and undo", async ({ page
 
 test("exports a backup and imports it after clearing recovery", async ({ page }) => {
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await page.getByRole("button", { name: /Draft for .*:/ }).first().click();
+  await page.locator(".player-row button", { hasText: "Draft" }).first().click();
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
 
   const downloadPromise = page.waitForEvent("download");
@@ -58,7 +63,7 @@ test("exports a backup and imports it after clearing recovery", async ({ page })
   await expect(page.getByText("Autosaved draft found")).toHaveCount(0);
 
   await page.locator('input[accept*="json"]').first().setInputFiles(downloadPath!);
-  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
+  await expectDraftRoom(page);
   await expect(page.locator(".draft-progress-label")).toContainText("1 / 192 picks");
   await expect(page.getByRole("status")).toContainText("imported with 1 recorded picks");
 });
@@ -74,7 +79,7 @@ test("derives draft length from a custom superflex roster", async ({ page }) => 
   await expect(rosterSummary).toContainText("204 total selections.");
 
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
+  await expectDraftRoom(page);
   await expect(page.locator(".draft-progress-label")).toContainText("0 / 204 picks");
 });
 
@@ -166,7 +171,7 @@ test("imports UDK and NFLverse releases into one stable player pool", async ({ p
   await expect(page.getByText("200 of 200 UDK players now use stable NFLverse IDs.")).toHaveCount(1);
 
   await page.getByRole("button", { name: "Start new draft" }).click();
-  await expect(page.getByRole("heading", { name: "Fantasy Draft" })).toBeVisible();
+  await expectDraftRoom(page);
   await expect(page.getByRole("status")).toContainText("200 NFLverse identity matches");
 
   const search = page.getByPlaceholder("Search player, team, position…");
