@@ -28,6 +28,54 @@ export function DraftLab() {
     [profile, scenario],
   );
 
+  const teamId =
+    scenario.teamId ??
+    scenario.state.teams.find((team) => team.isUser)?.teamId ??
+    scenario.state.teams[0]!.teamId;
+  const userTeam = scenario.state.teams.find((team) => team.teamId === teamId);
+  const nextOverallPick = scenario.state.nextOverallPick;
+  const currentOrderSlot =
+    nextOverallPick === null
+      ? undefined
+      : scenario.state.order.find((slot) => slot.overallPick === nextOverallPick);
+  const nextUserOrderSlot =
+    nextOverallPick === null
+      ? null
+      : scenario.state.order.find(
+          (slot) => slot.overallPick > nextOverallPick && slot.teamId === teamId,
+        ) ?? null;
+  const playerById = new Map(
+    scenario.state.playerDataRelease.players.map((player) => [player.canonical_player_id, player]),
+  );
+  const teamPicks = scenario.state.picks
+    .filter((pick) => pick.teamId === teamId)
+    .sort((a, b) => a.overallPick - b.overallPick);
+  const recentPicks = [...scenario.state.picks]
+    .sort((a, b) => b.overallPick - a.overallPick)
+    .slice(0, 8)
+    .reverse();
+  const availablePlayers = scenario.state.availablePlayerIds
+    .map((playerId) => playerById.get(playerId))
+    .filter((player): player is NonNullable<typeof player> => player !== undefined)
+    .sort((a, b) => (a.overall_rank ?? 999) - (b.overall_rank ?? 999))
+    .slice(0, 14);
+
+  const rosterSlots = scenario.state.settings.rosterSlots.flatMap((slot) =>
+    Array.from({ length: slot.count }, (_, index) => {
+      const rosterSlotIndex = index + 1;
+      const pick = teamPicks.find(
+        (candidate) =>
+          candidate.rosterSlot === slot.slot && candidate.rosterSlotIndex === rosterSlotIndex,
+      );
+      return {
+        key: `${slot.slot}-${rosterSlotIndex}`,
+        label: slot.count === 1 ? slot.slot : `${slot.slot}${rosterSlotIndex}`,
+        eligible: slot.eligiblePositions.join("/"),
+        player: pick === undefined ? undefined : playerById.get(pick.playerId),
+      };
+    }),
+  );
+
   return (
     <main className="draft-lab-shell">
       <header className="draft-lab-header">
@@ -35,8 +83,8 @@ export function DraftLab() {
           <p className="draft-lab-eyebrow">Decision Engine Validation</p>
           <h1>Draft Lab</h1>
           <p>
-            Inspect deterministic draft scenarios and see exactly why the recommendation engine ranks
-            one player above another.
+            Judge the football decision first, then inspect the math. Each scenario now shows roster
+            construction, draft position, recent room behavior, and the available player pool.
           </p>
         </div>
         <a className="draft-lab-exit" href={window.location.pathname}>
@@ -66,10 +114,18 @@ export function DraftLab() {
           </select>
         </label>
         <div className="draft-lab-state-summary">
-          <span>Current pick</span>
-          <strong>{result.currentOverallPick}</strong>
+          <span>On the clock</span>
+          <strong>
+            {currentOrderSlot === undefined
+              ? `Pick ${result.currentOverallPick}`
+              : `R${currentOrderSlot.round} · ${currentOrderSlot.pickInRound} (${result.currentOverallPick})`}
+          </strong>
           <span>Next user pick</span>
-          <strong>{result.nextUserPick ?? "—"}</strong>
+          <strong>
+            {nextUserOrderSlot === null
+              ? result.nextUserPick ?? "—"
+              : `R${nextUserOrderSlot.round} · ${nextUserOrderSlot.pickInRound} (${nextUserOrderSlot.overallPick})`}
+          </strong>
         </div>
       </section>
 
@@ -84,16 +140,122 @@ export function DraftLab() {
         </div>
       </section>
 
+      <section className="draft-lab-context-grid" aria-label="Scenario football context">
+        <article className="draft-lab-context-card draft-lab-league-card">
+          <div className="draft-lab-section-heading">
+            <div>
+              <p className="draft-lab-eyebrow">League context</p>
+              <h3>{scenario.state.settings.leagueName}</h3>
+            </div>
+            <span className="draft-lab-chip">
+              {scenario.state.settings.scoring.preset.replaceAll("_", " ")}
+            </span>
+          </div>
+          <dl className="draft-lab-facts">
+            <div><dt>Teams</dt><dd>{scenario.state.settings.teamCount}</dd></div>
+            <div><dt>Your team</dt><dd>{userTeam?.name ?? teamId}</dd></div>
+            <div><dt>Draft slot</dt><dd>{userTeam?.draftSlot ?? "—"}</dd></div>
+            <div><dt>Picks made</dt><dd>{scenario.state.picks.length}</dd></div>
+          </dl>
+        </article>
+
+        <article className="draft-lab-context-card draft-lab-roster-card">
+          <div className="draft-lab-section-heading">
+            <div>
+              <p className="draft-lab-eyebrow">Roster construction</p>
+              <h3>{userTeam?.name ?? "User team"}</h3>
+            </div>
+            <span className="draft-lab-chip">{teamPicks.length} drafted</span>
+          </div>
+          <div className="draft-lab-roster-grid">
+            {rosterSlots.map((slot) => (
+              <div
+                className={slot.player === undefined ? "draft-lab-roster-slot is-open" : "draft-lab-roster-slot"}
+                key={slot.key}
+              >
+                <span>{slot.label}</span>
+                {slot.player === undefined ? (
+                  <div><strong>OPEN</strong><small>{slot.eligible}</small></div>
+                ) : (
+                  <div><strong>{slot.player.display_name}</strong><small>{slot.player.position} · {slot.player.nfl_team}</small></div>
+                )}
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="draft-lab-context-card draft-lab-room-card">
+          <div className="draft-lab-section-heading">
+            <div>
+              <p className="draft-lab-eyebrow">Room behavior</p>
+              <h3>Recent picks</h3>
+            </div>
+            <span className="draft-lab-chip">last {recentPicks.length}</span>
+          </div>
+          {recentPicks.length === 0 ? (
+            <p className="draft-lab-empty-copy">No picks yet. This scenario begins at the opening pick.</p>
+          ) : (
+            <div className="draft-lab-recent-picks">
+              {recentPicks.map((pick) => {
+                const player = playerById.get(pick.playerId);
+                return (
+                  <div key={`${pick.overallPick}-${pick.playerId}`}>
+                    <span>#{pick.overallPick}</span>
+                    <strong>{player?.position ?? pick.rosterSlot}</strong>
+                    <small>{player?.display_name ?? pick.playerId}</small>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </article>
+      </section>
+
+      <section className="draft-lab-pool" aria-label="Available player pool">
+        <div className="draft-lab-section-heading">
+          <div>
+            <p className="draft-lab-eyebrow">Decision set</p>
+            <h2>Best available players</h2>
+          </div>
+          <span className="draft-lab-chip">{scenario.state.availablePlayerIds.length} available</span>
+        </div>
+        <div className="draft-lab-pool-grid">
+          {availablePlayers.map((player) => {
+            const recommendation = result.recommendations.find(
+              (candidate) => candidate.playerId === player.canonical_player_id,
+            );
+            return (
+              <div className="draft-lab-pool-player" key={player.canonical_player_id}>
+                <span className="draft-lab-position-pill">{player.position}</span>
+                <div>
+                  <strong>{player.display_name}</strong>
+                  <small>
+                    Rank {player.overall_rank ?? "—"} · ADP {player.adp ?? "—"} · Tier {player.tier ?? "—"}
+                  </small>
+                </div>
+                <div className="draft-lab-pool-score">
+                  <strong>{recommendation?.score ?? "—"}</strong>
+                  <small>{recommendation === undefined ? "not ranked" : `engine #${recommendation.rank}`}</small>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="draft-lab-ranking" aria-label="Recommendation breakdown">
+        <div className="draft-lab-ranking-heading">
+          <p className="draft-lab-eyebrow">Engine explanation</p>
+          <h2>Recommendation ranking</h2>
+          <p>Use this section after you decide what you think the correct football choice should be.</p>
+        </div>
         {result.recommendations.map((recommendation) => (
           <article className="draft-lab-player-card" key={recommendation.playerId}>
             <div className="draft-lab-player-heading">
               <div className="draft-lab-rank">#{recommendation.rank}</div>
               <div>
                 <h3>{recommendation.displayName}</h3>
-                <p>
-                  {recommendation.position} · {recommendation.playerId}
-                </p>
+                <p>{recommendation.position} · {recommendation.playerId}</p>
               </div>
               <div className="draft-lab-score">
                 <strong>{recommendation.score}</strong>
@@ -115,18 +277,9 @@ export function DraftLab() {
                   { label: "Return probability", value: formatContext("returnProbability", recommendation.context.returnProbability) },
                   { label: "Take-now urgency", value: formatNumber(recommendation.context.takeNowUrgency) },
                   { label: "Opportunity cost", value: formatNumber(recommendation.context.opportunityCost) },
-                  {
-                    label: "Expected next-pick position value",
-                    value: formatNullable(recommendation.context.expectedNextPickPositionValue),
-                  },
-                  {
-                    label: "Value lost by waiting",
-                    value: formatNullable(recommendation.context.valueLostByWaiting),
-                  },
-                  {
-                    label: "Adjusted market pick",
-                    value: formatNullable(recommendation.context.adjustedMarketPick),
-                  },
+                  { label: "Expected next-pick position value", value: formatNullable(recommendation.context.expectedNextPickPositionValue) },
+                  { label: "Value lost by waiting", value: formatNullable(recommendation.context.valueLostByWaiting) },
+                  { label: "Adjusted market pick", value: formatNullable(recommendation.context.adjustedMarketPick) },
                   { label: "Market shift", value: formatNumber(recommendation.context.marketShift) },
                   { label: "Recent position run", value: formatNumber(recommendation.context.recentPositionRun) },
                   { label: "Position demand", value: formatNumber(recommendation.context.positionDemand) },
@@ -137,18 +290,9 @@ export function DraftLab() {
                 title="Replacement context"
                 rows={[
                   { label: "Replacement rank", value: String(recommendation.context.replacementRank) },
-                  {
-                    label: "Replacement projected points",
-                    value: formatNullable(recommendation.context.replacementProjectedPoints),
-                  },
-                  {
-                    label: "Points above replacement",
-                    value: formatNullable(recommendation.context.projectedPointsAboveReplacement),
-                  },
-                  {
-                    label: "Picks until next user pick",
-                    value: formatNullable(recommendation.context.picksUntilNextUserPick),
-                  },
+                  { label: "Replacement projected points", value: formatNullable(recommendation.context.replacementProjectedPoints) },
+                  { label: "Points above replacement", value: formatNullable(recommendation.context.projectedPointsAboveReplacement) },
+                  { label: "Picks until next user pick", value: formatNullable(recommendation.context.picksUntilNextUserPick) },
                 ]}
               />
             </div>
