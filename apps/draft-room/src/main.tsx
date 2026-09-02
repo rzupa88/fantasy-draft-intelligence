@@ -16,6 +16,7 @@ import "./draft-room-redesign.css";
 import "./draft-room-redesign-e2e-fix.css";
 import "./draft-room-readability.css";
 import "./draft-room-usability.css";
+import "./draft-drawer-resize.css";
 import "./setup-simplify.css";
 import "./draft-lab.css";
 

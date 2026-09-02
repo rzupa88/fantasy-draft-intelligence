@@ -1,0 +1,88 @@
+@media (min-width: 901px) {
+  .draft-room-shell.drawer-compact .draft-workspace {
+    height: 25vh !important;
+  }
+
+  .draft-room-shell.drawer-expanded .draft-workspace {
+    height: 75vh !important;
+  }
+
+  .draft-room-shell .draft-workspace {
+    transition: height 220ms ease !important;
+    overflow: visible;
+  }
+
+  body:has(.draft-room-shell.drawer-compact) .draft-board-standalone {
+    bottom: 25vh !important;
+  }
+
+  body:has(.draft-room-shell.drawer-expanded) .draft-board-standalone {
+    bottom: 75vh !important;
+  }
+
+  .draft-board-standalone {
+    transition: bottom 220ms ease;
+  }
+
+  .drawer-size-toggle {
+    position: absolute;
+    top: -2.15rem;
+    left: 50%;
+    z-index: 4;
+    display: inline-flex;
+    min-height: 2.15rem;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.8rem;
+    border: 1px solid #49617f;
+    border-bottom: 0;
+    border-radius: 0.65rem 0.65rem 0 0;
+    background: #101d30;
+    color: #eef4fc;
+    box-shadow: 0 -6px 16px rgb(0 0 0 / 24%);
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transform: translateX(-50%);
+  }
+
+  .drawer-size-toggle:hover,
+  .drawer-size-toggle:focus-visible {
+    background: #162b49;
+    outline: none;
+  }
+
+  .drawer-size-toggle span {
+    color: #8abfff;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .draft-room-shell.drawer-compact .draft-workspace {
+    padding-top: 0.7rem;
+  }
+
+  .draft-room-shell.drawer-compact .draft-workspace .panel-intro,
+  .draft-room-shell.drawer-compact .draft-workspace .selected-team-summary {
+    display: none;
+  }
+
+  .draft-room-shell.drawer-compact .draft-workspace .player-list {
+    height: calc(100% - 7.2rem);
+  }
+
+  .draft-room-shell.drawer-compact .draft-workspace .recommendation-list,
+  .draft-room-shell.drawer-compact .draft-workspace .roster-list {
+    max-height: calc(100% - 4.5rem);
+  }
+
+  .return-chance-chip strong {
+    min-width: 2.8rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .drawer-size-toggle {
+    display: none;
+  }
+}
