@@ -81,6 +81,43 @@
   }
 }
 
+/* At laptop widths the player table must fit inside its own panel. Keep the
+   high-value identity/action fields and drop secondary columns before they can
+   spill beneath the recommendation or roster panels. */
+@media (min-width: 1101px) and (max-width: 1450px) {
+  .draft-workspace .player-board-panel,
+  .draft-workspace .player-list,
+  .draft-workspace .player-row {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .draft-workspace .player-row {
+    grid-template-columns: 2.7rem minmax(0, 1fr) 4.8rem !important;
+    overflow: hidden;
+  }
+
+  .draft-workspace .player-row .player-rank,
+  .draft-workspace .player-row .player-market,
+  .draft-workspace .player-row .player-projection {
+    display: none;
+  }
+
+  .draft-workspace .player-row .player-identity {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .draft-workspace .player-row .player-identity strong,
+  .draft-workspace .player-row .player-identity span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 900px) {
   .drawer-size-toggle {
     display: none;
