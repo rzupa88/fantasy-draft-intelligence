@@ -20,7 +20,8 @@
     "test:e2e:ui": "playwright test --ui",
     "check": "npm run typecheck && npm test",
     "evaluate:recommendations": "npm run build && node scripts/evaluate_recommendations.mjs",
-    "evaluate:recommendations:json": "npm run build && node scripts/evaluate_recommendations.mjs --json"
+    "evaluate:recommendations:json": "npm run build && node scripts/evaluate_recommendations.mjs --json",
+    "calibrate:real": "npm run build && node scripts/calibrate_real_data.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
