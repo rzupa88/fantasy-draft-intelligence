@@ -115,7 +115,6 @@
     box-shadow: inset 0 0 0 3px #a8ceff;
   }
 
-  /* Keep the command area open and completely stable. */
   .draft-workspace,
   .draft-workspace:hover,
   .draft-workspace:focus-within,
@@ -395,64 +394,51 @@
   }
 }
 
-/* Laptop-sized desktop: keep all three tools visible and let them flex instead of hiding Team Tracker. */
-@media (min-width: 1101px) and (max-width: 1450px) {
+/* Keep all three tools on one row and scale them with the viewport. */
+@media (min-width: 901px) and (max-width: 1450px) {
   .draft-workspace {
-    grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 0.95fr) minmax(16rem, 0.85fr);
-    gap: 0.7rem;
-    padding-inline: 0.7rem;
+    grid-template-columns: minmax(0, 1.35fr) minmax(15rem, 1fr) minmax(15rem, 0.95fr);
+    gap: 0.55rem;
+    padding-inline: 0.55rem;
   }
 
   .player-tools {
     grid-template-columns: 1fr;
-    gap: 0.45rem;
+    gap: 0.4rem;
   }
 
   .position-filters {
     overflow-x: auto;
-    padding-bottom: 0.15rem;
+    padding-bottom: 0.1rem;
   }
 
   .position-filters button {
-    min-width: 2.65rem;
-  }
-
-  .player-row {
-    grid-template-columns: 2rem 2.7rem minmax(7rem, 1fr) 3.4rem 3.8rem 4.6rem;
-    gap: 0.4rem;
-    padding-inline: 0.55rem;
+    min-width: 2.55rem;
   }
 
   .team-selector button {
-    min-width: 5.8rem;
+    min-width: 5.4rem;
   }
 }
 
-/* Narrow laptop/tablet landscape: preserve all tools by stacking Team Tracker below the two decision panels. */
-@media (min-width: 901px) and (max-width: 1100px) {
+@media (min-width: 901px) and (max-width: 1180px) {
   .draft-workspace {
-    grid-template-columns: minmax(0, 1.45fr) minmax(17rem, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(12rem, 0.72fr);
-    gap: 0.65rem;
-    overflow-y: auto;
+    grid-template-columns: minmax(0, 1.25fr) minmax(14rem, 1fr) minmax(13rem, 0.9fr);
   }
 
-  .draft-workspace .player-board-panel,
-  .draft-workspace .recommendation-panel {
-    min-height: 18rem;
+  .draft-workspace .panel-heading {
+    padding-inline: 0.6rem;
   }
 
-  .draft-workspace .roster-panel {
-    display: block;
-    grid-column: 1 / -1;
-    min-height: 12rem;
+  .draft-workspace .panel-heading h2 {
+    font-size: 0.86rem;
   }
 
-  .player-tools {
-    grid-template-columns: 1fr;
+  .recommendation-card {
+    padding: 0.55rem;
   }
 
-  .roster-list {
-    height: calc(100% - 8.4rem) !important;
+  .metric-row {
+    gap: 0.2rem;
   }
 }

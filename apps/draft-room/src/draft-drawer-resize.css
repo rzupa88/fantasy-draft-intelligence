@@ -28,7 +28,7 @@
     position: absolute;
     top: -2.15rem;
     left: 50%;
-    z-index: 4;
+    z-index: 50;
     display: inline-flex;
     min-height: 2.15rem;
     align-items: center;
@@ -192,7 +192,7 @@
 /* At laptop widths the player table must fit inside its own panel. Keep the
    high-value identity/action fields and drop secondary columns before they can
    spill beneath the recommendation or roster panels. */
-@media (min-width: 1101px) and (max-width: 1450px) {
+@media (min-width: 901px) and (max-width: 1450px) {
   .draft-workspace .player-board-panel,
   .draft-workspace .player-list,
   .draft-workspace .player-row {
